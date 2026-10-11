@@ -118,3 +118,35 @@ five synthetic tests passed under strict GCC plus ASan/UBSan.
 We have not reconstructed the gradient/orientation histogram input to
 this stage, feature detection, descriptor matching or enrollment.
 These C features are not suitable for identity decisions.
+
+## 8×8×8 upstream histogram: confirming the missing link
+
+Further direct disassembly of the original unstripped Ubuntu ELF:
+
+- At `0xde233`–`0xde249`, `FtComputeDescriptors` allocates a float
+  histogram of `descrWidth² * descrHistBins` entries. An 8×8×8 mode
+  therefore uses **512 floats**, rather than the 128 comparisons
+  in one specific output-packing branch.
+- At `0xde43b`–`0xdeae1`, the descriptor samples a neighbourhood
+  covering offsets `-15..15` along two axes in the relevant mode,
+  obtains gradient magnitude/orientation using
+  `FtMfsCalcGradMagOri` (call at `0xde6d3`), subtracts the keypoint
+  angle, circularly wraps angles, and performs trilinear interpolation
+  between spatial cells and 8 orientation bins.
+- The original ELF contains a precomputed `GAUSS_WEIGHT_TAB` and the
+  orientation scale constant `0x19373c = 1.27323949f ≈ 8/(2π)`.
+  Its exact scale-specific Gaussian table, intermediate feature
+  selection and algorithm-mode flags are still unresolved.
+
+**Correction to earlier shorthand:** `ST_Feature.bDescri[8]` is
+256 *bits of final descriptor*, not a 256-value gradient histogram.
+The experimental 128-value array in `ft_descriptor_pack.c` models a
+specific comparison branch but cannot simply be identified with the
+complete upstream histogram. A validated 512→packed-bit transformation
+still needs to be reconstructed and tested against original vendor output.
+
+`native/ft_mfs_histogram.c` now implements a **separate independent
+research approximation** for 8×8×8 sampling from synthetic gradients.
+Its Gaussian σ and cell width are model choices, not vendor constants.
+Six local tests passed under strict compiler flags and sanitizers.
+Do not use its outputs for fingerprint verification.
