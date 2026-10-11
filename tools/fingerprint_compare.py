@@ -128,8 +128,8 @@ def correlation_shift(a: tuple[float, ...], b: tuple[float, ...],
 
 
 def compare(a: Processed, b: Processed, *, max_shift: int = 6) -> Comparison:
-    if not 0 <= max_shift <= 8:
-        raise ValueError('max_shift must be in 0..8 pixels')
+    if not 0 <= max_shift <= 14:
+        raise ValueError('max_shift must be in 0..14 pixels')
     best = Comparison(-1.0, 0, 0, 0)
     for dy in range(-max_shift, max_shift + 1):
         for dx in range(-max_shift, max_shift + 1):
@@ -159,8 +159,8 @@ def main() -> int:
     parser.add_argument('--directory', type=Path, default=Path('local-data'),
                         help='capture directory used with --latest-three')
     parser.add_argument('--order', choices=('big', 'little'), default='big')
-    parser.add_argument('--max-shift', type=int, choices=range(0, 9), default=6,
-                        metavar='{0..8}', help='pixel translation window (default 6)')
+    parser.add_argument('--max-shift', type=int, choices=range(0, 15), default=6,
+                        metavar='{0..14}', help='pixel translation window (default 6)')
     args = parser.parse_args()
     if args.latest_three and args.files:
         parser.error('Use either --latest-three or exactly three RAW filenames, not both')
