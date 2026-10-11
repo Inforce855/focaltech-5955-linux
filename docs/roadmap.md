@@ -160,7 +160,7 @@ Firmware flashing, guessed USB command bytes, system fingerprint-library replace
 - [x] Compare six genuine/different-finger image correlations from those
   native-normalized 8-bit frames and report **both margins** without any
   acceptance threshold or claim of verification. Add synthetic CLI/plumbing tests.
-- [ ] Run the real-capture check on the owner's Nobara system. Review ONLY
+- [x] Run the real-capture check on the owner's Nobara system. Review ONLY
   numerical pairwise scores in chat; actual biometric previews stay private.
 - [ ] Determine whether the reconstructed normalization improves real ridge
   visibility and genuine/impostor score separation; if not, investigate
@@ -177,3 +177,12 @@ python3 tools/real_capture_eval.py
 
 Privacy: do not upload or commit actual `.raw` captures, preview images or
 feature templates. Keep fprintd, PAM, and the sensor itself untouched.
+
+## Cross-session 5955 fingerprint comparison (pending Nobara run)
+
+- [x] Real-capture test on the 14:55 A1/A2/B1/B2 session produced valid native-normalised 64x80 and 80x64 private previews, with all six scores for each.
+- [x] At 64x80, same-finger A=+0.293, B=+0.136; strongest different-finger control=+0.137, margins A=+0.156, B=-0.001. At 80x64, A=+0.231, B=+0.181, strongest different=+0.199, margins A=+0.032, B=-0.018.
+- [x] Identify the critical limitation: neither orientation validates B; repeated shifts touch the ±6-pixel boundary. Current image correlation still cannot support authentication.
+- [x] Add offline `tools/cross_session_eval.py`, which evaluates 16 early-versus-late pairs across the existing 14:24 and 14:55 sessions, with reversed A/B physical roles.
+- [ ] Run `python3 tools/cross_session_eval.py --swapped` after `git pull --ff-only`, using the already-built native v3 executable; evaluate cross-session ranking and boundary shifts with private scans.
+- [ ] If across-session genuine/impostor scores overlap, focus on spatial calibration, alignment and complete vendor feature extraction, not threshold tuning or PAM.
