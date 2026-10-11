@@ -38,6 +38,8 @@ build/test_ft_descriptor_pack: ft_descriptor_pack.c ft_descriptor_pack.h test_ft
 build/test_ft_mfs_histogram: ft_mfs_histogram.c ft_mfs_histogram.h test_ft_mfs_histogram.c | build
 	$(CC) $(CFLAGS) -o $@ ft_mfs_histogram.c test_ft_mfs_histogram.c -lm
 
+build/ft5955_normalize_cli: ft5955_normalize_cli.c ft_focal_tone_v3.c ft_focal_tone_v3.h ft_focal_cutoff.c ft_focal_cutoff.h ft_focal_histogram.c ft_focal_histogram.h ft_histogram.c ft_histogram.h | build
+	$(CC) $(CFLAGS) -o $@ ft5955_normalize_cli.c ft_focal_tone_v3.c ft_focal_cutoff.c ft_focal_histogram.c ft_histogram.c -lm
 test: build/test_ft_image build/test_ft_histogram build/test_ft_focal_histogram build/test_ft_focal_tone build/test_ft_focal_cutoff build/test_ft_focal_tone_v2 build/test_ft_focal_tone_v3 build/test_ft_vendor_golden build/test_ft_descriptor_pack build/test_ft_mfs_histogram
 	./build/test_ft_image
 	./build/test_ft_histogram
