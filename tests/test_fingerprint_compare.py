@@ -95,6 +95,28 @@ class FingerprintCompareTests(unittest.TestCase):
             little = load_capture(file, 'little')
             self.assertNotEqual(big.data, little.data)
 
+    def test_64x80_layout_self_correlation(self):
+        alt = preprocess_samples(pattern(), width=64, height=80)
+        result = compare(alt, alt)
+        self.assertAlmostEqual(result.correlation, 1.0, places=5)
+        self.assertEqual((result.dx, result.dy), (0, 0))
+
+    def test_different_layouts_cannot_be_compared(self):
+        alt = preprocess_samples(pattern(), width=64, height=80)
+        with self.assertRaises(ValueError):
+            compare(self.a, alt)
+
+    def test_load_alt_layout_from_private_raw(self):
+        with tempfile.TemporaryDirectory() as directory:
+            filename = Path(directory) / 'test.raw'
+            values = pattern()
+            filename.write_bytes(struct.pack('>' + str(len(values)) + 'H', *values))
+            standard = load_capture(filename, 'big', layout='80x64')
+            alternative = load_capture(filename, 'big', layout='64x80')
+            self.assertEqual((standard.width, standard.height), (80, 64))
+            self.assertEqual((alternative.width, alternative.height), (64, 80))
+            self.assertNotEqual(standard.data, alternative.data)
+
     def test_bad_size_refused(self):
         with tempfile.TemporaryDirectory() as t:
             file = Path(t) / 'sample.raw'
