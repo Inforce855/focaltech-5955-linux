@@ -2,7 +2,7 @@ CC ?= cc
 CFLAGS ?= -std=c11 -O2 -Wall -Wextra -Wpedantic -Werror
 
 .PHONY: all test clean
-all: build/test_ft_image build/test_ft_histogram build/test_ft_focal_histogram build/test_ft_focal_tone build/test_ft_focal_cutoff build/test_ft_focal_tone_v2 build/test_ft_focal_tone_v3 build/test_ft_vendor_golden
+all: build/test_ft_image build/test_ft_histogram build/test_ft_focal_histogram build/test_ft_focal_tone build/test_ft_focal_cutoff build/test_ft_focal_tone_v2 build/test_ft_focal_tone_v3 build/test_ft_vendor_golden build/test_ft_descriptor_pack
 
 build:
 	mkdir -p build
@@ -32,7 +32,10 @@ build/test_ft_focal_tone_v3: ft_focal_tone_v3.c ft_focal_tone_v3.h ft_focal_cuto
 build/test_ft_vendor_golden: ft_focal_tone_v3.c ft_focal_tone_v3.h ft_focal_cutoff.c ft_focal_cutoff.h ft_focal_histogram.c ft_focal_histogram.h ft_histogram.c ft_histogram.h test_ft_vendor_golden.c | build
 	$(CC) $(CFLAGS) -o $@ ft_focal_tone_v3.c ft_focal_cutoff.c ft_focal_histogram.c ft_histogram.c test_ft_vendor_golden.c -lm
 
-test: build/test_ft_image build/test_ft_histogram build/test_ft_focal_histogram build/test_ft_focal_tone build/test_ft_focal_cutoff build/test_ft_focal_tone_v2 build/test_ft_focal_tone_v3 build/test_ft_vendor_golden
+build/test_ft_descriptor_pack: ft_descriptor_pack.c ft_descriptor_pack.h test_ft_descriptor_pack.c | build
+	$(CC) $(CFLAGS) -o $@ ft_descriptor_pack.c test_ft_descriptor_pack.c -lm
+
+test: build/test_ft_image build/test_ft_histogram build/test_ft_focal_histogram build/test_ft_focal_tone build/test_ft_focal_cutoff build/test_ft_focal_tone_v2 build/test_ft_focal_tone_v3 build/test_ft_vendor_golden build/test_ft_descriptor_pack
 	./build/test_ft_image
 	./build/test_ft_histogram
 	./build/test_ft_focal_histogram
@@ -41,6 +44,7 @@ test: build/test_ft_image build/test_ft_histogram build/test_ft_focal_histogram 
 	./build/test_ft_focal_tone_v2
 	./build/test_ft_focal_tone_v3
 	./build/test_ft_vendor_golden
+	./build/test_ft_descriptor_pack
 
 clean:
 	rm -rf build
