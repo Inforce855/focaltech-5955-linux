@@ -108,3 +108,16 @@ The sensor confirmed the other metadata dimension:
 The special 152 × 40 processing branch in the DLL therefore does not match the dimensions returned by this specific reader; the general processing path should apply.
 
 **Next:** reverse-engineer scan setup, readiness checks, and multi-transfer framing before testing the image-read command. The raw image must stay private and local.
+
+## Further trace of Windows scan preparation (11 October 2026)
+
+After validating the sensor's actual `80 × 64` geometry, the disassembly of the image capture caller around preferred-image VA `0x18000CC0C` provides several more concrete clues:
+
+1. It calls setup helper `0x180009E80` with argument `0`. That helper invokes `0x180009D80`, which issues logical command **`0x34`** (no payload) and reads **two bytes**. The helper checks for **`0xAA55`** in the returned 16-bit word and can perform additional retries/operations if the first attempt fails. Whether the bytes arrive as `55 AA` or in another interpretation still requires verification; do not assume the word value is literal wire order.
+2. The capture caller then invokes mode helper `0x180008500` with mode argument **`6`**. That branches through `0x180008780` (preparation) and `0x1800080C0`, which sends logical command **`0x87`** with three payload bytes. For that branch the code passes a `0x40` setting. The full effects are not yet established and may alter sensor power/scan state.
+3. The caller waits 10 ms and checks readiness with `0x180009B94`, up to a bounded number of attempts. That helper uses logical command **`0x80`** to request a **two-byte** value and tests it against **`0x5AA5`**. The request is not the same as our already-confirmed width/height selectors.
+4. Only after these steps does the caller allocate a `width × height` output buffer, invoke `ff_sc_GetImage` (`0x180006B74`), then consume/convert the result. The inner raw-image helper `0x18000793C` requests `2 × width × height` bytes via logical command **`0x81`**.
+
+**Do not send these commands or automatically sequence them yet.** The firmware-info/geometry tests prove the transport frame for short metadata replies, not this stateful acquisition path. In particular, the current `receive_reply` routine is designed for tiny responses and cannot receive the 10,240-byte sample buffer correctly.
+
+Next engineering work: independently validate the scan/setup command payloads, establish what states are modified and how to restore idle mode, and implement a length-bounded multi-transfer reader that rejects malformed frames without logging or publishing biometric samples.
