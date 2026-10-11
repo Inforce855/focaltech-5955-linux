@@ -194,7 +194,7 @@ def main() -> int:
             print(f'  {label}: {filename.name}')
         layouts = ('80x64', '64x80') if args.both_layouts else (args.layout,)
         for layout in layouts:
-            print(f'\\nImage layout: {layout} (unverified raw arrangement)')
+            print(f'\nImage layout: {layout} (unverified raw arrangement)')
             samples = [load_capture(p, args.order, layout=layout) for p in files]
             for label, data in zip(('A1', 'B', 'A2'), samples):
                 print(f'  {label} detail RMS: {data.detail_rms:.4f} (diagnostic only)')
@@ -215,7 +215,7 @@ def main() -> int:
                 print('Observed ranking: same-finger pair is most similar.')
             else:
                 print('Observed ranking: same-finger pair is NOT the most similar.')
-            print('IMPORTANT: These are not verified identity matches, security thresholds,')
+        print('IMPORTANT: These are not verified identity matches, security thresholds,')
         print('or proof of liveness. Static sensor artefacts may bias correlations.')
         return 0
     except (OSError, ValueError) as exc:
