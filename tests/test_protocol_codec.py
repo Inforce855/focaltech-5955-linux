@@ -121,6 +121,15 @@ class TestProtocolCodec(unittest.TestCase):
         self.assertEqual(reply.payload, bytes([64]))
         self.assertTrue(reply.trailing_zero)
 
+    def test_real_sensor_width_80_reply(self):
+        # Observed on real FocalTech 2808:5955, 11 October 2026.
+        frame = bytes.fromhex("02 00 02 04 50 56 00")
+        self.assertEqual(xor_bcc(frame[1:5]), frame[5])
+        reply = decode_reply(frame)
+        self.assertEqual(reply.reply_type, 0x04)
+        self.assertEqual(reply.payload, bytes([80]))
+        self.assertTrue(reply.trailing_zero)
+
     def test_short_frame(self):
         with self.assertRaises(ProtocolError):
             decode_reply(bytes.fromhex("02 00 01 04"))
