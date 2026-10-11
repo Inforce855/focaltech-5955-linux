@@ -117,11 +117,34 @@ The user placed a finger on the sensor and ran the same confirmed one-shot `ff_s
 - USB IN: `02 00 02 04 05 03 00`, **7 bytes received**.
 - Reply payload: **`05`**; BCC = `00 ^ 02 ^ 04 ^ 05 = 03` (valid), followed by the previously observed extra `00` byte.
 - Previously, with the finger absent, the same command returned payload **`06`** (also valid).
-- **Working hypothesis:** `0x05` means finger present and `0x06` means finger absent. We have one confirmed sample of each; repeatability and transitions must be verified before assigning definitive semantics.
+- **Observed meanings (repeated on 11 October 2026):** `0x05` with finger touching and `0x06` with finger absent. Separate confirmed status responses also established the return to `0x06` after the finger was removed. This is reliable evidence of basic contact detection, although sustained monitoring, rapid transitions and different fingers have not yet been characterised.
 
 ### Recommended repeatability check
 
 Alternate one-shot hardware readings **OFF → ON → OFF → ON** using `tools/finger_status_probe.py --send --label no-finger` or `--label finger` with the corresponding actual condition. Each execution must explicitly confirm `SEND`. Don't poll rapidly or send any unrelated commands. If the results consistently alternate `06 → 05 → 06 → 05`, proceed to designing a read-only monitor.
+
+## Finger contact repeatability verified (11 October 2026)
+
+After the first successful no-finger and finger-present requests, the user repeated a pair of single-shot tests, recording exactly the same results:
+
+| Condition | Sent request | Reply | Interpretation |
+| --- | --- | --- | --- |
+| No finger | `02 00 03 82 73 01 f3` | `02 00 02 04 06 00 00` | `0x06`, finger absent |
+| Finger resting on sensor | `02 00 03 82 73 01 f3` | `02 00 02 04 05 03 00` | `0x05`, finger touching |
+
+Each response had a valid type `0x04`, checksum and single extra trailing `00` byte, and each write completed (7/7 bytes). Both conditions have now been observed twice in separate executions. This verifies the command is suitable for basic contact-status readings on this hardware; we have **not** yet built a continuously polling monitor or measured transition latency.
+
+### Next technical priority: obtaining fingerprint data
+
+The Windows driver identifies as MOH (*match on host*), suggesting acquisition is performed by the sensor while feature extraction and matching occur on the host. This architecture still needs confirmation for the specific `2808:5955` configuration.
+
+1. Trace `ff_sc_GetImage`, acquisition setup and returned data lengths in the matching Windows MOH DLL.
+2. Identify whether the reader returns raw images, calibrated image data, or proprietary feature blocks.
+3. Build an isolated one-shot acquisition test **only after** reconstructing required setup commands and confirming risks. It must never accidentally publish fingerprint images or templates.
+4. If image data are compatible, investigate `libfprint` image-device processing (including image-based template creation and comparison); if not, investigate an independently implemented matcher or an acceptable alternative.
+5. Let `fprintd` handle Linux enrolment and saved prints **after** a working `libfprint` device driver exists. Avoid storing or publishing raw fingerprints in the exploratory test app.
+
+Do not conflate finger **presence** (`0x05`) with identification of **which** finger it is. Identity verification requires separate scanning, enrolment and matching.
 
 ## Related project: research only, not a compatible driver
 
@@ -135,7 +158,8 @@ The [OMGrant/ft9201-libfprint](https://github.com/OMGrant/ft9201-libfprint) proj
 
 ## Next research tasks
 
-1. Trace the Windows MOH driver's **finger status** request and response semantics.
-2. Verify whether finger status can be read without additional initialisation or configuration.
-3. Only then add a single, explicitly confirmed status query to the hardware tool.
-4. Keep firmware writes, register writes, resets and power-mode changes out of the prototype.
+1. Analyse `ff_sc_GetImage` and its related sensor acquisition/setup code in the MOH DLL.
+2. Determine actual data format and whether imaging can be performed without unsafe operations.
+3. Build an opt-in one-shot capture test only after verifying necessary commands.
+4. Select appropriate host-side template extraction/matching and integrate with `libfprint`/`fprintd`.
+5. Keep unverified firmware updates, register writes and reset sequences out of the prototype.
