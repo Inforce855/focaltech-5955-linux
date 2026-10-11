@@ -79,7 +79,12 @@ class FingerprintCompareTests(unittest.TestCase):
 
     def test_invalid_shift(self):
         with self.assertRaises(ValueError):
-            compare(self.a, self.b, max_shift=12)
+            compare(self.a, self.b, max_shift=15)
+
+    def test_extended_search_works_without_changing_default(self):
+        result = compare(self.a, self.a, max_shift=12)
+        self.assertAlmostEqual(result.correlation, 1.0, places=5)
+        self.assertEqual((result.dx, result.dy), (0, 0))
 
     def test_decode_big_and_little_distinct(self):
         with tempfile.TemporaryDirectory() as t:
