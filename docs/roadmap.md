@@ -28,7 +28,8 @@
 - [x] Correct reply decoding for the verified 50-byte frame followed by one trailing 00 byte.
 - [x] Recover the candidate `ff_sc_ReadFingerStatus` request (`02 00 03 82 73 01 f3`) from the Windows MOH DLL.
 - [x] Add a one-shot, explicitly confirmed finger-status experiment (not yet run against hardware).
-- [ ] Verify the reply with a finger absent, then (if safe) with a finger resting on the sensor.
+- [x] Verify a real finger-absent reply (`0x06`) and finger-on reply (`0x05`) using the same command.
+- [ ] Repeat OFF/ON cycles to confirm repeatability and finger removal.
 - [ ] Establish status-byte meaning from live observations before implementing any polling.
 - [ ] Determine whether further initialisation is required for event reporting or imaging.
 
