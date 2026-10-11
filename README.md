@@ -283,6 +283,25 @@ git pull --ff-only
 
 The command prints **no fingerprint pixels, images or templates**, writes no files, sends no USB commands, and does not upload anything. Its results help determine whether many image samples would be treated differently by Windows' signed-input correction. **No real biometric images may be committed to GitHub**; fake examples can be constructed separately when ready.
 
+
+### New finding: raw image samples probably use little-endian 16-bit values
+
+Aggregated statistics from the successful four-capture session (11 October 2026) show **0% negative signed-16-bit values** in every *little-endian* capture, with 99th percentiles around **1,616–2,008**. Reversing the bytes produces apparently signed-negative values for **39–51%** of samples and values near the full unsigned 16-bit maximum. This is strong evidence that the true sensor samples are **little-endian**, notwithstanding the earlier subjective preference for big-endian PNG previews. Exact ADC range, row format and Windows processing still require validation.
+
+The current matcher is **not reliable**: first A1/A2/B1/B2 data gave same-finger correlations +0.089 and +0.081, while a different-finger control reached +0.118. Don't use it to authenticate anybody.
+
+To test little-endian rendering without collecting more fingerprint samples, a new **offline private preview generator** makes four images: a basic signed-16-bit clamp and a clearly labelled *experimental* row-offset-normalised version, each arranged as 80 × 64 and 64 × 80. It does not purport to copy the Windows algorithm. The source fingerprint RAW file is never changed.
+
+```bash
+cd ~/Projects/focaltech-5955-linux
+git pull --ff-only
+.venv/bin/python -m unittest discover -s tests -v
+.venv/bin/python tools/raw_decode_preview.py \
+    local-data/fingerprint_11-10-2026_14-24-20_A1.raw
+```
+
+Files are written only into private `local-data/` with different filenames; existing previews are not overwritten. The images and `.raw` files must not be uploaded to GitHub or shared publicly. Public examples will be synthetic only. Details and limitations: [image-format investigation](docs/image-format-investigation.md).
+
 ## Safety and scope
 
 - Aim: an independently implemented Linux userspace driver, preferably integrated into `libfprint` / `fprintd`.
