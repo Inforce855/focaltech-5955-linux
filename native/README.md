@@ -13,7 +13,7 @@ make -C native test
 ```
 
 Requires an ordinary C compiler (cc, e.g. GCC or Clang) and make. Compiles
-into an ignored native/build/ directory and runs twenty tests on entirely synthetic
+into an ignored native/build/ directory and runs twenty-five tests on entirely synthetic
 arrays. **No real fingerprint scans are needed and no system files are changed.**
 
 ## Histogram smoothing research
@@ -50,8 +50,9 @@ Following a closer read of the recovered FocalTech FT9362 Linux disassembly,
 `ft_focal_tone.c` builds on the histogram research component to implement the
 observed **200/250 vs 250/250 contrast-range selection**. The high-tail branch
 uses a comparison between the upper 50 bins and 80% of the lower 200 bins;
-this selects a range cap that can saturate the highest 20% of inverted pixel
-intensities. The branch is verified by static machine-code inspection, but
+this was initially modelled as a fixed 20% range clipping. **Closer
+static disassembly showed this was too simplistic**: FocalTech actually
+searches the smoothed histogram for a data-dependent cutoff. The branch is verified by static machine-code inspection, but
 the overall routine remains a **research approximation**, not yet a byte-exact
 FocalTech implementation or a validated pipeline for reader `2808:5955`. 
 
@@ -60,6 +61,30 @@ values and all other unknown image-calibration details are **not** reproduced.
 Five independent synthetic tests exercise both histogram distribution branches,
 flat images, signed extremes, input immutability and bad arguments. The new
 routine does **not** replace the existing 5955 preview conversion or USB code.
+## Histogram cutoff selection: corrected interpretation
+
+The fifth research component, `ft_focal_cutoff.c`, reconstructs the native
+FT9362 histogram **window search** seen in subsequent disassembly. In the
+normal branch it scans from bin 240 with a threshold of 75 and adds 30
+to the selected cutoff bin. In the upper-tail branch it scans from bin
+190 with a threshold proportional to lower/upper histogram mass.
+It looks for a sustained low-mass region followed by a qualifying
+five-bin window and falls back to bin 250 if no useful boundary is found.
+
+**This corrects the earlier interpretation that the high-tail branch
+always clips a fixed 20% of the contrast range.** The original
+`ft_focal_tone.c` remains a *provisional, superseded approximation*;
+it is deliberately left unchanged so previously validated tests still
+run, while the new cutoff search is separately tested and studied.
+Do **not** use either routine as an identity matcher, or as evidence
+of a byte-exact reproduction of the proprietary transform. Further
+work is needed to integrate the cutoff selection into image conversion
+and to establish correct pixel mapping/calibration from static analysis.
+
+The five new tests use synthetic histogram distributions and exercise
+both branches, the no-boundary fallback, error checks and immutability.
+No USB or FocalTech library execution occurs.
+
 ## Implementation status
 
 * **Grounded by the 5955 capture measurements:** exactly 5120 16-bit
