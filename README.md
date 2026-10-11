@@ -2,7 +2,7 @@
 
 Reverse-engineering and Linux userspace support for the **FocalTech USB fingerprint reader, VID:PID `2808:5955`**.
 
-**Project status: exploration. No functional fingerprint driver yet.** The device is visible on Linux but was not recognised by `libfprint 1.94.100` and `fprintd 1.94.5` on Nobara (Fedora 44 base).
+**Project status: confirmed USB firmware-information communication; no functional fingerprint driver yet.** The device is visible on Linux but was not recognised by `libfprint 1.94.100` and `fprintd 1.94.5` on Nobara (Fedora 44 base).
 
 ## Identified hardware
 
@@ -49,7 +49,7 @@ If root access is undesirable, we can later add a tightly scoped udev rule. Do n
 
 ## Experimental live firmware-information query
 
-**This is the first real USB command experiment. It has NOT yet succeeded on a physical sensor.** The candidate command was reconstructed from the manufacturer's Windows MOH DLL, not recorded from a working sensor. Although it appears to request information, its effect cannot be guaranteed before a successful test.
+**First real USB test: SUCCESS on 11 October 2026.** The command reconstructed from the manufacturer's Windows MOH DLL was sent once to the actual sensor. It returned a valid firmware-information packet (50 framed bytes followed by an additional 00 byte). The sensor identified itself as `FT936x_APP_FW3032_USB_DEC_SV0.5_5849_PowerKey`.
 
 ```bash
 # Inspect the request without contacting the sensor:
@@ -61,7 +61,7 @@ sudo .venv/bin/python tools/firmware_probe.py --send
 
 The live mode requires typing **SEND** before any bulk OUT transfer. It refuses a mismatched USB device revision or endpoint configuration, never detaches a kernel driver, sends **exactly one** five-byte request to endpoint `0x01`, and reads at most two times from `0x82` with bounded timeouts. There are no command retries, firmware writes, resets, authentication changes or enrolment procedures.
 
-A timeout is a useful result: the sensor may require an initialisation sequence, and repeatedly sending the same request would not help. A USB reply is only an initial communication milestone; it is not fingerprint support. Review any raw data before posting publicly.
+**Do not rerun the live request just to check the decoder**: the captured response has been added to the offline regression tests. A valid USB reply proves a working exchange, not fingerprint detection or matching. Review any raw data before posting publicly.
 
 ## Safety and scope
 
@@ -70,6 +70,8 @@ A timeout is a useful result: the sensor may require an initialisation sequence,
 - Keep the proprietary Windows driver archive and binaries **outside this public repository**.
 - Avoid firmware flashing and any PAM, KDE or system-library changes while prototyping.
 - No compatibility claim is made for other FocalTech product IDs.
+
+See [live hardware findings](docs/protocol-research.md) and [wire-frame details](docs/usb-frame-format.md).
 
 ## Contributions
 
