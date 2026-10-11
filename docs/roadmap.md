@@ -95,3 +95,14 @@ Firmware flashing, guessed USB command bytes, system fingerprint-library replace
 - [x] Capture swapped finger-role A1/A2/B1/B2 session at 14:55 BST: same-pair 80×64 little-endian scores +0.234/+0.197; strongest different-pair +0.201; weak margins +0.032/−0.004.
 - [x] Correct premature claim that a higher 80×64 correlation validates row layout: user observes better fingerprint-like *greyscale* structure at 64×80, while quantitative scores change greatly across sessions. Both remain unverified hypotheses.
 - [ ] Recompare latest four private captures using little-endian --both-layouts at fixed ±6 px; focus subsequent work on reconstructing the Windows image converter, not threshold tuning.
+
+
+## Related FocalTech c652 research (11 October 2026)
+
+- [x] Inspect scamiran149/libfprint_focaltechc652 via GitHub: same 0x01/0x82 bulk endpoints, 0x81 image request, 10246-byte image frames and little-endian 16-bit samples.
+- [x] Document their explicit 64 x 80 layout, which agrees with the user's visual impression and the MOH 64-sample intermediate row-stride clue.
+- [x] Confirm a key protocol incompatibility: c652 treats 82 73 01 as a capture trigger, while the physical 5955 returns finger-present / finger-absent codes on that command.
+- [x] Identify a C++ descriptor-serialization mismatch in the reference SIFT implementation; do not blindly copy its enrollment or threshold.
+- [x] Add an independent, offline-only OpenCV SIFT comparison experiment and synthetic tests without libfprint/PAM changes or biometric data publication.
+- [ ] Use two-layout SIFT experiment on current four private captures, comparing both genuine pairs with all cross-finger controls.
+- [ ] Reconstruct reliable native image correction/geometry; verify quality and impostor rejection before discussing fprintd integration.
