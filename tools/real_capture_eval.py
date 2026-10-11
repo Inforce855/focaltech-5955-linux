@@ -37,6 +37,18 @@ PAIRS = (
 )
 LAYOUTS = {"64x80": (64, 80), "80x64": (80, 64)}
 
+def similarity_percent(correlation: float) -> float:
+    """Readable 0-100 index: positive Pearson correlation times 100.
+
+    This is NOT the percentage of fingerprint features in common, nor a
+    probability of identity. Negative correlations display as 0% (the
+    original signed correlation remains visible alongside the index).
+    """
+    if not -1.0 <= correlation <= 1.0:
+        raise ValueError("Image correlation outside expected [-1, 1] range")
+    return 100.0 * max(0.0, correlation)
+
+
 
 def read_private_capture(path: Path) -> bytes:
     if path.is_symlink():
@@ -105,13 +117,23 @@ def analyse_layout(images: list[bytes], width: int, height: int) -> list[float]:
         score = compare(processed[left], processed[right], max_shift=6)
         values.append(score.correlation)
         print(
-            f"  {label:<25} correlation={score.correlation:+.3f} "
+            f"  {label:<25} similarity={similarity_percent(score.correlation):5.1f}% "
+            f"(r={score.correlation:+.3f}) "
             f"shift=({score.dx:+d},{score.dy:+d}) overlap={score.count}"
         )
     strongest_different = max(values[2:])
-    print(f"  Strongest different-finger control: {strongest_different:+.3f}")
-    print(f"  Same-finger A margin: {values[0] - strongest_different:+.3f}")
-    print(f"  Same-finger B margin: {values[1] - strongest_different:+.3f}")
+    print(
+        f"  Strongest different-finger control: "
+        f"{similarity_percent(strongest_different):.1f}% "
+        f"(r={strongest_different:+.3f})"
+    )
+    for name, genuine in (("A", values[0]), ("B", values[1])):
+        margin = genuine - strongest_different
+        print(
+            f"  Same-finger {name} margin: {100.0 * margin:+.1f} percentage points "
+            f"(correlation difference={margin:+.3f})"
+        )
+    print("  Similarity % = max(0, correlation) × 100; NOT identity probability.")
     print("  These margins are exploratory only; NOT identity verification.")
     return values
 
