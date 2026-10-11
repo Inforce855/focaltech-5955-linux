@@ -5,6 +5,7 @@
  * Any stderr text is an aggregate error only, NEVER personal pixels.
  */
 #include "ft_focal_tone_v3.h"
+#include "ft_focal_histogram.h"
 
 #include <stdint.h>
 #include <stdio.h>
