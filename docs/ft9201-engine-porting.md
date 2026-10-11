@@ -75,3 +75,32 @@ Stage count is a driver setting and may differ for our chip and DLL. Failed/dupl
 ## Immediate next action
 
 Identify the `2808:5955` Windows driver package's registered engine adapter and its exports **before** adapting code. If that DLL is absent, the FT9201 adapter may still provide architecture insight, but cannot be presumed to work with our scanner. This is more important than another correlation/SIFT tuning pass.
+
+## MOH 5955 Windows engine-adapter export check — 11 October 2026
+
+The owner located a `ftWbioEngineAdapter.dll` in their existing **MOH** FocalTechFPSSOdriver25H2x64V5.10.66.6611_WHQL package alongside the matching `FtWbioDriverUmdfV3` driver. The separate **MOC** FT9365 v3.95.6501.6448 package also contains a similarly named DLL **plus** `ftSecureEngineAdapter.dll`, but must not be treated as the same device implementation.
+
+The owner ran `file` and `objdump -p` locally on the **MOH** DLL, reporting:
+
+- PE32+ Windows DLL, **x86-64**, seven sections.
+- Exported function: **`WbioQueryEngineInterface`**.
+- Imported modules: **`KERNEL32.dll`, `ADVAPI32.dll`, `SETUPAPI.dll`**.
+- No `CreateEnclave` / `CallEnclave` names shown by the targeted export/import grep. This is **not** proof no enclave, dynamic security dependency or loader complication exists.
+
+**Significance:** This confirms a plausible native WinBio engine integration approach for the correct transport-family package, and narrows the first task to compatibility analysis of the DLL ABI, imports and engine-specific image format. OMGrant's FT9201 PE loader registers mainly `kernel32` shims, and resolves *function symbols by name* (its import loop does not even select dispatch by imported module name). Therefore the extra DLL names **alone** do not prove it will fail; the **specific imported functions** matter. Any unimplemented import is written as a null IAT entry and calling it can crash: do not execute or install the DLL with an unmodified loader.
+
+### Next read-only action
+
+List the specific imported functions in `ADVAPI32.dll` and `SETUPAPI.dll`, and verify the MOH INF's engine registration and exact hardware IDs. Use only shell read-only tools, no DLL execution, firmware uploads, USB messages, enrollment or biometrics.
+
+Example local import inspection (MOH shell variable points to the owner-provided package directory):
+
+```bash
+objdump -p "$MOH/ftWbioEngineAdapter.dll" | awk '
+  /DLL Name:/ { dll=$3; next }
+  (dll == "ADVAPI32.dll" || dll == "SETUPAPI.dll") &&
+  /^[[:space:]]*[0-9a-fA-F]+[[:space:]]+[0-9a-fA-F]+[[:space:]]/ { print dll, $3 }
+'
+```
+
+Do not upload proprietary DLL/INF, biometric captures or reconstructed templates to the public repository. Record only general technical metadata.
