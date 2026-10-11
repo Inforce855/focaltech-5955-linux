@@ -83,6 +83,38 @@ These are binary layout observations, not reproduced proprietary C source. Field
 
 The third-party README provided a good clue, but the **unstripped vendor binary is the stronger evidence**. In particular, blindly following the c652 SIFT/RANSAC pipeline would discard potentially critical proprietary details (descriptor structure, input masks, valid-area flags, image-scaling mode, feature counts, additional matching scores, multi-impression templates).
 
-**Best next offline analysis:** trace which caller populates `ST_InputForTemplate` and its `descrWidth/descrHistBins/contrThr/sigma` fields, and establish how `FtComputeDescriptors` and `FtCalcBinFeature` populate `bDescri[8]` for synthetic inputs. Begin with statically verified values and independently authored C code, then validate synthetic output against the isolated Linux reference function only if a safe non-USB call boundary is established.
+**Best next offline analysis:** trace which caller populates `ST_InputForTemplate` and its `descrWidth/descrHistBins/contrThr/sigma` fields, then determine which `FtComputeDescriptors` branch is used for our sensor mode and how the gradient histogram is constructed. `FtCalcBinFeature` appears to belong to a **separate image/minutiae assessment path**, not the routine writing `ST_Feature.bDescri[8]`. Begin with statically verified values and independently authored C code, then validate synthetic output against the isolated Linux reference function only if a safe non-USB call boundary is established.
 
 No new physical captures are currently required. Do not copy c652 USB commands or install any other driver. Keep A1/A2/B1/B2 scans and future biometric templates private in ignored `local-data/`; no real biometric data or descriptor vectors should enter public GitHub.
+
+## Descriptor bit-packing breakthrough: direct `FtComputeDescriptors` disassembly
+
+Static disassembly of the **2025 Ubuntu FT9362 ELF**, no vendor execution,
+shows a specific binary descriptor writer within `FtComputeDescriptors`
+at offsets **`0xdf320`–`0xdf511`**. It first zeroes all eight 32-bit
+words of `ST_Feature.bDescri` at output offsets +12 through +43.
+
+1. The internal descriptor histogram is organised as **two groups of
+   eight spatial cells × eight orientation bins** (128 float32 values).
+2. For each orientation and group, the code accumulates eight cell values,
+   then multiplies by **0.125f** (stored at `0x193740`, confirmed via ELF
+   read-only data). An individual histogram value **greater than or equal
+   to** that orientation's eight-cell average sets one bit. This generates
+   the **first 128 bits**.
+3. An adjacent-cell comparison with **1.05f** (read-only data `0x193744`)
+   generates a further **128 bits**, including wrapping cell 0 against
+   cell 7. Bit writes use `1 << position` and OR into
+   `bDescri[bit_index/32]`, least-significant bit first.
+
+These findings show that the **256-bit fingerprint feature descriptor
+is constructed by quantising orientation-histogram relationships**;
+it is not an AES-256 encryption key. This conclusion applies to this
+particular code path, not necessarily every vendor algorithm mode.
+
+The independently written C module `native/ft_descriptor_pack.c`
+implements this confirmed packing stage for synthetic histogram inputs;
+five synthetic tests passed under strict GCC plus ASan/UBSan.
+**No vendor byte-output reference is yet available for this extractor**.
+We have not reconstructed the gradient/orientation histogram input to
+this stage, feature detection, descriptor matching or enrollment.
+These C features are not suitable for identity decisions.
