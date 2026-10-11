@@ -84,3 +84,7 @@ See [protocol research notes](protocol-research.md) and [image acquisition findi
 ## Explicitly out of scope for the initial release
 
 Firmware flashing, guessed USB command bytes, system fingerprint-library replacement and changing login authentication.
+
+- [x] Run real A1/A2/B1/B2 offline comparison: same-finger +0.089 / +0.081, different-finger maximum +0.118 — no genuine/impostor separation (11 October 2026).
+- [x] Identify signed-16-bit input and negative clamp in matching Windows MOH converter (VA 0x180006184); add an offline aggregate-only diagnostic with synthetic tests.
+- [ ] Run signed-sample aggregate diagnostic on existing four private images and assess endian/clipping results before modifying the converter.
