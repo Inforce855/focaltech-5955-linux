@@ -13,7 +13,7 @@ make -C native test
 ```
 
 Requires an ordinary C compiler (cc, e.g. GCC or Clang) and make. Compiles
-into an ignored native/build/ directory and runs fifteen tests on entirely synthetic
+into an ignored native/build/ directory and runs twenty tests on entirely synthetic
 arrays. **No real fingerprint scans are needed and no system files are changed.**
 
 ## Histogram smoothing research
@@ -44,6 +44,22 @@ image converter, USB or authentication. It is an independent offline
 implementation with five synthetic-only tests, including signed-value extremes,
 flat-frame rejection, repeatability and invalid inputs.
 
+## Tone-mapping branch research (experimental)
+
+Following a closer read of the recovered FocalTech FT9362 Linux disassembly,
+`ft_focal_tone.c` builds on the histogram research component to implement the
+observed **200/250 vs 250/250 contrast-range selection**. The high-tail branch
+uses a comparison between the upper 50 bins and 80% of the lower 200 bins;
+this selects a range cap that can saturate the highest 20% of inverted pixel
+intensities. The branch is verified by static machine-code inspection, but
+the overall routine remains a **research approximation**, not yet a byte-exact
+FocalTech implementation or a validated pipeline for reader `2808:5955`. 
+
+The original histogram-window scan, wraparound behaviour on extreme signed
+values and all other unknown image-calibration details are **not** reproduced.
+Five independent synthetic tests exercise both histogram distribution branches,
+flat images, signed extremes, input immutability and bad arguments. The new
+routine does **not** replace the existing 5955 preview conversion or USB code.
 ## Implementation status
 
 * **Grounded by the 5955 capture measurements:** exactly 5120 16-bit
