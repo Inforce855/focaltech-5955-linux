@@ -13,7 +13,7 @@ make -C native test
 ```
 
 Requires an ordinary C compiler (cc, e.g. GCC or Clang) and make. Compiles
-into an ignored native/build/ directory and runs twenty-five tests on entirely synthetic
+into an ignored native/build/ directory and runs thirty tests on entirely synthetic
 arrays. **No real fingerprint scans are needed and no system files are changed.**
 
 ## Histogram smoothing research
@@ -84,6 +84,30 @@ and to establish correct pixel mapping/calibration from static analysis.
 The five new tests use synthetic histogram distributions and exercise
 both branches, the no-boundary fallback, error checks and immutability.
 No USB or FocalTech library execution occurs.
+
+## Integrated histogram-selected tone mapping (v2, still research-only)
+
+The new `ft_focal_tone_v2.c` integrates the already tested three-pass
+256-bin smoothing, two-pass 250-bin smoothing and **data-dependent cutoff
+search** into a 5120-word signed-input-to-8-bit-output prototype. Unlike
+the superseded v1 experiment, this no longer imposes a fixed 20% contrast
+clip. The cutoff multiplies the observed 16-bit range and is divided by
+250 before scaling each inverted pixel. Five synthetic tests cover both
+cutoff branches, input integrity, flat frames and extreme signed words.
+
+**Verified against native ELF instructions**: the `ft9362_histNormalize`
+routine at Ubuntu ELF address `0x4f510` uses the cutoff to calculate a
+pixel scaling denominator (`0x4f8db` to `0x4f953`); the conditional
+contrast-range search is at `0x4f84f` to `0x4f8d6`.
+
+**Not verified**: byte-for-byte output, native 5955 calibration, extreme
+signed-value wrapping and proprietary library compatibility. The original
+vendor code performs in-place 16-bit operations, while our safe independent
+implementation deliberately avoids modifying input. We have **not executed**
+any vendor binary; this stage was compared with static disassembly only.
+
+This module is a standalone offline research prototype and does not replace
+our known-working device USB path, existing image converter, or login stack.
 
 ## Implementation status
 
