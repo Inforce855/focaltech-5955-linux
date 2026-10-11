@@ -44,8 +44,12 @@ See [protocol research notes](protocol-research.md) and [image acquisition findi
 - [x] Add a strictly opt-in image-geometry reader; no imaging or raw biometric storage.
 - [x] Verify image height via real hardware metadata response: **64 pixels** (`0x40`).
 - [x] Verify image width via real hardware metadata response: **80 pixels** (`0x50`); inferred 10,240-byte intermediate raw buffer for 80 × 64.
-- [ ] Trace mandatory scan activation and readiness steps before full capture.
-- [ ] Build bounded multi-transfer image acquisition; validate pixel format and never publish biometric samples.
+- [x] Identify a scan-path handshake candidate `0x34` with expected two-byte `0xAA55` marker (DLL analysis only).
+- [x] Build an opt-in, one-shot handshake tester (not yet hardware-verified).
+- [ ] Verify the handshake on this physical reader.
+- [ ] Trace mandatory scan activation, readiness checks and return-to-idle operations before full capture.
+- [x] Build and locally test a private offline 16-bit raw-to-PNG converter, with synthetic tests.
+- [ ] Build bounded multi-transfer image acquisition; validate the pixel format and save images only in ignored local-data.
 - [ ] Determine whether the MOH device returns raw images, processed images or proprietary features.
 - [ ] Evaluate libfprint image processing/template matching for this device; fall back to a separately vetted matching implementation if necessary.
 - [ ] Implement safe enrolment and verification without leaking templates.
