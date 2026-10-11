@@ -2,7 +2,7 @@
 
 Reverse-engineering and Linux userspace support for the **FocalTech USB fingerprint reader, VID:PID `2808:5955`**.
 
-**Project status: confirmed USB firmware-information communication; no functional fingerprint driver yet.** The device is visible on Linux but was not recognised by `libfprint 1.94.100` and `fprintd 1.94.5` on Nobara (Fedora 44 base).
+**Project status: USB communication, contact detection, 80 × 64 image geometry, handshake, and readiness verified; first image-sized USB transfer received (10,246 bytes). No validated fingerprint image or functional fingerprint driver yet.** The device is visible on Linux but was not recognised by `libfprint 1.94.100` and `fprintd 1.94.5` on Nobara (Fedora 44 base).
 
 ## Identified hardware
 
@@ -107,7 +107,7 @@ See [GetImage reverse-engineering notes](docs/image-acquisition-research.md) for
 
 ## Producing a real fingerprint image file
 
-**No fingerprint image has been captured yet.** The device has confirmed an 80 × 64 pixel sensor and the matching Windows driver requests a 10,240-byte intermediate buffer. The remaining work is to establish the scan-mode/ready handshake and retrieve the complete sensor sample buffer safely.
+**An image-sized response has now been received (10,246 bytes), but no fingerprint file has yet been saved.** The device reports an 80 × 64 pixel sensor and the matching Windows driver requests a 10,240-byte intermediate buffer. The first response was rejected because of an unexpected nonzero extra byte. The decoder now checks the full frame checksum before accepting a single unknown trailer.
 
 An **offline, private PNG converter** is available now: [`tools/raw_to_png.py`](tools/raw_to_png.py). It cannot query hardware itself. Once a real 10,240-byte capture exists in the ignored `local-data/` directory, run:
 
@@ -135,6 +135,12 @@ sudo .venv/bin/python tools/scan_ready_probe.py --send
 
 The candidate packet is `02 00 03 80 01 02 80`. This probe does not set the device's scan mode, attempt a capture, or save biometric samples. Its behaviour on the physical device remains unverified, so avoid repeated or unconfirmed commands. See [acquisition notes](docs/image-acquisition-research.md) for the verified handshake and limitations.
 
+
+### First live image-sized response: 10,246 bytes
+
+On 11 October 2026, the physical reader answered one `0x81` request with **10,246 bytes**, consistent with 10,240 candidate sample bytes, five bytes of framed transport and one additional byte. The first decoder deliberately rejected the response because that extra byte was **not** the `00` seen in earlier short replies; **no image was saved and the large-frame checksum has not yet been confirmed**.
+
+The patched `tools/image_transfer.py` accepts a nonzero single-byte trailer **only if the preceding 10,245-byte image frame passes the exact length, type and XOR checksum checks**. It will still reject a corrupt or malformed response. An accepted frame indicates recovered sample data, **not yet a proven fingerprint image**. We can check whether it looks like a ridge pattern after private conversion to PNG.
 
 ### Experimental first fingerprint image transfer — one-shot `0x81`
 
