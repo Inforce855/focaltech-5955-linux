@@ -59,7 +59,10 @@ See [protocol research notes](protocol-research.md) and [image acquisition findi
 - [x] Add **offline A–B–A image similarity experiment**, with lighting normalisation, ±6 pixel translations, no USB or template storage, and 10 synthetic tests (local tests passed).
 - [x] Run A–B–A comparator on real 11 October 2026 data: same finger +0.132; controls +0.078 and +0.130; **+0.003** separation, too weak for authentication.
 - [x] Extend the optional offline translation window up to 14px; default remains 6px; do not interpret higher correlations alone as recognition.
-- [ ] Run the same three private captures with --max-shift 12 and compare all pairwise correlations and boundary hits.
+- [x] Run the same three private captures with --max-shift 12: A1–A2 unchanged at 0.132; A1–B rose to 0.100, A2–B stayed 0.130; still just +0.003 separation.
+- [x] Revisit the matching Windows MOH image converter: its preprocessing at 0x180006184 uses 64-sample/128-byte row strides across 80 rows, suggesting a 64 × 80 intermediate array.
+- [x] Add an offline two-layout comparator and an alternative private 64 × 80 PNG rendering option, with synthetic unit tests.
+- [ ] Compare private real A–B–A captures in both 80 × 64 and 64 × 80 layouts, and inspect 64 × 80 PNG preview before further algorithm changes.
 - [ ] Independently validate pixel interpretation, ridge quality and repeatability with multiple private local comparisons (without sharing biometric data).
 - [ ] Validate the image payload and sensor pixel ordering before attempting enrollment.
 - [ ] Determine whether the MOH device returns raw images, processed images or proprietary features.
