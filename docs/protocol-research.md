@@ -96,6 +96,19 @@ The final `f3` is `00 ^ 03 ^ 82 ^ 73 ^ 01`.
 
 Added `tools/finger_status_probe.py`: opt-in, one-shot USB status read, no polling and no unverified initialisation commands. The tool checks the exact device/revision and asks the operator to label the test `no-finger` or `finger`. It reports the raw response and a byte value without assigning it a finger-detection meaning. The first recommended experiment is **one no-finger reading**, with a follow-up only after assessing that response.
 
+## First successful finger-status query: no finger (11 October 2026)
+
+The first opt-in, **no-finger** test of `tools/finger_status_probe.py --send --label no-finger` succeeded on the physical FocalTech `2808:5955`.
+
+- USB OUT: `02 00 03 82 73 01 f3`, **7/7 bytes** written.
+- USB IN: `02 00 02 04 06 00 00`, **7 bytes** received.
+- Response frame declares length `0002`: type `04`, one-byte payload `06`.
+- Checksum = `00 ^ 02 ^ 04 ^ 06 = 00`, matching the checksum in byte 5.
+- The extra final `00` is outside the declared frame, as seen in the firmware-info response.
+- **Observed no-finger status: `0x06`. Its meaning is not yet independently established.**
+
+The next independent test is **one reading with a finger resting on the sensor**. Only if it differs should we begin identifying status semantics; repeatability would still need checking. Do not call `0x06` definitively `no finger` until the two conditions have been compared.
+
 ## Related project: research only, not a compatible driver
 
 The project [inevitableDivu/focaltech-2808-6658-driver](https://github.com/inevitableDivu/focaltech-2808-6658-driver) has published a packet specification and an experimental Python userspace tool for related FocalTech chips.
