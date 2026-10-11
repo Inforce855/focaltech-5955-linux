@@ -149,3 +149,31 @@ Firmware flashing, guessed USB command bytes, system fingerprint-library replace
 - [x] Trace `FtComputeDescriptors` upstream orientation histogram allocation, ±15 patch, gradient call and trilinear eight-bin interpolation in recovered FT9362 ELF.
 - [x] Implement **separate, experimental** native C 8×8×8 histogram and gradient field from synthetic inputs; pass six tests and ASan/UBSan.
 - [ ] Recover scale-specific Gaussian lookup, gradient validity rules, algorithm mode and exact mapping of the 512 float bins to the 256-bit final descriptor; test against vendor output.
+
+## First actual-capture image-processing check (private, offline)
+
+- [x] Add stdin/stdout-only native `ft5955_normalize_cli` wrapping our C v3
+  16-bit-to-8-bit normalizer; no hardware, vendor code or privilege needed.
+- [x] Add `tools/real_capture_eval.py`, using existing private A1/A2/B1/B2
+  captures to produce 64×80 and 80×64 grayscale **contact sheets** inside
+  gitignored `local-data/native-real-test/` (mode 0700, files 0600).
+- [x] Compare six genuine/different-finger image correlations from those
+  native-normalized 8-bit frames and report **both margins** without any
+  acceptance threshold or claim of verification. Add synthetic CLI/plumbing tests.
+- [ ] Run the real-capture check on the owner's Nobara system. Review ONLY
+  numerical pairwise scores in chat; actual biometric previews stay private.
+- [ ] Determine whether the reconstructed normalization improves real ridge
+  visibility and genuine/impostor score separation; if not, investigate
+  image calibration, physical layout and multi-impression feature extraction
+  rather than forcing an identity decision.
+
+Run locally (no new captures):
+
+```bash
+git pull --ff-only
+make -C native build/ft5955_normalize_cli
+python3 tools/real_capture_eval.py
+```
+
+Privacy: do not upload or commit actual `.raw` captures, preview images or
+feature templates. Keep fprintd, PAM, and the sensor itself untouched.
