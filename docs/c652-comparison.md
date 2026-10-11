@@ -62,3 +62,37 @@ Requirements: optional opencv-python-headless installed in the repository virtua
 This is not a biometric verification algorithm. Any future production implementation needs extensive genuine and impostor testing, proper enrollment/storage handling and a safe authentication fallback.
 
 No genuine biometric samples were uploaded or committed; a future public demonstration should use clearly labelled synthetic images only.
+
+
+## 11 October 2026: first four-file SIFT results on 2808:5955
+
+User ran the isolated offline `tools/sift_compare.py --latest-four` on their private 14:55 A1/A2/B1/B2 capture set. Only aggregate statistics are recorded; **no biometric media, raw values or descriptors have been published**.
+
+| Pair | 80 × 64 ratio matches / RANSAC inliers | 64 × 80 ratio matches / RANSAC inliers |
+| --- | --- | --- |
+| A1 vs A2 (same A) | 7 / 4 | 29 / 5 |
+| B1 vs B2 (same B) | 7 / 4 | 44 / 6 |
+| A1 vs B1 (different) | 5 / 4 | 39 / 5 |
+| A1 vs B2 (different) | 10 / 4 | 45 / 6 |
+| A2 vs B1 (different) | 9 / 5 | 56 / 5 |
+| A2 vs B2 (different) | 11 / 4 | 53 / 6 |
+
+Keypoint counts: 80 × 64 A1=218, A2=244, B1=147, B2=148 (average 189.25); 64 × 80 A1=2285, A2=1919, B1=1801, B2=1750 (average 1938.75). This is roughly 10.2× as many keypoints in 64 × 80, but **no genuine/impostor separation**.
+
+A RANSAC homography may be fitted from as few as four point correspondences. Seeing 4–6 inliers in both genuine and impostor comparisons is not reliable evidence of fingerprint similarity. The reference driver's claimed 13-inlier threshold would reject all trials, although it is not validated for this PID. More keypoints could mean sensor ridge details, row-boundary artefacts, or interpolated noise.
+
+### Next offline experiment: row-boundary statistics
+
+The new `tools/row_boundary_probe.py` measures consecutive-sample jumps at each hypothesised 64- or 80-word line boundary compared against within-row differences and estimates vertical neighbour continuity. It runs on original little-endian samples, **before interpolation or SIFT**, printing only aggregate numerical measurements; no USB or biometrics are uploaded or written.
+
+If a candidate width matches true physical row order, wraparound from the end of one row to the start of the next might show larger jumps than within a row. However zero-background regions, row-wise sensor calibration, internal tiling and nonuniform noise can mislead the result. Do not treat this heuristic as proof.
+
+Run from project root:
+
+```bash
+git pull --ff-only
+.venv/bin/python -m unittest discover -s tests -v
+.venv/bin/python tools/row_boundary_probe.py --latest-four
+```
+
+All real fingerprint data stay in private local-data/; no image or sample values belong in GitHub.
