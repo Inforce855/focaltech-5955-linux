@@ -49,10 +49,10 @@ Compare the *three correlations* for both layouts rather than selecting whicheve
 
 Do not share the raw fingerprint files or images, create persistent templates, or enable KDE/PAM authentication at this stage.
 
-## First visual inspection of alternate 64 × 80 image — 11 October 2026
+## Corrected visual interpretation of 64 × 80 example — 11 October 2026
 
-The device owner tested the new `--order big --layout 64x80` option and shared a **manually edited** example solely for private visual discussion. In this alternate row-major arrangement, a **curved upper boundary and several approximately parallel, ridge-like arcs** are more apparent. The lower part remains poorly resolved / noisy. The inspected edited PNG was 64 × 80 pixels; its edit history and contrast settings are unknown, so the displayed grayscale levels cannot be attributed directly to the sensor.
+The device owner clarified that **the black wiggly lines in the shared edited image were manually drawn**, while **the grey areas came from the FocalTech output**. Earlier notes incorrectly attributed the black curved lines to sensor ridges. **That interpretation is withdrawn.** The manually added marks are not evidence of fingerprint ridges, boundaries or minutiae and must not be used to infer image layout or capture quality.
 
-**Interpretation:** This qualitatively supports investigating the 64 × 80 intermediate-memory layout inferred from the Windows DLL's 128-byte stride, but it does **not** establish that the raw sensor produces genuine ridge/minutiae detail, prove correct endian/order/polarity, or verify fingerprint matching. The edited image is **not stored or linked in GitHub**.
+The unedited grey sensor content remains inconclusive: visible greyscale variation is not sufficient to establish a real fingerprint pattern or the correctness of either the 80 × 64 or 64 × 80 arrangement. The black lines are a user annotation and the edited file must not be included in quantitative image analysis.
 
-Next priority: compare the **unchanged original raw files** under both layouts using `tools/fingerprint_compare.py --latest-three --both-layouts`, ensuring all A1/A2, A1/B, A2/B scores are evaluated. Assess unedited imagery privately before any new preprocessing and never treat a similarity score as a login decision.
+The image itself is **not stored or linked in GitHub**. The next useful tests are entirely local: first compare the original three unedited raw captures in both layouts using `tools/fingerprint_compare.py --latest-three --both-layouts`; then investigate the Windows DLL's signed-sample correction, row ordering, normalisation and histogram operations before claiming viable fingerprint recognition. No authentication or thresholds should be enabled.
