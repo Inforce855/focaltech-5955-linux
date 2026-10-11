@@ -63,6 +63,26 @@ The live mode requires typing **SEND** before any bulk OUT transfer. It refuses 
 
 **Do not rerun the live request just to check the decoder**: the captured response has been added to the offline regression tests. A valid USB reply proves a working exchange, not fingerprint detection or matching. Review any raw data before posting publicly.
 
+## Experimental finger-status query (NOT YET HARDWARE-VERIFIED)
+
+The matching Windows MOH DLL's `ff_sc_ReadFingerStatus` routine constructs command `0x82` with payload bytes `73 01`, requests one response byte, and returns that byte to its caller. Using our verified frame encoder, this generates `02 00 03 82 73 01 f3`.
+
+This is a **separate, unverified command** from the proven firmware-information request. The name suggests it reads status, but we cannot guarantee side effects until it has been tested against this sensor.
+
+The first recommended experiment is **one reading with no finger on the sensor**:
+
+```bash
+# Dry-run: no hardware access
+.venv/bin/python tools/finger_status_probe.py
+
+# Explicitly opt-in to ONE command; type SEND at the prompt
+sudo .venv/bin/python tools/finger_status_probe.py --send --label no-finger
+```
+
+If the first response is safe and meaningful, a later run with `--label finger` can be used with a finger resting on the reader *before* confirming. The test **never polls**, resets the sensor, enrols fingerprints, attempts authentication, or interprets a status byte as finger-present without evidence. It reuses the strict USB device safety checks and bounded response handling from the verified firmware probe.
+
+The routine's caller checks one response value (`0x05`), but whether this identifies finger contact is **unknown**. We need to compare no-finger and finger-present results.
+
 ## Safety and scope
 
 - Aim: an independently implemented Linux userspace driver, preferably integrated into `libfprint` / `fprintd`.
