@@ -121,3 +121,14 @@ Firmware flashing, guessed USB command bytes, system fingerprint-library replace
 - [ ] Confirm genuine 64 x 80 image correction/8-bit BIR format and vendor engine ABI with offline synthetic diagnostics.
 - [ ] Implement private offline multi-sample enrollment / genuine-and-impostor verification; require quality gating and repositioned impressions, not just two-image correlations.
 - [ ] Build tested out-of-tree libfprint 5955 transport and matching adapter without replacing distro libraries, enabling logins or altering hardening prematurely.
+
+## Phase: fully native image processing (11 October 2026)
+
+- [x] Identify original signed-word inversion + histogram construction in the recovered native FocalTech 2025 Linux binary; do not include proprietary source/binaries in this repo.
+- [x] Implement independent, local-only C11 image-preparation prototype for 5120 little-endian signed-clamped 16-bit samples in an experimental 64 × 80 row arrangement.
+- [x] Implement exact-count histogram, documented provisional 1/99-percentile 8-bit conversion, defensive low-contrast handling and aggregate-only metrics.
+- [x] Build and pass five **synthetic-only** C tests in a separate container, without USB, biometrics or installing system drivers.
+- [ ] Run `make -C native test` on the user's Nobara machine with GCC/Clang, and verify the test output.
+- [ ] Reconstruct the full histogram smoothing and tone-map stages from native ELF and cross-check MOH Windows conversion. The current percentile mapping is **our approximation**, not a faithful vendor algorithm.
+- [ ] Reconstruct the vendor's image quality and custom feature descriptors on synthetic data before biometric enrollment or verification.
+- [ ] Implement and validate real multi-impression template enrollment and genuine/impostor separation before ever considering login integration.
