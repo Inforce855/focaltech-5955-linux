@@ -47,6 +47,22 @@ If root access is undesirable, we can later add a tightly scoped udev rule. Do n
 
 **Privacy:** Never commit or publicly post fingerprint images/templates, live USB captures, personal identifiers or logs containing biometric data. Review any reported packet bytes before sharing.
 
+## Experimental live firmware-information query
+
+**This is the first real USB command experiment. It has NOT yet succeeded on a physical sensor.** The candidate command was reconstructed from the manufacturer's Windows MOH DLL, not recorded from a working sensor. Although it appears to request information, its effect cannot be guaranteed before a successful test.
+
+```bash
+# Inspect the request without contacting the sensor:
+.venv/bin/python tools/firmware_probe.py
+
+# Only if you accept the experimental hardware risk:
+sudo .venv/bin/python tools/firmware_probe.py --send
+```
+
+The live mode requires typing **SEND** before any bulk OUT transfer. It refuses a mismatched USB device revision or endpoint configuration, never detaches a kernel driver, sends **exactly one** five-byte request to endpoint `0x01`, and reads at most two times from `0x82` with bounded timeouts. There are no command retries, firmware writes, resets, authentication changes or enrolment procedures.
+
+A timeout is a useful result: the sensor may require an initialisation sequence, and repeatedly sending the same request would not help. A USB reply is only an initial communication milestone; it is not fingerprint support. Review any raw data before posting publicly.
+
 ## Safety and scope
 
 - Aim: an independently implemented Linux userspace driver, preferably integrated into `libfprint` / `fprintd`.
