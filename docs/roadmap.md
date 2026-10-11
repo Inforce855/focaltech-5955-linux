@@ -106,3 +106,7 @@ Firmware flashing, guessed USB command bytes, system fingerprint-library replace
 - [x] Add an independent, offline-only OpenCV SIFT comparison experiment and synthetic tests without libfprint/PAM changes or biometric data publication.
 - [ ] Use two-layout SIFT experiment on current four private captures, comparing both genuine pairs with all cross-finger controls.
 - [ ] Reconstruct reliable native image correction/geometry; verify quality and impostor rejection before discussing fprintd integration.
+
+- [x] Run initial four-capture offline SIFT test: 80×64 yielded 147–244 keypoints and 4–5 RANSAC inliers per pair; 64×80 yielded 1750–2285 keypoints and 5–6 inliers, with **no genuine/impostor separation**.
+- [x] Add aggregate-only little-endian 64-versus-80 raw row-boundary probe and five synthetic tests.
+- [ ] Investigate candidate row-width seam signals on private original captures before further SIFT tuning; interpret alongside MOH conversion disassembly and user's visual observations.
