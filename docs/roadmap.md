@@ -29,16 +29,19 @@
 - [x] Recover the candidate `ff_sc_ReadFingerStatus` request (`02 00 03 82 73 01 f3`) from the Windows MOH DLL.
 - [x] Add a one-shot, explicitly confirmed finger-status experiment (not yet run against hardware).
 - [x] Verify a real finger-absent reply (`0x06`) and finger-on reply (`0x05`) using the same command.
-- [ ] Repeat OFF/ON cycles to confirm repeatability and finger removal.
-- [ ] Establish status-byte meaning from live observations before implementing any polling.
+- [x] Confirm the observed status behaviour on repeated no-finger / finger-present tests and after finger removal (11 October 2026).
+- [x] Establish observed basic semantics: `0x05` finger touching, `0x06` finger absent; repeated in separate runs.
+- [ ] Implement a rate-limited, interruptible contact monitor if useful (avoid unbounded polling).
 - [ ] Determine whether further initialisation is required for event reporting or imaging.
 
 See [protocol research notes](protocol-research.md).
 
 ## Phase 4 — Fingerprint functions
 
-- [ ] Detect finger-present transitions.
-- [ ] Determine image-acquisition or on-device matching capabilities.
+- [x] Demonstrate contact and release using repeated one-shot finger-status queries.
+- [ ] Recover the Windows `ff_sc_GetImage` / acquisition protocol, capture framing and image or feature format.
+- [ ] Determine whether the MOH device returns raw images, processed images or proprietary features.
+- [ ] Evaluate libfprint image processing/template matching for this device; fall back to a separately vetted matching implementation if necessary.
 - [ ] Implement safe enrolment and verification without leaking templates.
 
 ## Phase 5 — Linux desktop integration
