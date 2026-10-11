@@ -122,8 +122,28 @@ The user reran the exact same private A1/A2/B1/B2 samples, keeping byte order (*
 
 Under **80 × 64**, strongest cross-finger score is **+0.288**: A's genuine margin is **+0.203** (tool prints +0.204 because of unrounded underlying values), B's genuine margin is **−0.112** (tool prints −0.111). Under **64 × 80**, strongest cross-finger score is **+0.173**: genuine margins approximately **−0.016** (A) and **+0.017** (B).
 
-Interpretation: **little-endian 80 × 64 is the leading experimental format**; the sensor itself reported width 80 and height 64. The A repeat pair has substantially higher correlation than all control comparisons in that layout, and the user independently reported visible shifted structure in A1/A2. However **finger B is still less similar to itself than one unrelated-finger pairing**, so no reliable recognition threshold, biometric identification, or deployment claim can be made.
+Interpretation: **little-endian sample byte order is strongly supported, but image row layout is UNRESOLVED.** The device reported width 80 and height 64, yet the owner says the **64 × 80** PNGs look more fingerprint-like in their genuine greyscale regions. The 80 × 64 arrangement gave a higher correlation for *one pair*, which cannot validate the physical row order or corrected image appearance. Note that rewrapping the 5,120 sequential samples into 80 × 64 versus 64 × 80 **is not equivalent to rotating a finished image**. **Finger B did not separate from unrelated-finger comparisons**, so no recognition threshold or deployment claim can be made.
 
 The A1/A2 80 × 64 optimum again reaches **y=-6**, the search boundary; this warrants a finger-placement/coverage investigation, **not** simply increasing the search limit, which inflates different-finger maxima too. The greater consistency of A versus B could reflect position/pressure, poor capture quality, rotation, finger anatomy, sensor artefacts or incorrect correction. These four samples do not discriminate among explanations.
 
 **Recommended next controlled hardware test:** run one more four-capture Enter-triggered session, but **reverse which actual finger is assigned to the two roles**: place former *finger B* twice in the A1/A2 slots, then former *finger A* twice in B1/B2 slots. Compare with **`--latest-four --order little --layout 80x64 --max-shift 6`**. This checks whether the difficulty follows the particular finger or the capture position/order. Results are exploratory and local-only. Do not publish fingerprint images or use for login.
+
+
+## Second four-capture trial with finger roles reversed — 11 October 2026, 14:55 BST
+
+The operator completed an additional private four-capture session at 14:55:29 (A1), 14:55:32 (A2), 14:55:37 (B1), 14:55:41 (B2), following a request to reverse physical finger assignment. Only terminal-reported statistics were shared. These results use **little-endian, 80 × 64, ±6-pixel translation**.
+
+| Pair | Correlation | Shift |
+| --- | ---: | --- |
+| A1 vs A2, same finger in first two slots (original B if swapped as requested) | +0.234 | (+6,+3) |
+| B1 vs B2, same finger in last two slots (original A if swapped as requested) | +0.197 | (+3,-5) |
+| A1 vs B1, different | +0.115 | (-3,-1) |
+| A1 vs B2, different | +0.125 | (-5,-1) |
+| A2 vs B1, different | +0.125 | (+0,+2) |
+| A2 vs B2, different | +0.201 | (+4,+5) |
+
+The strongest different-finger score is **+0.201**. Pair A has only a **+0.032** margin; pair B has **−0.004**. If finger roles were reversed as requested, the previously strong physical finger (original A) fell from +0.491 to +0.197, while original B rose from +0.176 to +0.234. This further demonstrates substantial capture-to-capture variability; neither finger identity nor capture order has been isolated as the cause.
+
+**Correction to earlier conclusions:** The operator specifically observed that **64 × 80 images appear more finger-shaped in the genuine greyscale data**. Earlier an edited image had black hand-drawn wiggles; these must not be mistaken for sensor ridges. The visual observation about the remaining grey data should nonetheless be respected. The 80 × 64 correlation advantage on one trial does *not* settle physical row layout, especially without accurate sensor-specific correction, placement control and many repeats. Both layout hypotheses remain open.
+
+**Next step:** refrain from further USB captures for now. Reuse the second session's unchanged four raw files to check both layouts at fixed little-endian and ±6 pixels, then investigate the Windows converter's 64-word stride, signed sample correction, row/column remapping and contrast rather than making an authentication decision. Public examples must use completely synthetic images; the repository must never contain real biometric samples.
