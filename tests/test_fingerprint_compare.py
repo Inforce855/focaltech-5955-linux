@@ -10,7 +10,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 from fingerprint_compare import (
     WIDTH, HEIGHT, compare, correlation_shift, load_capture,
-    preprocess_samples, recent_three,
+    preprocess_samples, recent_three, recent_four,
 )
 
 
@@ -123,6 +123,24 @@ class FingerprintCompareTests(unittest.TestCase):
             file.write_bytes(b'bad')
             with self.assertRaises(ValueError):
                 load_capture(file, 'big')
+
+    def test_recent_four_accepts_completed_labelled_sequence(self):
+        with tempfile.TemporaryDirectory() as root:
+            folder = Path(root)
+            for suffix in ("A1", "A2", "B1", "B2"):
+                (folder / f"fingerprint_11-10-2026_15-00-00_{suffix}.raw").write_bytes(b"test")
+            picked = recent_four(folder)
+            self.assertEqual([p.name.rsplit("_", 1)[-1] for p in picked],
+                             ["A1.raw", "A2.raw", "B1.raw", "B2.raw"])
+
+    def test_recent_four_refuses_mixed_or_incomplete_labels(self):
+        with tempfile.TemporaryDirectory() as root:
+            folder = Path(root)
+            for label in ("A1", "A2", "B1", "A1"):
+                filename = folder / f"fingerprint_{label}_{len(list(folder.iterdir()))}.raw"
+                filename.write_bytes(b"test")
+            with self.assertRaises(ValueError):
+                recent_four(folder)
 
     def test_recent_three_sorted_by_mtime(self):
         with tempfile.TemporaryDirectory() as t:
