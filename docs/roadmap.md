@@ -26,7 +26,11 @@
 - [x] Implement and successfully run a confirmed single-shot firmware-information hardware test (11 October 2026).
 - [x] Confirm the firmware-information command works on 2808:5955 and returns ASCII firmware information.
 - [x] Correct reply decoding for the verified 50-byte frame followed by one trailing 00 byte.
-- [ ] Recover and validate the finger-status request and any necessary startup sequence before expanding live USB commands.
+- [x] Recover the candidate `ff_sc_ReadFingerStatus` request (`02 00 03 82 73 01 f3`) from the Windows MOH DLL.
+- [x] Add a one-shot, explicitly confirmed finger-status experiment (not yet run against hardware).
+- [ ] Verify the reply with a finger absent, then (if safe) with a finger resting on the sensor.
+- [ ] Establish status-byte meaning from live observations before implementing any polling.
+- [ ] Determine whether further initialisation is required for event reporting or imaging.
 
 See [protocol research notes](protocol-research.md).
 
