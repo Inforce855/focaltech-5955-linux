@@ -48,7 +48,7 @@ See [protocol research notes](protocol-research.md) and [image acquisition findi
 - [x] Build an opt-in, one-shot handshake tester (not yet hardware-verified).
 - [x] Verify hardware scan handshake `02 00 01 34 35`: correct `55 aa` payload and checksum `f8` (11 October 2026).
 - [x] Add a one-shot, explicitly confirmed readiness query (`0x80`, selector `0x01`, two bytes), without scan-mode changes.
-- [ ] Verify optional read-only readiness query on the physical reader.
+- [x] Verify physical readiness response: exact `a5 5a` (`0x5AA5`), valid checksum, with no explicit scan-mode activation.
 - [ ] Trace mandatory scan activation, readiness checks and return-to-idle operations before full capture.
 - [x] Build and locally test a private offline 16-bit raw-to-PNG converter, with synthetic tests.
 - [ ] Build bounded multi-transfer image acquisition; validate the pixel format and save images only in ignored local-data.
