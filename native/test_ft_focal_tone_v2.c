@@ -30,6 +30,17 @@ static void test_ramp_and_cutoff(void) {
     assert(out[10]>=out[100] && out[100]>=out[1000]);
     assert(m.dynamic_range==1023);
     assert(m.effective_range==1023*m.cutoff.cutoff_bin/250);
+    /* Synthetic concentrated image: the histogram cutoff should actually
+     * move, unlike the fixed cap we originally modelled. */
+    for (size_t i=0; i<5120; ++i) x[i] = 600;
+    x[0] = 0;
+    x[1] = 1000;
+    assert(ft5955_focal_tone_v2_research(x,5120,out,5120,&m)==0);
+    assert(m.cutoff.high_tail_branch==0);
+    assert(m.cutoff.cutoff_bin == 141);
+    assert(m.effective_range == 564);
+    assert(out[0] == 255 && out[1] == 0);
+    assert(out[30] == 180);
 }
 static void test_high_tail_and_sparse(void) {
     int16_t x[5120]; uint8_t out[5120]; struct ft5955_tone_v2_metrics m;
