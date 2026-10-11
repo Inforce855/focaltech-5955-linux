@@ -13,7 +13,7 @@ make -C native test
 ```
 
 Requires an ordinary C compiler (cc, e.g. GCC or Clang) and make. Compiles
-into an ignored native/build/ directory and runs thirty tests on entirely synthetic
+into an ignored native/build/ directory and runs thirty-six tests on entirely synthetic
 arrays. **No real fingerprint scans are needed and no system files are changed.**
 
 ## Histogram smoothing research
@@ -108,6 +108,34 @@ any vendor binary; this stage was compared with static disassembly only.
 
 This module is a standalone offline research prototype and does not replace
 our known-working device USB path, existing image converter, or login stack.
+
+## Native tone v3: corrected scaling denominator (static evidence)
+
+The FT9362 Ubuntu 2025 ELF disassembly (function at address `0x4f510`)
+includes an **extra `1e-6` in the final output-scaling denominator**
+(`0x4f91f`), after integer truncation of the cutoff-adjusted range
+(`0x4f8f1` through `0x4f90a`). It multiplies the adjusted pixel by
+255, divides in double precision, converts by truncation and caps
+values above 255. Our earlier experimental `v2` omitted the epsilon.
+
+The independent `ft_focal_tone_v3.c` models that arithmetic for the
+**nonnegative signed-16 sample domain previously observed on this reader**.
+It fails closed with status `-2` on unsupported negative values instead
+of guessing FocalTech's signed 16-bit wraparound behaviour. It performs
+**no USB access**, does not load the proprietary ELF, and leaves the
+existing converter and `v2` research implementation unchanged.
+
+Six synthetic tests cover the specific epsilon boundary (a full-scale
+gradient maps to 254 rather than 255), a nondefault histogram cutoff,
+error handling, flat arrays, unsupported signed values, deterministic
+output and no mutation. The tests pass with GCC and ASan/UBSan in the
+analysis container.
+
+**Important:** This is an arithmetic correction grounded in static
+machine instructions, NOT a byte-for-byte comparison against actual
+FocalTech library output. Exact vendor equivalence, image calibration,
+and matching quality remain unverified; no fingerprint or authentication
+decision can be based on this research component.
 
 ## Implementation status
 
