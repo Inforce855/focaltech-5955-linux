@@ -60,12 +60,61 @@ def read_private(path: Path) -> bytes:
     return path.read_bytes()
 
 
+
+def spatial_zero_summary(samples: tuple[int, ...], width: int = 64) -> dict[str, object]:
+    """Describe zero-valued raw pixels by physical rows, never expose pixels.
+
+    Only meaningful when samples are decoded LITTLE endian; width=64 is
+    the strongest current (but not completely verified) sensor geometry.
+    The output is aggregated statistics, NOT a fingerprint template.
+    """
+    if width != 64 or len(samples) != 5120:
+        raise ValueError("Expected 5120 samples and 64 columns")
+    rows = [samples[y * width:(y + 1) * width] for y in range(80)]
+    zeros = [sum(value == 0 for value in row) for row in rows]
+    leading = 0
+    for count in zeros:
+        if count != width:
+            break
+        leading += 1
+    trailing = 0
+    for count in reversed(zeros):
+        if count != width:
+            break
+        trailing += 1
+    bands = (zeros[:20], zeros[20:60], zeros[60:])
+    band_pcts = tuple(
+        100.0 * sum(band) / (len(band) * width) for band in bands
+    )
+    full_zero_rows = sum(count == width for count in zeros)
+    # A missing quarter need not align exactly with row boundaries.
+    heavily_zero_rows = sum(count >= 3 * width // 4 for count in zeros)
+    return {
+        "full_zero_rows": full_zero_rows,
+        "leading_full_zero_rows": leading,
+        "trailing_full_zero_rows": trailing,
+        "mostly_zero_rows": heavily_zero_rows,
+        "band_zero_pct": band_pcts,
+    }
+
+
+def pair_change_summary(a: tuple[int, ...], b: tuple[int, ...]) -> tuple[int, float]:
+    """How many sample values differ, without printing any actual values."""
+    if len(a) != 5120 or len(b) != 5120:
+        raise ValueError("Expected full 5120-sample arrays")
+    changed = sum(left != right for left, right in zip(a, b))
+    return changed, (100.0 * changed / len(a))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('files', type=Path, nargs='*', metavar='RAW')
     parser.add_argument('--latest-four', action='store_true',
                         help='inspect latest labelled A1/A2/B1/B2 from local-data/')
     parser.add_argument('--directory', type=Path, default=Path('local-data'))
+    parser.add_argument('--spatial-zeros', action='store_true',
+                        help='little-endian 64x80 zero-pixel row bands and '
+                             'consecutive capture differences (numbers only)')
     args = parser.parse_args()
     if args.latest_four and args.files:
         parser.error('Use --latest-four OR explicit RAW filenames')
@@ -75,8 +124,10 @@ def main() -> int:
         paths = recent_four(args.directory) if args.latest_four else args.files
         print('FocalTech 2808:5955 — OFFLINE signed-16-bit diagnostic')
         print('No biometric samples, images or templates will be printed or saved.')
+        little_samples = []
         for path in paths:
             raw = read_private(path)
+            little_samples.append(decode_samples(raw, 'little'))
             print(f'\n{path.name}:')
             for order in ('big', 'little'):
                 metrics = summarise(decode_samples(raw, order))
@@ -87,6 +138,30 @@ def main() -> int:
                       f"{metrics['unsigned_p01']}/{metrics['unsigned_p50']}/{metrics['unsigned_p99']}")
                 print(f"          clamped  1/50/99%: "
                       f"{metrics['clamped_p01']}/{metrics['clamped_p50']}/{metrics['clamped_p99']}")
+        if args.spatial_zeros:
+            print('\n64x80 geometry: ORIGINAL little-endian zero samples '
+                  '(no normalisation):')
+            for path, samples in zip(paths, little_samples):
+                result = spatial_zero_summary(samples)
+                top, middle, bottom = result['band_zero_pct']
+                print(f"  {path.name}:")
+                print(f"    zero % top 20 rows={top:.1f}, middle 40={middle:.1f}, "
+                      f"bottom 20={bottom:.1f}")
+                print(f"    completely zero rows={result['full_zero_rows']}, "
+                      f"leading={result['leading_full_zero_rows']}, "
+                      f"trailing={result['trailing_full_zero_rows']}, "
+                      f"rows >=75% zero={result['mostly_zero_rows']}")
+            if len(little_samples) == 4:
+                print('  Pairwise RAW sample changes (not fingerprint matching):')
+                for title, left, right in (('A1 to A2', 0, 1),
+                                           ('B1 to B2', 2, 3)):
+                    changed, percentage = pair_change_summary(
+                        little_samples[left], little_samples[right])
+                    print(f'    {title}: {changed}/5120 sample values changed '
+                          f'({percentage:.1f}%).'
+                          + (' EXACTLY identical buffers.' if not changed else ''))
+            print('  A zero region might be sensor contact, acquisition timing, '
+                  'or masking; these statistics alone cannot identify which.')
         print('\nThese figures diagnose 16-bit interpretation, not a fingerprint match.')
         return 0
     except (OSError, ValueError) as error:
