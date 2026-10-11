@@ -265,6 +265,24 @@ For a single capture, `--send` now also accepts **Enter instead of `CAPTURE`**. 
 
 All genuine biometric captures and PNGs must stay on your machine. In addition to ignoring `local-data/`, the repository now ignores `fingerprint_*.raw` and `fingerprint_*.png` anywhere in the working tree. A future public demonstration will use a separately generated **synthetic** image, not a real fingerprint.
 
+
+### Four-capture matching result and signed-image diagnostic
+
+The real `A1, A2, B1, B2` test at 14:24 BST found **+0.089** and **+0.081** correlations for the same fingers, but **+0.118** for one different-finger comparison. That means our current matching algorithm did **not** distinguish the fingers. Do not set a recognition threshold or connect it to `fprintd`, KDE or PAM.
+
+Static inspection of the matching Windows MOH driver found an important omission in our converter: its general image path uses **signed 16-bit samples**, initially setting negative values to zero and performing additional 64-sample-row correction, negation and histogram mapping. Our existing conversion instead treats 16-bit values as unsigned before contrast-stretching. We have **not** yet reproduced the Windows processing.
+
+A new **read-only, offline and no-sudo** diagnostic compares the unsigned and signed-clamped interpretations of your existing four files, with aggregate percentages and sample percentiles only:
+
+```bash
+cd ~/Projects/focaltech-5955-linux
+git pull --ff-only
+.venv/bin/python -m unittest discover -s tests -v
+.venv/bin/python tools/raw_sample_diagnostics.py --latest-four
+```
+
+The command prints **no fingerprint pixels, images or templates**, writes no files, sends no USB commands, and does not upload anything. Its results help determine whether many image samples would be treated differently by Windows' signed-input correction. **No real biometric images may be committed to GitHub**; fake examples can be constructed separately when ready.
+
 ## Safety and scope
 
 - Aim: an independently implemented Linux userspace driver, preferably integrated into `libfprint` / `fprintd`.
