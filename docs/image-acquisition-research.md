@@ -161,3 +161,19 @@ The Windows DLL's readiness routine at preferred-image VA `0x180009B94` passes s
 
 The equivalent response payload for the expected ready state is `a5 5a` (if the response follows the already-confirmed framing). **A pre-scan test may not report readiness until the device is placed into scan mode**, so a different reply is not necessarily an error. No mode-changing or image-acquisition command should be sent on that basis.
 
+
+
+## Live readiness query confirmed — 11 October 2026
+
+The physical FocalTech 2808:5955 replied to the reconstructed selector 01, length 02 readiness query with the **exact** marker expected by the Windows DLL.
+
+- OUT: `02 00 03 80 01 02 80` — 7/7 bytes.
+- IN: `02 00 03 04 a5 5a f8 00` — 8 bytes.
+- Payload `a5 5a` interpreted as little-endian gives **`0x5AA5`**.
+- XOR BCC `f8` validates the response, followed by the previously observed `00` trailer.
+- **No explicit scan-mode change was made.** That means the register's marker also appears during the current idle/no-explicit-scan condition; it does **not** prove a fresh fingerprint image is ready.
+
+### First bounded image-read experiment (unverified on hardware)
+
+Windows low-level image helper at `0x18000793C` transmits logical `0x81` with no payload and asks its read abstraction for `2 × 80 × 64 = 10,240` sample bytes. Candidate OUT bytes: **`02 00 01 81 80`**. An opt-in one-shot command can attempt this read **without** enabling the state-changing `0x87` scan mode, deliberately preferring a failed/no-data result over a guessed mode configuration. Image transfer framing is unverified. Only an exactly sized raw transfer or a valid, checksummed 10,240-byte framed payload should be retained, with data saved privately in ignored local-data; never print or commit fingerprint samples. Failure does not authorise blind retries or mode changes.
+
