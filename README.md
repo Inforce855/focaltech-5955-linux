@@ -135,6 +135,34 @@ sudo .venv/bin/python tools/scan_ready_probe.py --send
 
 The candidate packet is `02 00 03 80 01 02 80`. This probe does not set the device's scan mode, attempt a capture, or save biometric samples. Its behaviour on the physical device remains unverified, so avoid repeated or unconfirmed commands. See [acquisition notes](docs/image-acquisition-research.md) for the verified handshake and limitations.
 
+
+### Experimental first fingerprint image transfer — one-shot `0x81`
+
+The scanner has now returned a valid `0x5AA5` readiness marker **without an explicit scan-mode change**. We have added [`tools/image_capture_probe.py`](tools/image_capture_probe.py) as a cautious *first attempt* to retrieve the Windows DLL's expected **10,240-byte** raw image buffer, without issuing the separate `0x87` mode-control command:
+
+```bash
+cd ~/Projects/focaltech-5955-linux
+git pull --ff-only
+
+# Dry run: prints planned command, does not touch USB
+.venv/bin/python tools/image_capture_probe.py
+
+# One experimental physical image request, with confirmation
+sudo .venv/bin/python tools/image_capture_probe.py --send
+```
+
+Touch the reader lightly (it is also the PC's power button) and type **`CAPTURE`**. This transmits **one** `02 00 01 81 80` request to the audited USB device, then reads only a tightly bounded IN response. The large response format and command's behaviour on this hardware are **not yet verified**, so a timeout or a short status response is possible and is not grounds for blind retries. This command may initiate temporary sensor acquisition state despite not issuing a `0x87` mode change.
+
+If and only if exactly 10,240 sample bytes arrive (either unframed as the Windows data reader might expose them or in a validated, checksummed frame), the tool creates a private, new `local-data/fingerprint_DD-MM-YYYY_HH-MM-SS.raw` file. It never prints image bytes, never overwrites an earlier capture, and attempts to assign ownership back to the original `sudo` user for local inspection. `local-data/` is already ignored by Git. An *unframed* response has no transport checksum and requires further validation.
+
+Run the locally prepared offline converter **without sudo**, substituting the filename reported by the capture utility:
+
+```bash
+.venv/bin/python tools/raw_to_png.py local-data/fingerprint_DD-MM-YYYY_HH-MM-SS.raw
+```
+
+It creates native 80 × 64 16-bit PNGs, enhanced 8-bit versions and 640 × 512 previews. Endianness, contrast and whether the capture contains a usable fingerprint remain to be verified on a real image. Do not attach or commit biometric image files to a public issue, PR or repository.
+
 ## Safety and scope
 
 - Aim: an independently implemented Linux userspace driver, preferably integrated into `libfprint` / `fprintd`.
