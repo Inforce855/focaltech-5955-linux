@@ -87,4 +87,7 @@ Firmware flashing, guessed USB command bytes, system fingerprint-library replace
 
 - [x] Run real A1/A2/B1/B2 offline comparison: same-finger +0.089 / +0.081, different-finger maximum +0.118 — no genuine/impostor separation (11 October 2026).
 - [x] Identify signed-16-bit input and negative clamp in matching Windows MOH converter (VA 0x180006184); add an offline aggregate-only diagnostic with synthetic tests.
-- [ ] Run signed-sample aggregate diagnostic on existing four private images and assess endian/clipping results before modifying the converter.
+- [x] Run signed-16-bit aggregate diagnostic on four real private captures: little-endian shows 0% signed-negative samples and 99th percentiles 1,616–2,008; swapped big-endian shows 38.9–51.2% negative samples. Strong evidence favours **little-endian** raw words, despite earlier misleading image previews.
+- [x] Verify the Windows MOH general converter first clamps signed-negative words and then applies separate sensor-specific correction; negative clamp alone is not sufficient.
+- [x] Add private little-endian signed-clamped and optional row-normalised image preview experiments for both 80 × 64 and 64 × 80 layouts, with synthetic tests.
+- [ ] Run offline private four-preview experiment on an existing capture, evaluate actual grey sensor patterns separately from any user-added annotations, then revisit matching.
