@@ -42,6 +42,16 @@ class ImageConversionTests(unittest.TestCase):
         data = zlib.decompress(png[41:41 + length])
         self.assertEqual(data, b"\x00" + raw[:8] + b"\x00" + raw[8:])
 
+    def test_alternative_64x80_layout_png(self):
+        fake = bytes(range(256)) * 20   # 5,120 synthetic pixels
+        png = greyscale_png(fake, 64, 80)
+        width, height, depth, colour = struct.unpack(">IIBB", png[16:26])
+        self.assertEqual((width, height, depth, colour), (64, 80, 8, 0))
+        enlarged = upscale_nn(fake, 64, 80, 8)
+        preview = greyscale_png(enlarged, 512, 640)
+        pw, ph = struct.unpack(">II", preview[16:24])
+        self.assertEqual((pw, ph), (512, 640))
+
     def test_upscale(self):
         pixels = bytes([2, 4, 6, 8])
         self.assertEqual(upscale_nn(pixels, 2, 2, 2), bytes([2, 2, 4, 4] * 2 + [6, 6, 8, 8] * 2))
