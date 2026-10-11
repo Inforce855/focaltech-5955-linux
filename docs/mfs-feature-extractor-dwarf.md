@@ -150,3 +150,64 @@ research approximation** for 8×8×8 sampling from synthetic gradients.
 Its Gaussian σ and cell width are model choices, not vendor constants.
 Six local tests passed under strict compiler flags and sanitizers.
 Do not use its outputs for fingerprint verification.
+
+## Another unstripped FT9366 library: exact Gaussian scale evidence
+
+The operator uploaded a separate **7,600,216-byte proprietary libfprint ELF**
+(`libfprint-2.so.2.0.0`, SHA-256 `db95bcdf068c63a16d6fe37a55238d1dafcbe9e4d61387b2cf0bd4a631712cf4`,
+Build ID `950524d26b0581f5b384b7ac4cadf6afccb6b0f9`). This is the EXACT same
+Git blob (`f2555e82f06cb411a5b2b580eb6b2e91d9a4365d`) listed in
+[leopalladium/focaltech-ft9366-arch-shim](https://github.com/leopalladium/focaltech-ft9366-arch-shim).
+It is **not** the previous 2025 Ubuntu ELF (7,309,376 bytes, Build ID
+`62fa37ea38c700338cef64f46136ccadf7f078b1`). Both are unstripped and
+contain DWARF debug information. Neither binary was installed or executed.
+
+### Machine-code and DWARF comparison
+
+- The new binary contains `FtComputeDescriptors` at `0xd66b0` (size
+  `0x1724`) and `FtGetMfsFeatures` at `0xd8970` (size `0x219d`). The older
+  Ubuntu ELF has the same named functions and **identical code lengths**
+  at `0xde190` and `0xe0450` respectively. This supports reuse of the
+  same feature-extractor implementation, but is not a proof of identical
+  outputs in every device mode.
+- The new ELF includes a distinct FT9366 image processing path named
+  `fw9366_histNormalize` at `0x1621d5`, in addition to the separate
+  `ft9362_histNormalize` at `0x47a30`. Do not assume that either one
+  is correct for hardware `2808:5955`.
+- Its old `libgusb.so.2` version references include
+  `LIBGUSB_0.1.0`, `0.2.2`, `0.2.4`, `0.3.3`.
+  That supports the need for caution on modern systems; it does
+  not by itself isolate the precise loader/runtime incompatibility.
+- Crucially, DWARF explicitly types `GAUSS_WEIGHT_TAB` as a
+  **float32 `[3][256]`** array, address `0x211ac0` and size `0xc00`.
+  The assembly in `FtComputeDescriptors` selects a 1024-byte block
+  via `(selected_level - 1) << 10`, then looks up a float inside.
+  Treating each block as a 16×16 grid is strongly supported by
+  its symmetric radial values and the descriptor's ±15 patch.
+- **The entire 3,072-byte Gaussian table is byte-identical across both
+  binaries** (SHA-256 of table only:
+  `04f9417216982cffd9847e2eb70da83c082167fc91760e7fba347c64a4c1ccfd`).
+  All three blocks have 256 nonzero float values, with a radial profile.
+- The independently derived Gaussian model
+  `w(x,y,level) ≈ exp(-(x²+y²)/(2σ²))` with
+  `σ(level) = 19.2 × 2^((level-3)/3)` for levels 1..3 yields
+  approximate `σ = 12.095242, 15.239050, 19.200000`.
+  Compared across **all 768 vendor table values**, maximum absolute
+  difference was **less than 5.5e-7** for that model. This is a
+  numerical fit, *not* a byte-for-byte bit-level reproduction of
+  the table's float rounding.
+- DWARF additionally contains a `GAUSS_WEIGHT_TAB2` declaration
+  of float32 `[3][1369]` (`1369 = 37²`) stored as debug constants.
+  Its relationship to runtime selection is not yet confirmed; do not
+  assume this larger table is active for the user's device.
+
+### Practical impact
+
+The original experimental histogram code uses **a guessed Gaussian
+width `σ = 8`**. We now have vendor-grounded evidence for three
+scale-dependent widths; that original approximation can be replaced
+or supplemented using **independently generated Gaussian weights**
+without redistributing the proprietary lookup table. First establish
+how `selected_level`, input scaling, rotated offsets and validity
+masks reach `FtComputeDescriptors`; then use synthetic-only tests.
+All real fingerprint scans and proprietary binaries stay out of GitHub.
