@@ -83,6 +83,28 @@ If the first response is safe and meaningful, a later run with `--label finger` 
 
 The routine's caller checks one response value (`0x05`), but whether this identifies finger contact is **unknown**. We need to compare no-finger and finger-present results.
 
+## Investigating image acquisition
+
+The matching Windows driver implements `ff_sc_GetImage`. Static analysis shows that it reads **two bytes per pixel** into an intermediate buffer, processes that data into an output image, and first obtains image **width** and **height** from the sensor.
+
+We have **not captured any fingerprint image** from the physical device yet. The image read command is a candidate `02 00 01 81 80` (logical `0x81`), but Windows performs separate setup and readiness checks before calling it. Do not send that command directly.
+
+A safer next test is to ask the sensor for its image dimensions using the read helper found in the Windows DLL:
+
+```bash
+# Offline preview (does not access USB)
+.venv/bin/python tools/image_geometry_probe.py --dimension height
+.venv/bin/python tools/image_geometry_probe.py --dimension width
+
+# Hardware: one command each, asks you to type SEND
+sudo .venv/bin/python tools/image_geometry_probe.py --dimension height --send
+sudo .venv/bin/python tools/image_geometry_probe.py --dimension width --send
+```
+
+These are still experimental commands, reconstructed from the matching Windows MOH DLL and not yet tested on the live sensor. The tool checks the device's exact USB identity and revision, sends one request per run and never records images.
+
+See [GetImage reverse-engineering notes](docs/image-acquisition-research.md) for technical details and the next work required.
+
 ## Safety and scope
 
 - Aim: an independently implemented Linux userspace driver, preferably integrated into `libfprint` / `fprintd`.
