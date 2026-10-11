@@ -55,7 +55,10 @@ See [protocol research notes](protocol-research.md) and [image acquisition findi
 - [x] Receive first image-sized transfer on physical sensor: **10,246 USB bytes** on `0x81`, but checksum and pixel content not yet verified; no private capture saved on this attempt.
 - [x] Update image transfer parser to allow one unknown trailer byte **only after** a complete 10,245-byte frame passes protocol checksum and length validation.
 - [x] Capture and convert physical finger image files under Nobara; owner reported three image files: finger A, finger B, finger A again (11 October 2026). First/third visually similar; second visibly different.
-- [ ] Independently validate pixel interpretation, ridge quality and repeatability with private local comparisons (without sharing biometric data).
+- [x] Observe clearer fingerprint-like detail with **big-endian** raw interpretation; little-endian preview was largely repeated row lines (owner visual inspection; encoding not conclusively proven).
+- [x] Add **offline A–B–A image similarity experiment**, with lighting normalisation, ±6 pixel translations, no USB or template storage, and 10 synthetic tests (local tests passed).
+- [ ] Run the A–B–A comparator on three real local captures and inspect relative same-finger/different-finger correlations.
+- [ ] Independently validate pixel interpretation, ridge quality and repeatability with multiple private local comparisons (without sharing biometric data).
 - [ ] Validate the image payload and sensor pixel ordering before attempting enrollment.
 - [ ] Determine whether the MOH device returns raw images, processed images or proprietary features.
 - [ ] Evaluate libfprint image processing/template matching for this device; fall back to a separately vetted matching implementation if necessary.
