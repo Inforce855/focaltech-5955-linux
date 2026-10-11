@@ -26,6 +26,43 @@ class TestProtocolCodec(unittest.TestCase):
         reply = decode_reply(frame)
         self.assertEqual(reply.payload, b"APP")
         self.assertEqual(reply.reply_type, 4)
+        self.assertFalse(reply.trailing_zero)
+
+    def test_real_sensor_firmware_reply_with_trailing_zero(self):
+        # Genuine IN bytes from FocalTech 2808:5955, 11 October 2026.
+        raw = bytes.fromhex(
+            "02 00 2e 04 46 54 39 33 36 78 5f 41 50 50 5f 46 "
+            "57 33 30 33 32 5f 55 53 42 5f 44 45 43 5f 53 "
+            "56 30 2e 35 5f 35 38 34 39 5f 50 6f 77 65 72 "
+            "4b 65 79 51 00"
+        )
+        self.assertEqual(len(raw), 51)
+        self.assertEqual(int.from_bytes(raw[1:3], "big"), 46)
+        self.assertEqual(xor_bcc(raw[1:49]), 0x51)
+        reply = decode_reply(raw)
+        self.assertEqual(reply.reply_type, 0x04)
+        self.assertEqual(
+            reply.payload, b"FT936x_APP_FW3032_USB_DEC_SV0.5_5849_PowerKey"
+        )
+        self.assertTrue(reply.trailing_zero)
+
+    def test_unnamed_trailing_byte_is_rejected(self):
+        body = bytes.fromhex("00 02 04 41")
+        valid = b"\x02" + body + bytes([xor_bcc(body)])
+        with self.assertRaises(ProtocolError):
+            decode_reply(valid + b"\x01")
+
+    def test_two_trailing_zeros_are_rejected(self):
+        body = bytes.fromhex("00 02 04 41")
+        valid = b"\x02" + body + bytes([xor_bcc(body)])
+        with self.assertRaises(ProtocolError):
+            decode_reply(valid + b"\x00\x00")
+
+    def test_trailing_zero_does_not_hide_bad_checksum(self):
+        body = bytes.fromhex("00 02 04 41")
+        corrupt = b"\x02" + body + bytes([xor_bcc(body) ^ 1])
+        with self.assertRaises(ProtocolError):
+            decode_reply(corrupt + b"\x00")
 
     def test_short_frame(self):
         with self.assertRaises(ProtocolError):
