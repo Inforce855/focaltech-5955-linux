@@ -37,3 +37,8 @@ raw-data/
 *.pcap
 *.pcapng
 *.bin
+
+# Never stage genuine fingerprint captures even if copied outside local-data/
+# Public demonstrations should use separately generated, clearly labelled synthetic samples.
+fingerprint_*.raw
+fingerprint_*.png
