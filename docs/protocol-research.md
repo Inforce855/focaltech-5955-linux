@@ -32,6 +32,19 @@ Static inspection of the PE disassembly shows a function at image RVA `0x658C` (
 
 This supports a likely **XOR-based block check character (BCC)**. It does *not* tell us which bytes in a command are covered, where the check byte is placed, or whether all commands use this checksum. No live packet format has yet been recovered.
 
+## Firmware-version request path: partially recovered from static disassembly
+
+The MOH `FtWbioDriverUmdfV3.dll` firmware-version function appears to begin at preferred-image VA `0x180006FD8`. The DLL is PE32+ x86-64, preferred image base `0x180000000`. In the routine:
+
+1. At `0x18000702C`, it loads **`0x30`** into `CL` and calls helper `0x180008004` with no payload pointer and a zero length argument. This is a strong **candidate logical firmware-info request selector**.
+2. Following a successful helper result, at `0x1800070C0` it sets `EDX=0x3F` and invokes a second helper at `0x180007760` with a destination buffer and an output-length pointer.
+3. The response is treated as a bounded, NUL-terminated string and logged using `[Driver] I fw info: %s`.
+4. The routine later examines the string for `APP`, and, if found, calls another shared helper (`0x180007B8C`) with arguments `0x05` and `0x02`, after which it logs a `version.chipid` value. These may be logical subcommands, not literal USB bytes.
+
+**Important:** Helper `0x180008004` invokes an object virtual function; we have not yet proven its final USB transfer encoding. We therefore **do not know the full outgoing wire packet**, its framing or checksum coverage. The number `0x30` must **not** be sent raw from our Linux probe based on this analysis alone.
+
+The next task is to trace the object's implementation of those send/read methods, or compare a genuine WinUSB trace of the request and response. No protocol-write capability is being enabled in the current probe.
+
 ## Related project: research only, not a compatible driver
 
 The project [inevitableDivu/focaltech-2808-6658-driver](https://github.com/inevitableDivu/focaltech-2808-6658-driver) has published a packet specification and an experimental Python userspace tool for related FocalTech chips.
