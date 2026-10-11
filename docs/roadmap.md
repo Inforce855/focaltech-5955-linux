@@ -145,3 +145,7 @@ Firmware flashing, guessed USB command bytes, system fingerprint-library replace
 
 - [x] Reverse-engineer one `FtComputeDescriptors` 256-bit histogram-comparison packing branch (average ×0.125, adjacent-cell threshold ×1.05) and write five synthetic-only tests.
 - [ ] Recover histogram construction and sensor-specific branch selection; establish isolated vendor-output parity for extracted descriptors before considering fingerprint matching.
+
+- [x] Trace `FtComputeDescriptors` upstream orientation histogram allocation, ±15 patch, gradient call and trilinear eight-bin interpolation in recovered FT9362 ELF.
+- [x] Implement **separate, experimental** native C 8×8×8 histogram and gradient field from synthetic inputs; pass six tests and ASan/UBSan.
+- [ ] Recover scale-specific Gaussian lookup, gradient validity rules, algorithm mode and exact mapping of the 512 float bins to the 256-bit final descriptor; test against vendor output.
