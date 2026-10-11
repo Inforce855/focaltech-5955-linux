@@ -13,7 +13,7 @@ make -C native test
 ```
 
 Requires an ordinary C compiler (cc, e.g. GCC or Clang) and make. Compiles
-into an ignored native/build/ directory and runs ten tests on entirely synthetic
+into an ignored native/build/ directory and runs fifteen tests on entirely synthetic
 arrays. **No real fingerprint scans are needed and no system files are changed.**
 
 ## Histogram smoothing research
@@ -27,6 +27,22 @@ into the main image converter** because downstream tone mapping and its
 parameters are not fully understood. Five additional synthetic tests verify
 constant-bin preservation, impulse response, edge windows, deterministic
 output and invalid-input handling. The five original image tests remain.
+
+## Histogram pipeline study
+
+The third native C module, `ft_focal_histogram.c`, traces the **intermediate**
+histogram calculations found in the native FT9362 library: negate signed
+16-bit samples safely in 32-bit arithmetic, calculate a normalised 256-bin
+histogram, smooth 256 bins in three passes, copy/smooth the first 250 bins
+in two additional passes, then measure the [0,199] and [200,249] histogram
+regions. The disassembly compares upper-bin mass against 80% of lower-bin mass
+to choose a subsequent tone-mapping branch.
+
+**This is not yet the vendor's full normalisation method**, not verified on
+our `2808:5955` reader, and deliberately has no connection to the working
+image converter, USB or authentication. It is an independent offline
+implementation with five synthetic-only tests, including signed-value extremes,
+flat-frame rejection, repeatability and invalid inputs.
 
 ## Implementation status
 
