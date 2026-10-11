@@ -12,6 +12,12 @@ from sift_compare import (
 )
 from raw_to_png import RAW_BYTES
 
+try:
+    dependencies()
+    HAS_CV = True
+except RuntimeError:
+    HAS_CV = False
+
 
 class SiftComparisonTests(unittest.TestCase):
     def test_layouts(self):
@@ -42,11 +48,13 @@ class SiftComparisonTests(unittest.TestCase):
             path.write_bytes(data)
             self.assertEqual(safe_raw(path), data)
 
+    @unittest.skipUnless(HAS_CV, "Optional opencv-python-headless not installed")
     def test_synthetic_wrong_geometry(self):
         np, cv2 = dependencies()
         with self.assertRaises(ValueError):
             enhance(bytes(RAW_BYTES), 100, 51, np, cv2)
 
+    @unittest.skipUnless(HAS_CV, "Optional opencv-python-headless not installed")
     def test_preprocess_black_and_output_shape(self):
         np, cv2 = dependencies()
         pixels = bytes(RAW_BYTES)
@@ -55,10 +63,12 @@ class SiftComparisonTests(unittest.TestCase):
             self.assertEqual(processed.shape, (height * 10, width * 10))
             self.assertEqual(processed.dtype, np.uint8)
 
+    @unittest.skipUnless(HAS_CV, "Optional opencv-python-headless not installed")
     def test_match_missing_descriptors(self):
         np, cv2 = dependencies()
         self.assertEqual(score_pair(([], None), ([], None), np, cv2), (0, 0))
 
+    @unittest.skipUnless(HAS_CV, "Optional opencv-python-headless not installed")
     def test_synthetic_self_match(self):
         np, cv2 = dependencies()
         # Synthetic checkerboard plus circular blobs: not a real fingerprint.
@@ -77,8 +87,4 @@ class SiftComparisonTests(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    try:
-        dependencies()
-    except RuntimeError:
-        print("OpenCV unavailable; install the optional dependency to run SIFT tests.")
     unittest.main()
