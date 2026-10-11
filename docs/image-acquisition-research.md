@@ -137,3 +137,27 @@ The Windows helper at VA `0x180009D80` sends logical command `0x34` with no payl
 The newly added `tools/scan_handshake_probe.py` can **optionally** send this one request with explicit confirmation, without entering image-acquisition mode or attempting any fingerprint capture. This command is still untested against the physical reader. If it returns the expected `55 aa` payload, that corroborates our understanding of a scan-path handshake. It does not by itself establish that the later mode-change, readiness poll or `0x81` image request can be run safely.
 
 Next priorities: verify handshake response; reconstruct the 0x87 scan-mode payload and idle restoration; implement strictly bounded 10,240-byte framed acquisition to a private file; use offline converter to make and inspect the genuine PNG. Do **not** publish captured fingerprint pixels or templates.
+
+## Live scan-handshake confirmation — 11 October 2026
+
+**Verified on FocalTech USB 2808:5955:** the single-command handshake probe returned the exact two-byte word expected by the Windows MOH DLL.
+
+- USB OUT: `02 00 01 34 35` — **5/5 bytes** written to EP `0x01`.
+- USB IN: `02 00 03 04 55 aa f8 00` — **8 bytes** received from EP `0x82`.
+- Declared frame length: `0x0003` = response type `0x04` plus the two payload bytes `55 aa`.
+- Little-endian payload word: **`0xAA55`** — exactly matches the comparison in the matching Windows DLL at `0x180009E36`.
+- XOR check byte: **`0xF8`** (`00 ^ 03 ^ 04 ^ 55 ^ aa`) — verified.
+- The final `00` is the same out-of-frame trailer already observed on previous responses.
+
+**Interpretation:** USB packet construction and the two-byte handshake response have now been confirmed on hardware. This is not a scan or a fingerprint capture. It does not verify that scan-mode activation or image reads can run safely without further state handling.
+
+### Next candidate: read-only readiness register query (not yet tested)
+
+The Windows DLL's readiness routine at preferred-image VA `0x180009B94` passes selector `0x01`, requested length `0x02` to the shared logical `0x80` read helper (`0x180007B8C`). It then checks the returned **little-endian** 16-bit word against `0x5AA5`. The reconstructed on-wire request would be:
+
+```text
+02 00 03 80 01 02 80
+```
+
+The equivalent response payload for the expected ready state is `a5 5a` (if the response follows the already-confirmed framing). **A pre-scan test may not report readiness until the device is placed into scan mode**, so a different reply is not necessarily an error. No mode-changing or image-acquisition command should be sent on that basis.
+
