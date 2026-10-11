@@ -45,6 +45,18 @@ The MOH `FtWbioDriverUmdfV3.dll` firmware-version function appears to begin at p
 
 The next task is to trace the object's implementation of those send/read methods, or compare a genuine WinUSB trace of the request and response. No protocol-write capability is being enabled in the current probe.
 
+## Hardware and offline test results — 11 October 2026
+
+On Nobara, the initial descriptor probe identified `2808:5955` and its bulk endpoints. A 15-second bulk-IN listen received zero unsolicited packets. The user then ran `tools/protocol_codec.py` and `python -m unittest discover -s tests -v` successfully: the offline firmware-info encoder produced `02 00 01 30 31`, and **all seven synthetic tests passed**.
+
+This validates the implementation against our current static protocol model, **not** the hardware.
+
+### Additional setup-path observation
+
+A further look at the MOH DLL disassembly shows that the routine at preferred-image VA `0x180008B80` calls several different helpers in sequence, including `0x180008780`, `0x180008328`, and `0x1800080C0`. The latter receives different one-byte arguments in the setup path. The exact effect of these calls is **not yet verified**, and we cannot currently establish which are mandatory before a firmware-information request.
+
+**Do not transmit the reconstructed request yet.** First trace these helpers and establish device startup requirements and the bulk-pipe mapping, then add a deliberate single-shot diagnostic with limited timeouts.
+
 ## Related project: research only, not a compatible driver
 
 The project [inevitableDivu/focaltech-2808-6658-driver](https://github.com/inevitableDivu/focaltech-2808-6658-driver) has published a packet specification and an experimental Python userspace tool for related FocalTech chips.
