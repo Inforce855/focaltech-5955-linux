@@ -13,7 +13,7 @@ make -C native test
 ```
 
 Requires an ordinary C compiler (cc, e.g. GCC or Clang) and make. Compiles
-into an ignored native/build/ directory and runs 36 component checks plus 8 byte-output golden vectors on entirely synthetic
+into an ignored native/build/ directory and runs 41 component checks plus 8 byte-output golden vectors on entirely synthetic
 arrays. **No real fingerprint scans are needed and no system files are changed.**
 
 ## Histogram smoothing research
@@ -188,3 +188,32 @@ identity decisions, authentication, or assessing reliable recognition.
 Further work: reconstruct the histogram smoothing and mapping of the actual
 Linux binary, then derive the feature-extractor input contract from the
 Windows 5955 WinBio engine. The native implementation must remain our own.
+
+## Initial native 256-bit feature-packing study (independent C)
+
+The 2025 Ubuntu FT9362 ELF includes an actual descriptor writer inside
+`FtComputeDescriptors` (`0xde190`). Its DWARF-backed `ST_Feature` record is
+44 bytes: 3 float32 coordinates/orientation followed by 8 uint32 words
+of bit-packed descriptor data, starting at byte offset 12.
+
+**Recovered specific descriptor branch:** at `0xdf320`–`0xdf511`, code
+clears all eight descriptor words, then compares two sets of 8×8
+orientation histogram values against their eight-cell per-orientation
+means (`× 0.125f`). It stores these results in the first 128 bits.
+It then compares neighbouring cells with a threshold multiplier
+`1.05f`, including wrap-around between the last and first cells,
+into the remaining 128 bits. Each comparison sets one corresponding bit
+in one of eight 32-bit words. The constants were checked in original
+ELF read-only `.rodata` at `0x193740` and `0x193744`.
+
+The **independent, offline** `ft_descriptor_pack.c` implements this
+particular *histogram-to-binary-bit* branch using synthetic arrays.
+Five synthetic tests verify its 44-byte/offset ABI, bit order, averaged
+comparisons, circular-neighbour comparisons and error handling.
+The original library is not linked, loaded or executed by the test.
+
+**Limits:** This is one observed FT9362 branch; the scale-space detector,
+gradient histogram calculation, alternative feature modes, feature
+ordering, template serialization and identity matcher are **not** yet
+reconstructed or vendor-output-validated. Do not use any resulting
+features for biometric verification or store real descriptor vectors.
