@@ -135,6 +135,8 @@ Firmware flashing, guessed USB command bytes, system fingerprint-library replace
 - [x] Correct earlier fixed 20% contrast cap assumption: the vendor ELF actually performs a sliding-window histogram cutoff search (bins 240 or 190), using a dynamic threshold and fallback.
 - [x] Implement an independent, separately tested C cutoff-search module with five synthetic-only tests; keep existing experimental tone map isolated.
 - [x] Independently integrate the histogram-selected cutoff into experimental native tone mapping; confirm cutoff-to-output arithmetic through native ELF static disassembly; five synthetic tests and sanitizer checks.
+- [x] Validate v3 final scaling arithmetic against static Ubuntu ELF instructions (`0x4f8f1`..`0x4f958`), including the +1e-6 denominator and float-to-integer truncation; six synthetic regression tests under ASan/UBSan.
+- [ ] Independently measure *output parity* against the proprietary normalizer in a controlled, isolated reference environment; static instruction agreement is not sufficient.
 - [ ] Reconstruct the full histogram smoothing and tone-map stages from native ELF and cross-check MOH Windows conversion. The current percentile mapping is **our approximation**, not a faithful vendor algorithm.
 - [ ] Reconstruct the vendor's image quality and custom feature descriptors on synthetic data before biometric enrollment or verification.
 - [ ] Implement and validate real multi-impression template enrollment and genuine/impostor separation before ever considering login integration.
