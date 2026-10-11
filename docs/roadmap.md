@@ -110,3 +110,14 @@ Firmware flashing, guessed USB command bytes, system fingerprint-library replace
 - [x] Run initial four-capture offline SIFT test: 80×64 yielded 147–244 keypoints and 4–5 RANSAC inliers per pair; 64×80 yielded 1750–2285 keypoints and 5–6 inliers, with **no genuine/impostor separation**.
 - [x] Add aggregate-only little-endian 64-versus-80 raw row-boundary probe and five synthetic tests.
 - [ ] Investigate candidate row-width seam signals on private original captures before further SIFT tuning; interpret alongside MOH conversion disassembly and user's visual observations.
+
+## Native-driver architecture and fingerprint-enrolment research (11 October 2026)
+
+- [x] Independently verify likely 64 x 80 sensor row geometry: four physical capture sets show 5.48–9.96× median jumps at 64-sample wraps, but only 0.90–1.37× at proposed 80-sample wraps; stride-64 vertical neighbour differences also smaller.
+- [x] Inspect OMGrant/ft9201-libfprint's LGPL native Linux WinBio engine bridge, 64 x 80 BIR format, eight-stage repositioned enrollment with duplicate/low-quality retries and private opaque template handling.
+- [x] Record key incompatibility: 93a9 uses 96 x 96 native optical hardware, different USB endpoints and FT9348 firmware; do not use those commands or firmware on 5955.
+- [x] Document possible modular native implementation in docs/ft9201-engine-porting.md and distinction between vendor matcher and USB capture.
+- [ ] Identify engine-adapter DLL and INF engine registration in the matching Windows package for 2808:5955; inspect exports/imports locally, never commit proprietary binaries.
+- [ ] Confirm genuine 64 x 80 image correction/8-bit BIR format and vendor engine ABI with offline synthetic diagnostics.
+- [ ] Implement private offline multi-sample enrollment / genuine-and-impostor verification; require quality gating and repositioned impressions, not just two-image correlations.
+- [ ] Build tested out-of-tree libfprint 5955 transport and matching adapter without replacing distro libraries, enabling logins or altering hardening prematurely.
