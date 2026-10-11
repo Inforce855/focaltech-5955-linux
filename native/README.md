@@ -13,7 +13,7 @@ make -C native test
 ```
 
 Requires an ordinary C compiler (cc, e.g. GCC or Clang) and make. Compiles
-into an ignored native/build/ directory and runs 41 component checks plus 8 byte-output golden vectors on entirely synthetic
+into an ignored native/build/ directory and runs 47 component checks plus 8 byte-output golden vectors on entirely synthetic
 arrays. **No real fingerprint scans are needed and no system files are changed.**
 
 ## Histogram smoothing research
@@ -217,3 +217,40 @@ gradient histogram calculation, alternative feature modes, feature
 ordering, template serialization and identity matcher are **not** yet
 reconstructed or vendor-output-validated. Do not use any resulting
 features for biometric verification or store real descriptor vectors.
+
+## Upstream MFS orientation histogram study (512 values; experimental)
+
+Read-only ELF disassembly of the Ubuntu 2025 FocalTech FT9362 native library
+shows that **the intermediate descriptor histogram is bigger than the final
+256-bit descriptor**. `FtComputeDescriptors` at `0xde190` allocates
+`descrWidth * descrWidth * descrHistBins` float entries (`0xde233`–`0xde249`).
+The sampled path loops a roughly 31×31 image patch (`-15..15`), computes
+gradients via `FtMfsCalcGradMagOri`, rotates coordinates relative to the
+keypoint orientation, wraps angle bins, and distributes the contributions
+between neighbouring spatial and orientation bins. The orientation scale
+constant at `0x19373c` is approximately **8/(2π)**, consistent with eight
+angle bins. In the experimentally studied mode, the working histogram
+shape is **8 spatial cells × 8 spatial cells × 8 orientation bins = 512
+floating-point values**, before vendor-specific bit comparisons produce
+the 256-bit `ST_Feature.bDescri[8]`.
+
+The independent `native/ft_mfs_histogram.c` provides two offline research
+functions: (1) a central-difference gradient field (right-minus-left and
+above-minus-below), and (2) trilinear, Gaussian-weighted histogram votes
+on a 31×31 patch around an explicitly supplied candidate keypoint.
+Inputs are synthetic float arrays; no fingerprint capture or actual
+feature detection is involved. Six C tests check gradient direction,
+flatness, orientation-relative rotation, spatial localisation, image
+edge bounds and invalid-input handling. Strict C11 + ASan/UBSan pass locally.
+
+**Critical limitation:** the vendor uses a precomputed `GAUSS_WEIGHT_TAB`,
+gradient-validity gating, configurable scale factors and multiple algorithm
+modes. The C prototype uses our own Gaussian σ=8 and cell width=4,
+which are **research approximations, not recovered exact vendor values**.
+Furthermore, the earlier 128-float input to our bit-packing subroutine is
+only an *isolated comparison branch*. We have **not** established the
+correct vendor mapping from the full 512-bin histogram to that branch.
+Do **not** feed these 512 values directly to the earlier bit packer or
+claim end-to-end descriptor parity, enrollment or authentication accuracy.
+
+The project test suite executes no vendor library and performs no USB I/O.
