@@ -17,7 +17,7 @@ From a **second independently captured A1/A2/B1/B2 set**, the offline little-end
 | B1 | 6.39x | 1.09x | 52 / 204 |
 | B2 | 8.27x | 0.90x | 68 / 260 |
 
-The 64-row-wrap hypothesis is consistently distinguished by unusually large boundary jumps in all four captures and much smaller adjacent-row differences. Combined with the Windows stride and visual evidence, **64 x 80 should be the primary *working assumption* for sensor memory geometry**. This is not a formal guarantee: line-specific sensor bias, blank edges, fixed patterns or firmware row remapping could influence the seam measurement. Do not conflate '60x80' with 'rotating a finished 80x64 image': the raw sample arrays are *re-wrapped*, not rotated.
+The 64-row-wrap hypothesis is consistently distinguished by unusually large boundary jumps in all four captures and much smaller adjacent-row differences. Combined with the Windows stride and visual evidence, **64 x 80 should be the primary *working assumption* for sensor memory geometry**. This is not a formal guarantee: line-specific sensor bias, blank edges, fixed patterns or firmware row remapping could influence the seam measurement. Do not conflate '64x80' with 'rotating a finished 80x64 image': the raw sample arrays are *re-wrapped*, not rotated.
 
 ## OMGrant/ft9201-libfprint: architectural relevance
 
@@ -43,7 +43,7 @@ The **matcher** expects an **8-bit 64 x 80 WinBio BIR**. On the FT9201 only, the
 | Bring-up | FT9348W MCU firmware upload and register-config sequence | Existing FT936x firmware already responds to validated image/handshake commands |
 | Capture protocol | Different control/firmware state machine | Known 0x81 reads and verified status semantics |
 
-**Never send FT9201 firmware, register writes, power/reset commands or control transfers to our `5955`**. No modifications to existing CFS or OS components. The transport should be built on our **already validated `5955` USB protocol**, with bounded reads and device validation.
+**Never send FT9201 firmware, register writes, power/reset commands or control transfers to our `5955`**. No changes to Nobara USB services, system libraries or authentication components. The transport should be built on our **already validated `5955` USB protocol**, with bounded reads and device validation.
 
 ## Enrolment: repeated, repositioned impressions are required
 
