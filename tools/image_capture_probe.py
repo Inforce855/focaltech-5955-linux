@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Experimental one-shot FocalTech 2808:5955 fingerprint image read.
+"""Experimental single-shot or four-capture FocalTech 2808:5955 image reader.
 
 The Windows MOH image helper at VA 0x18000793C sends command 0x81 and
 expects 2 * width * height bytes. This probe deliberately DOES NOT issue
 the unverified 0x87 scan-mode change; a scan may therefore yield no data.
 Hardware image-read response format has not yet been confirmed.
 
-Dry-run by default. --send and manually entering CAPTURE are both required.
+Dry-run by default. --send opts into live USB, and each capture requires\npressing Enter after placing the finger. --session runs A1, A2, B1, B2.
 Never share, publish or commit captured biometric samples.
 """
 from __future__ import annotations
@@ -45,12 +45,15 @@ def private_output_folder() -> Path:
     return directory
 
 
-def save_private_raw(pixels: bytes) -> Path:
+def save_private_raw(pixels: bytes, *, label: str | None = None) -> Path:
     """Never overwrite existing fingerprint captures or make public files."""
     if len(pixels) != RAW_LENGTH:
         raise ValueError('Image length disagrees with reported sensor dimensions')
+    if label is not None and label not in ('A1', 'A2', 'B1', 'B2'):
+        raise ValueError('Invalid capture label')
     directory = private_output_folder()
-    name = 'fingerprint_' + datetime.now().strftime('%d-%m-%Y_%H-%M-%S') + '.raw'
+    suffix = '_' + label if label else ''
+    name = 'fingerprint_' + datetime.now().strftime('%d-%m-%Y_%H-%M-%S') + suffix + '.raw'
     output = directory / name
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, 'O_NOFOLLOW', 0)
     fd = os.open(output, flags, 0o600)
@@ -70,7 +73,7 @@ def save_private_raw(pixels: bytes) -> Path:
     return output
 
 
-def live_capture() -> int:
+def live_capture(*, label: str | None = None) -> int:
     """One USB OUT request; bounded IN reception; no mode change."""
     try:
         import usb.core
@@ -121,7 +124,7 @@ def live_capture() -> int:
             print('No file saved. Do not blindly retry or change scan mode.')
             return 6
 
-        destination = save_private_raw(image.pixels)
+        destination = save_private_raw(image.pixels, label=label)
         print('IMAGE BUFFER RECEIVED:', image.format)
         print('Saved privately:', destination)
         print('Raw sample byte order and pixel mapping remain unverified.')
@@ -151,33 +154,94 @@ def live_capture() -> int:
         usb.util.dispose_resources(device)
 
 
+CAPTURE_SEQUENCE = (
+    ('A1', 'Finger A — first capture'),
+    ('A2', 'Finger A — second capture'),
+    ('B1', 'Finger B — first capture'),
+    ('B2', 'Finger B — second capture'),
+)
+
+
+def wait_for_enter(message: str, *, input_fn=None) -> bool:
+    """Capture only on an empty Enter. Any other input cancels safely."""
+    if input_fn is None:
+        input_fn = input
+    try:
+        answer = input_fn(message)
+    except (KeyboardInterrupt, EOFError):
+        print('\nCapture cancelled; no USB command sent for this step.')
+        return False
+    if answer:
+        print('Cancelled (only an empty Enter triggers a capture).')
+        return False
+    return True
+
+
+def run_session(*, capture_fn=None, input_fn=None) -> int:
+    """Exactly four opt-in image reads; no polling and no automatic retries.
+
+    One physical action (Enter) is required immediately before each command.
+    No capture proceeds if the previous command fails.
+    """
+    if capture_fn is None:
+        capture_fn = live_capture
+    print('Four-capture session: A1, A2, B1, B2.')
+    print('Place finger A twice, then switch to finger B for two captures.')
+    print('Lift and reposition between captures; touch the power key LIGHTLY.')
+    print('Each Enter sends ONE experimental image-read command 0x81.')
+    print('Any other input or Ctrl+C stops; previously saved files stay private.')
+    completed = 0
+    for index, (label, description) in enumerate(CAPTURE_SEQUENCE, start=1):
+        prompt = f'\n[{index}/4] {description}. Place finger, then press Enter (q + Enter cancels): '
+        if not wait_for_enter(prompt, input_fn=input_fn):
+            print(f'Session stopped. {completed} of 4 captures completed.')
+            return 3
+        try:
+            status = capture_fn(label=label)
+        except KeyboardInterrupt:
+            print('\nInterrupted after capture request; no more commands will be sent.')
+            return 130
+        if status:
+            print(f'Session stopped on {label} (status {status}). '
+                  f'{completed} earlier capture(s) retained; no automatic retry.')
+            return status
+        completed += 1
+        if completed < 4:
+            print(f'Saved capture {label}. Lift/reposition your finger when ready.')
+    print('\nAll four captures completed. Original samples remain in ignored local-data/.')
+    print('Next (without sudo):')
+    print('  .venv/bin/python tools/fingerprint_compare.py --latest-four')
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--send', action='store_true',
-                        help='one live 0x81 image request (requires CAPTURE)')
+                        help='authorise live 0x81 image read(s); Enter before each')
+    parser.add_argument('--session', action='store_true',
+                        help='four separate Enter-triggered captures (A1, A2, B1, B2)')
     args = parser.parse_args()
     if encode_command(COMMAND) != AUDITED_PACKET:
         print('SAFETY STOP: packet differs from audited bytes.', file=sys.stderr)
         return 3
-    print('FocalTech 2808:5955 — one-shot experimental image read')
-    print('USB OUT:', AUDITED_PACKET.hex(' '))
+    print('FocalTech 2808:5955 — controlled fingerprint image capture')
+    print('USB OUT per capture:', AUDITED_PACKET.hex(' '))
     print(f'Expected sample buffer: {RAW_LENGTH} bytes (80 x 64 x 2).')
     print('No explicit scan-mode change; no firmware/configuration writes.')
-    print('No fingerprint image bytes will be printed or uploaded.')
+    print('Fingerprint image contents remain PRIVATE on this computer.')
+    print('Mode:', 'four-capture session' if args.session else 'one-shot capture')
     if not args.send:
         print('DRY RUN: no USB access and no files created.')
+        print('To proceed: sudo .venv/bin/python tools/image_capture_probe.py '
+              + ('--session --send' if args.session else '--send'))
         return 0
-
-    print('CAUTION: Unlike earlier metadata queries, command 0x81 may')
-    print('trigger an image acquisition or affect temporary sensor state.')
-    print('Its actual response on this 2808:5955 hardware is not yet known.')
-    try:
-        confirmation = input('Lightly touch the reader and type CAPTURE once: ')
-    except (EOFError, KeyboardInterrupt):
-        print('\\nCancelled.')
-        return 3
-    if confirmation != 'CAPTURE':
-        print('Cancelled.')
+    print('CAUTION: command 0x81 can initiate a sensor read or change temporary')
+    print('device state. A physical Enter is required for each experimental read.')
+    if args.session:
+        return run_session()
+    if not wait_for_enter(
+        'Lightly touch the sensor, then press Enter to capture (q + Enter cancels): '
+    ):
         return 3
     return live_capture()
 
