@@ -1,6 +1,6 @@
 # Image acquisition: current MOH DLL findings
 
-Status: **first live image-sized 10,246-byte transfer received** from `2808:5955` on 11 October 2026, following successful firmware, finger-contact, geometry, handshake and readiness tests. **No biometric file or validated fingerprint image yet:** the previous parser rejected an unexpected nonzero extra byte without checking the frame checksum.
+Status: **first live image files reported successful under Nobara** on 11 October 2026 after correcting frame parsing to checksum-validate the payload before tolerating one extra byte. The user reports three physical captures—finger A, finger B, finger A—and visually similar first/third images with a clearly different second. The images themselves have not been independently inspected or published; fingerprint template matching and authentication remain unimplemented.
 
 The matching Windows binary is `FtWbioDriverUmdfV3.dll` from the MOH 5.10.66.6611 driver archive, held locally (not redistributed).
 
@@ -201,4 +201,17 @@ The previous decoder would only trim that extra byte if it were `0x00`. Since it
 A narrowly scoped decoder fix now checks a 10,245-byte frame **independently**, confirming declared image-payload length `10240`, reply type `0x04`, prefix `0x02`, and XOR BCC. It permits **at most one** further byte of **unknown meaning** only *after* the entire image frame passes those checks; malformed/truncated/oversized transfers and bad checksums continue to be rejected. Valid samples are saved only to private `local-data/`, and no raw pixel content is printed.
 
 **Next:** one operator-authorised repeat of `sudo .venv/bin/python tools/image_capture_probe.py --send` after `git pull --ff-only`, light finger contact, and typing `CAPTURE`. If the checksummed frame validates, the probe should save a private `.raw` file ready for `tools/raw_to_png.py`. If it fails validation, stop and examine **only non-biometric metadata** (packet length, declared frame size, checksum result), not the raw samples.
+
+
+## Physical image-file milestone — 11 October 2026
+
+After applying the updated `tools/image_transfer.py` parser and using the private capture/PNG conversion workflow, the device owner reported successful generation of **several physical fingerprint image files** under Nobara Linux:
+
+1. Finger A image.
+2. Different finger (Finger B): visually very different from Finger A.
+3. Finger A again: visually similar to the first capture.
+
+This is the first report of actual finger-dependent image files from the Linux prototype. It is **user-reported visual evidence** rather than an independently reviewed biometric image, a verified byte-order/polarity mapping, or an evaluated matcher. No biometric samples were placed in the public repository and no copies are requested.
+
+This milestone supports moving from transport reverse-engineering to local-only quality checks: compare same-finger versus different-finger samples while accounting for contact pressure, translation and rotation; confirm which 16-bit endian interpretation produces coherent ridges; then investigate host-side enhancement and matching. Do not turn on KDE/PAM biometric authentication until enrolment and matching have been validated with a password fallback.
 
