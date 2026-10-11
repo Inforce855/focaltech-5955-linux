@@ -13,8 +13,20 @@ make -C native test
 ```
 
 Requires an ordinary C compiler (cc, e.g. GCC or Clang) and make. Compiles
-into an ignored native/build/ directory and runs five tests on entirely synthetic
+into an ignored native/build/ directory and runs ten tests on entirely synthetic
 arrays. **No real fingerprint scans are needed and no system files are changed.**
+
+## Histogram smoothing research
+
+The second C11 module, `ft_histogram.c`, independently implements a five-bin
+moving-average filter with clipped windows at histogram boundaries, supporting
+one to three passes over 256 bins (or the 250-bin window also seen in the
+disassembly). This matches the broad filter structure found in the unstripped
+native FocalTech `fw9362_smooth_hist32f` function. **It is not yet integrated
+into the main image converter** because downstream tone mapping and its
+parameters are not fully understood. Five additional synthetic tests verify
+constant-bin preservation, impulse response, edge windows, deterministic
+output and invalid-input handling. The five original image tests remain.
 
 ## Implementation status
 
