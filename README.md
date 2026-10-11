@@ -309,6 +309,23 @@ Files are written only into private `local-data/` with different filenames; exis
 
 These two arrangements *re-wrap sequential sensor samples into rows*; they are **not a 90° rotation of the same image**. The Windows correction routine's 64-sample row stride adds another unresolved clue. We will preserve both geometric hypotheses and prioritise reconstructing the vendor image conversion rather than guessing a match threshold. No actual fingerprint images, templates or raw bytes are included in GitHub; public examples will be synthetic.
 
+### Related project: 2808:c652 with 64 × 80 OpenCV SIFT processing
+
+The independent [scamiran149/libfprint_focaltechc652](https://github.com/scamiran149/libfprint_focaltechc652) project targets a **different FocalTech USB PID, 2808:c652**, but its endpoints (0x01/0x82), 0x81 image request, 10,246-byte frame size, four-byte image header, little-endian pixels and **64 × 80** frame shape match several strong clues from our 2808:5955 research. Its image-processing method uses bicubic enlargement, noise/background correction, local contrast, SIFT features and RANSAC.
+
+**Do not install that driver onto 5955 or simply change its PID.** On our actual hardware, the same command 82 73 01 reports finger contact (05/06), while the other driver's capture state machine calls it a trigger. Its other setup commands have not been tested on our device. The third-party matcher also has an apparent stored-descriptor serialisation mismatch and no verified threshold for 5955. See our [source comparison and caveats](docs/c652-comparison.md).
+
+The latest same-capture controlled geometry experiment (11 October 2026, little-endian, ±6 pixels) gave **A-versus-impostor margin +0.143 for 64 × 80** versus **+0.032 for 80 × 64**, but finger B failed genuine/impostor separation in both. The owner's visual preference for 64 × 80 has real supporting evidence, but full image mapping is not yet established.
+
+We now have an **independent offline OpenCV SIFT experiment**, using original private A1/A2/B1/B2 RAW captures and printing only feature counts and geometric inlier counts for **both layouts**. It neither connects to the reader nor changes fprintd/PAM, saves fingerprints, or claims a match:
+
+```bash
+.venv/bin/python -m pip install opencv-python-headless
+.venv/bin/python tools/sift_compare.py --latest-four
+```
+
+The dependency is optional and stays in the project's virtual environment; normal USB/image diagnostics don't require OpenCV. Real biometric images stay local and out of GitHub.
+
 ## Safety and scope
 
 - Aim: an independently implemented Linux userspace driver, preferably integrated into `libfprint` / `fprintd`.
