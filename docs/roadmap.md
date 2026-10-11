@@ -57,7 +57,9 @@ See [protocol research notes](protocol-research.md) and [image acquisition findi
 - [x] Capture and convert physical finger image files under Nobara; owner reported three image files: finger A, finger B, finger A again (11 October 2026). First/third visually similar; second visibly different.
 - [x] Observe clearer fingerprint-like detail with **big-endian** raw interpretation; little-endian preview was largely repeated row lines (owner visual inspection; encoding not conclusively proven).
 - [x] Add **offline A–B–A image similarity experiment**, with lighting normalisation, ±6 pixel translations, no USB or template storage, and 10 synthetic tests (local tests passed).
-- [ ] Run the A–B–A comparator on three real local captures and inspect relative same-finger/different-finger correlations.
+- [x] Run A–B–A comparator on real 11 October 2026 data: same finger +0.132; controls +0.078 and +0.130; **+0.003** separation, too weak for authentication.
+- [x] Extend the optional offline translation window up to 14px; default remains 6px; do not interpret higher correlations alone as recognition.
+- [ ] Run the same three private captures with --max-shift 12 and compare all pairwise correlations and boundary hits.
 - [ ] Independently validate pixel interpretation, ridge quality and repeatability with multiple private local comparisons (without sharing biometric data).
 - [ ] Validate the image payload and sensor pixel ordering before attempting enrollment.
 - [ ] Determine whether the MOH device returns raw images, processed images or proprietary features.
