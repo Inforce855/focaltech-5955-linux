@@ -175,6 +175,32 @@ After updating the frame decoder to check the full 10,245-byte frame independent
 
 The fingerprint images, native raw buffers and generated PNGs were **not uploaded or committed to GitHub**. The actual 16-bit sample endianness, image orientation, conversion quality, ridge definition, and matching reproducibility remain to be assessed. Recommended next step is *private/offline* image-quality and repeatability analysis before attempting any authentication integration.
 
+
+### Offline A–B–A fingerprint comparison (experimental)
+
+Your first physical PNG inspection suggests the **big-endian** sample interpretation has recognisable image detail; the little-endian interpretation showed repeated horizontal lines. Big-endian is therefore the default for a new local-only comparison prototype, not yet proof of the sensor's exact sample format.
+
+[`tools/fingerprint_compare.py`](tools/fingerprint_compare.py) takes three 10,240-byte **raw captures in order: first finger A, different finger B, finger A again**. It applies robust intensity normalisation, removes large-scale lighting differences and compares spatial image detail while allowing up to six pixels of translation. It reports correlations for all three pairs. It does **not** send USB requests, save biometrics, enrol a finger, set a security threshold, or interact with `fprintd`, KDE or PAM. Uses Python's standard library and existing `raw_to_png.py`; no extra dependency.
+
+```bash
+cd ~/Projects/focaltech-5955-linux
+git pull --ff-only
+
+# Easiest when these are the most recently captured .raw files:
+.venv/bin/python tools/fingerprint_compare.py --latest-three
+
+# Or give three exact .raw paths in chronological A, B, A order:
+.venv/bin/python tools/fingerprint_compare.py \
+    local-data/FIRST.raw local-data/SECOND.raw local-data/THIRD.raw
+
+# Offline synthetic unit tests; no USB or private file access:
+.venv/bin/python -m unittest discover -s tests -v
+```
+
+The output labels the three file names `A1`, `B`, `A2` and shows three correlation values and offsets. **A positive difference between `A1 vs A2` and both different-finger controls would be a promising ranking, not proof of identity.** Even similar images may share static sensor artefacts; meaningful recognition requires repeated captures, quality checks, independent different-finger controls, and a validated matcher. The tool does not claim a `MATCH` or `NO MATCH` verdict.
+
+**Privacy:** Do not upload or commit any `.raw` or PNG fingerprint images. The program only reads private files locally and prints basic numerical diagnostic scores. It creates no stored fingerprint templates.
+
 ## Safety and scope
 
 - Aim: an independently implemented Linux userspace driver, preferably integrated into `libfprint` / `fprintd`.
