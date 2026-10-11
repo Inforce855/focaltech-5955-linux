@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Offline FocalTech 2808:5955 MOH USB frame codec from Windows DLL disassembly.
 
-No USB access or hardware control. All packet assumptions are untested on the sensor.
+This codec has no USB/device access. The firmware-info command and one response
+were verified on FocalTech 2808:5955 hardware on 11 October 2026.
 """
 from __future__ import annotations
 
@@ -36,13 +37,16 @@ class Reply:
     prefix: int
     reply_type: int
     payload: bytes
+    trailing_zero: bool = False
 
 
 def decode_reply(frame: bytes, *, validate_type: bool = True) -> Reply:
     """Parse a whole candidate response (read from an existing capture).
 
     The Windows parser checks length, response type 04 and XOR BCC.
-    The first byte's required value is still unconfirmed.
+    One live firmware-info reply had exactly one additional 00 byte AFTER
+    the framed checksum. Accept only that observed one-byte suffix.
+    The first byte's required value is still not independently proven.
     """
     if len(frame) < 5:
         raise ProtocolError("Frame is shorter than five bytes")
@@ -50,9 +54,14 @@ def decode_reply(frame: bytes, *, validate_type: bool = True) -> Reply:
     if declared_length < 1:
         raise ProtocolError("Reply length is zero")
     expected_size = declared_length + 4
+    trailing_zero = len(frame) == expected_size + 1 and frame[-1] == 0
+    if trailing_zero:
+        frame = frame[:-1]
     if len(frame) != expected_size:
         raise ProtocolError(
-            f"Reply length implies {expected_size} bytes but got {len(frame)}"
+            f"Reply length implies {expected_size} bytes "
+            f"(optionally one observed 00 suffix), "
+            f"but got {len(frame) + int(trailing_zero)}"
         )
     if validate_type and frame[3] != 0x04:
         raise ProtocolError(
@@ -64,7 +73,7 @@ def decode_reply(frame: bytes, *, validate_type: bool = True) -> Reply:
             f"Checksum mismatch: got 0x{frame[-1]:02x}, "
             f"calculated 0x{actual_bcc:02x}"
         )
-    return Reply(frame[0], frame[3], frame[4:-1])
+    return Reply(frame[0], frame[3], frame[4:-1], trailing_zero=trailing_zero)
 
 
 def main() -> int:
@@ -85,6 +94,7 @@ def main() -> int:
         parser.error(str(exc))
     print(f"Prefix: 0x{reply.prefix:02x} (meaning not established)")
     print(f"Reply type: 0x{reply.reply_type:02x}")
+    print(f"Extra trailing 00 byte: {reply.trailing_zero}")
     print(f"Data (hex): {reply.payload.hex(' ')}")
     print(
         "Possible ASCII:",
