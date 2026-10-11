@@ -58,3 +58,24 @@ The owner ran the existing offline, big-endian comparator against three real pri
 The same-finger pair barely ranks first: its advantage over the strongest different-finger comparison is only about **+0.003**. That is **not meaningful discrimination** and certainly not enough to configure an authentication threshold. The A1→A2 best shift ends at `y=-6`, precisely the existing search boundary. This could reflect larger translation or accidental boundary maximisation; it is not proof of any image registration fix.
 
 The **next no-new-capture diagnostic** is to run `--max-shift 8` using the exact same private files, and report **all three pair scores** rather than focusing only on A1–A2. Larger search windows can raise impostor scores as well. Longer term the preprocessing and sample orientation, nonrigid finger placement and static sensor artefacts need to be examined locally. Do not declare identity matches based on this trial.
+
+## Live four-capture A1/A2/B1/B2 results — 11 October 2026, 14:24 BST
+
+User tested the new manually triggered four-shot session successfully on the actual reader. The four private files were captured **14:24:20 A1, 14:24:24 A2, 14:24:37 B1, 14:24:42 B2**, so the session interface and private file labels worked.
+
+Offline comparator used **big-endian, 80 × 64, ±6 pixel translation**:
+
+| Pair | Correlation | Shift |
+| --- | ---: | --- |
+| A1 vs A2 (same A) | +0.089 | (-6, +5) |
+| B1 vs B2 (same B) | +0.081 | (+1, -6) |
+| A1 vs B1 (different) | **+0.118** | (+2, +6) |
+| A1 vs B2 (different) | +0.088 | (+0, -6) |
+| A2 vs B1 (different) | +0.081 | (+0, +1) |
+| A2 vs B2 (different) | +0.088 | (+1, -4) |
+
+The strongest cross-finger score (+0.118) is higher than **both** same-finger scores. Genuine A is 0.029 *lower* than the highest cross-finger score, and genuine B is 0.037 lower. Several optimal alignments are on the imposed ±6 search boundary. **No reliable matching/discrimination was demonstrated.** Increasing the translation window did not help the earlier A–B–A experiment; focus on correct signed-sample processing and sensor-specific correction before tuning a threshold or increasing shifts.
+
+The Windows MOH general image converter at VA `0x180005C78` calls correction routine `0x180006184`, which explicitly checks **signed 16-bit values** (`cmp word ...; jge`) and sets negative input samples to zero before sensor correction, then negates 16-bit samples and performs signed min/range and histogram-based output mapping. The current raw converter interprets bytes as **unsigned** `H` values, in either endian order, before percentile-stretching. These are **not equivalent processing paths**, potentially explaining the noisy images and weak correlation scores. The exact correction routine is not yet fully reproduced; resist premature identity claims.
+
+No biometric files or edited images have been committed to GitHub.
