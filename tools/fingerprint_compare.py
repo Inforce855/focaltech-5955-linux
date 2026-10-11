@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline experimental similarity comparison for three PRIVATE FT936x captures.
+"""Offline experimental similarity comparison for three or four PRIVATE FT936x captures.
 
 No USB access, no image output, no matching-template database and no changes
 at all to authentication. Scores are exploratory image correlations, NOT a
@@ -154,25 +154,45 @@ def compare(a: Processed, b: Processed, *, max_shift: int = 6) -> Comparison:
     return best
 
 
-def recent_three(folder: Path) -> list[Path]:
+def recent_captures(folder: Path, count: int) -> list[Path]:
     if folder.is_symlink():
         raise ValueError('Refusing symlinked local-data directory')
     candidates = [p for p in folder.glob('fingerprint_*.raw')
                   if p.is_file() and not p.is_symlink()]
-    if len(candidates) < 3:
-        raise ValueError(f'Need three .raw fingerprint captures; found {len(candidates)} in {folder}')
+    if len(candidates) < count:
+        raise ValueError(f'Need {count} .raw fingerprint captures; found {len(candidates)} in {folder}')
     ordered = sorted(candidates, key=lambda p: (p.stat().st_mtime_ns, p.name))
-    return ordered[-3:]
+    return ordered[-count:]
+
+
+def recent_three(folder: Path) -> list[Path]:
+    """Legacy A/B/A selection; preserved for old tests and scripts."""
+    return recent_captures(folder, 3)
+
+
+def recent_four(folder: Path) -> list[Path]:
+    """Find newest complete, clearly-labelled A1/A2/B1/B2 series."""
+    files = recent_captures(folder, 4)
+    expected = ('_A1.raw', '_A2.raw', '_B1.raw', '_B2.raw')
+    if not all(path.name.endswith(suffix) for path, suffix in zip(files, expected)):
+        raise ValueError(
+            'The latest four captures are not labelled A1, A2, B1, B2 in order. '
+            'Use four explicit file paths or run a complete --session capture.'
+        )
+    return files
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('files', metavar='RAW', nargs='*', type=Path,
-                        help='three chronological 10240-byte raw captures: finger A, B, A')
-    parser.add_argument('--latest-three', action='store_true',
-                        help='use three most recently modified fingerprint_*.raw in local-data')
+                        help='three A/B/A, or four A1/A2/B1/B2, raw capture files')
+    latest = parser.add_mutually_exclusive_group()
+    latest.add_argument('--latest-three', action='store_true',
+                        help='latest three A1/B/A2 captures (legacy)')
+    latest.add_argument('--latest-four', action='store_true',
+                        help='new four-capture A1/A2/B1/B2 labelled session')
     parser.add_argument('--directory', type=Path, default=Path('local-data'),
-                        help='capture directory used with --latest-three')
+                        help='capture directory used with --latest-three or --latest-four')
     parser.add_argument('--order', choices=('big', 'little'), default='big')
     parser.add_argument('--layout', choices=('80x64', '64x80'), default='80x64',
                         help='row-major sensor layout (default 80x64)')
@@ -181,40 +201,64 @@ def main() -> int:
     parser.add_argument('--max-shift', type=int, choices=range(0, 15), default=6,
                         metavar='{0..14}', help='pixel translation window (default 6)')
     args = parser.parse_args()
-    if args.latest_three and args.files:
-        parser.error('Use either --latest-three or exactly three RAW filenames, not both')
-    if not args.latest_three and len(args.files) != 3:
-        parser.error('Provide three RAW filenames in A/B/A order, or --latest-three')
+    if (args.latest_three or args.latest_four) and args.files:
+        parser.error('Use latest-three/latest-four OR explicit filenames, not both')
+    if not (args.latest_three or args.latest_four) and len(args.files) not in (3, 4):
+        parser.error('Provide three A/B/A or four A1/A2/B1/B2 files, or choose --latest-four')
     try:
-        files = recent_three(args.directory) if args.latest_three else args.files
+        if args.latest_three:
+            files = recent_three(args.directory)
+        elif args.latest_four:
+            files = recent_four(args.directory)
+        else:
+            files = args.files
+        labels = ('A1', 'A2', 'B1', 'B2') if len(files) == 4 else ('A1', 'B', 'A2')
         print('FocalTech 2808:5955 — OFFLINE image-similarity experiment')
         print('No USB access. No fingerprint output saved, uploaded or enrolled.')
         print(f'Decoding: {args.order}-endian; maximum translation: {args.max_shift} px')
-        for label, filename in zip(('A1', 'B', 'A2'), files):
+        for label, filename in zip(labels, files):
             print(f'  {label}: {filename.name}')
         layouts = ('80x64', '64x80') if args.both_layouts else (args.layout,)
         for layout in layouts:
             print(f'\nImage layout: {layout} (unverified raw arrangement)')
             samples = [load_capture(p, args.order, layout=layout) for p in files]
-            for label, data in zip(('A1', 'B', 'A2'), samples):
+            for label, data in zip(labels, samples):
                 print(f'  {label} detail RMS: {data.detail_rms:.4f} (diagnostic only)')
-            comparisons = [
-                ('A1 vs A2 (same-finger hypothesis)', 0, 2),
-                ('A1 vs B  (different-finger control)', 0, 1),
-                ('A2 vs B  (different-finger control)', 2, 1),
-            ]
+            if len(files) == 4:
+                comparisons = [
+                    ('A1 vs A2 (same finger A)', 0, 1),
+                    ('B1 vs B2 (same finger B)', 2, 3),
+                    ('A1 vs B1 (different fingers)', 0, 2),
+                    ('A1 vs B2 (different fingers)', 0, 3),
+                    ('A2 vs B1 (different fingers)', 1, 2),
+                    ('A2 vs B2 (different fingers)', 1, 3),
+                ]
+            else:
+                comparisons = [
+                    ('A1 vs A2 (same-finger hypothesis)', 0, 2),
+                    ('A1 vs B  (different-finger control)', 0, 1),
+                    ('A2 vs B  (different-finger control)', 2, 1),
+                ]
             scores = []
             for label, i, j in comparisons:
                 r = compare(samples[i], samples[j], max_shift=args.max_shift)
                 print(f'  {label}: correlation {r.correlation:+.3f}, '
                       f'shift x={r.dx:+d} y={r.dy:+d} (overlap {r.count} px)')
                 scores.append(r.correlation)
-            separation = scores[0] - max(scores[1:])
-            print(f'Same-finger correlation minus strongest control: {separation:+.3f}')
-            if separation > 0:
-                print('Observed ranking: same-finger pair is most similar.')
+            if len(files) == 4:
+                strongest_control = max(scores[2:])
+                print(f'  Same A minus strongest different-finger control: '
+                      f'{scores[0] - strongest_control:+.3f}')
+                print(f'  Same B minus strongest different-finger control: '
+                      f'{scores[1] - strongest_control:+.3f}')
+                print('Four-capture comparison is diagnostic only, not authentication.')
             else:
-                print('Observed ranking: same-finger pair is NOT the most similar.')
+                separation = scores[0] - max(scores[1:])
+                print(f'Same-finger correlation minus strongest control: {separation:+.3f}')
+                if separation > 0:
+                    print('Observed ranking: same-finger pair is most similar.')
+                else:
+                    print('Observed ranking: same-finger pair is NOT the most similar.')
         print('IMPORTANT: These are not verified identity matches, security thresholds,')
         print('or proof of liveness. Static sensor artefacts may bias correlations.')
         return 0
