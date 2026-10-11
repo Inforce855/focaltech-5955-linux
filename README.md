@@ -117,19 +117,23 @@ An **offline, private PNG converter** is available now: [`tools/raw_to_png.py`](
 
 By default it produces both byte-order interpretations (unverified until inspected). For each: the lossless 80 × 64 16-bit greyscale image, a contrast-stretched 80 × 64 PNG, and a 640 × 512 enlarged PNG preview. All output files are written privately with mode `0600`, without overwriting existing files. They are ignored by Git and must not be uploaded publicly.
 
-### Next diagnostic: read the Windows scan handshake marker
+### Scan handshake confirmed on real hardware
 
-The Windows MOH DLL calls a helper which sends logical command `0x34` and checks a **two-byte** response against the little-endian word `0xAA55`. This is an **unverified** query for this reader; its effects cannot be guaranteed yet.
+On 11 October 2026, `tools/scan_handshake_probe.py` sent `02 00 01 34 35` once and received the correctly framed and checksummed `55 aa` payload: the Windows driver's expected **`0xAA55` handshake**. This was not an image scan.
+
+### Next diagnostic: read the scan-readiness status (not yet hardware tested)
+
+The matching MOH DLL also contains a separate readiness read: logical `0x80`, selector `0x01`, two bytes. It compares the returned little-endian word to `0x5AA5` **after enabling scanning mode**. The isolated read is a reasonable diagnostic, but may return a different status before scanning has been enabled.
 
 ```bash
-# Preview only: no USB access
-.venv/bin/python tools/scan_handshake_probe.py
+# Dry run: no device access
+.venv/bin/python tools/scan_ready_probe.py
 
-# Optional single real handshake request; requires typing SEND
-sudo .venv/bin/python tools/scan_handshake_probe.py --send
+# Optional one-shot readiness query with manual SEND confirmation
+sudo .venv/bin/python tools/scan_ready_probe.py --send
 ```
 
-The probe sends `02 00 01 34 35` once, validates the bounded response, and does **not** enter scan mode or acquire an image. We should review its response before making any further changes to the reader's state.
+The candidate packet is `02 00 03 80 01 02 80`. This probe does not set the device's scan mode, attempt a capture, or save biometric samples. Its behaviour on the physical device remains unverified, so avoid repeated or unconfirmed commands. See [acquisition notes](docs/image-acquisition-research.md) for the verified handshake and limitations.
 
 ## Safety and scope
 
