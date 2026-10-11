@@ -33,6 +33,33 @@ class TestImageTransfer(unittest.TestCase):
         self.assertEqual(extract_image(self.framed).pixels, self.fake)
         self.assertEqual(extract_image(self.framed + b'\x00').pixels, self.fake)
 
+    def test_real_shape_with_nonzero_trailer(self):
+        # Mirrors 10246-byte shape from first hardware image-read test.
+        # Contents here are SYNTHETIC. Do not publish live biometrics.
+        result = extract_image(self.framed + b'\x7e')
+        self.assertEqual(result.pixels, self.fake)
+        self.assertIn('nonzero trailer', result.format)
+
+    def test_zero_trailer_still_works(self):
+        result = extract_image(self.framed + b'\x00')
+        self.assertEqual(result.pixels, self.fake)
+        self.assertIn('trailing 00', result.format)
+
+    def test_invalid_checksum_nonzero_trailer_rejected(self):
+        invalid = self.framed[:-1] + bytes((self.framed[-1] ^ 1,))
+        with self.assertRaises(ProtocolError):
+            extract_image(invalid + b'\x7e')
+
+    def test_two_nonzero_trailers_refused(self):
+        with self.assertRaises(ProtocolError):
+            extract_image(self.framed + b'\x7e\x11')
+
+    def test_invalid_type_with_nonzero_trailer_rejected(self):
+        body = (RAW_LENGTH + 1).to_bytes(2, 'big') + b'\x05' + self.fake
+        frame = b'\x02' + body + bytes((xor_bcc(body),))
+        with self.assertRaises(ProtocolError):
+            extract_image(frame + b'\x7e')
+
     def test_bad_checksum(self):
         with self.assertRaises(ProtocolError):
             extract_image(self.framed[:-1] + bytes([self.framed[-1] ^ 1]))
