@@ -109,6 +109,20 @@ The first opt-in, **no-finger** test of `tools/finger_status_probe.py --send --l
 
 The next independent test is **one reading with a finger resting on the sensor**. Only if it differs should we begin identifying status semantics; repeatability would still need checking. Do not call `0x06` definitively `no finger` until the two conditions have been compared.
 
+## First successful finger-on status query — 11 October 2026
+
+The user placed a finger on the sensor and ran the same confirmed one-shot `ff_sc_ReadFingerStatus` command:
+
+- USB OUT: `02 00 03 82 73 01 f3`, **7/7 bytes sent**.
+- USB IN: `02 00 02 04 05 03 00`, **7 bytes received**.
+- Reply payload: **`05`**; BCC = `00 ^ 02 ^ 04 ^ 05 = 03` (valid), followed by the previously observed extra `00` byte.
+- Previously, with the finger absent, the same command returned payload **`06`** (also valid).
+- **Working hypothesis:** `0x05` means finger present and `0x06` means finger absent. We have one confirmed sample of each; repeatability and transitions must be verified before assigning definitive semantics.
+
+### Recommended repeatability check
+
+Alternate one-shot hardware readings **OFF → ON → OFF → ON** using `tools/finger_status_probe.py --send --label no-finger` or `--label finger` with the corresponding actual condition. Each execution must explicitly confirm `SEND`. Don't poll rapidly or send any unrelated commands. If the results consistently alternate `06 → 05 → 06 → 05`, proceed to designing a read-only monitor.
+
 ## Related project: research only, not a compatible driver
 
 The project [inevitableDivu/focaltech-2808-6658-driver](https://github.com/inevitableDivu/focaltech-2808-6658-driver) has published a packet specification and an experimental Python userspace tool for related FocalTech chips.
