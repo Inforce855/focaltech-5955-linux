@@ -129,6 +129,7 @@ Firmware flashing, guessed USB command bytes, system fingerprint-library replace
 - [x] Implement exact-count histogram, documented provisional 1/99-percentile 8-bit conversion, defensive low-contrast handling and aggregate-only metrics.
 - [x] Build and pass five **synthetic-only** C tests in a separate container, without USB, biometrics or installing system drivers.
 - [ ] Run `make -C native test` on the user's Nobara machine with GCC/Clang, and verify the test output.
+- [x] Independently implement the observed five-bin, three-pass histogram smoothing filter with five synthetic tests (not yet integrated with image conversion).
 - [ ] Reconstruct the full histogram smoothing and tone-map stages from native ELF and cross-check MOH Windows conversion. The current percentile mapping is **our approximation**, not a faithful vendor algorithm.
 - [ ] Reconstruct the vendor's image quality and custom feature descriptors on synthetic data before biometric enrollment or verification.
 - [ ] Implement and validate real multi-impression template enrollment and genuine/impostor separation before ever considering login integration.
