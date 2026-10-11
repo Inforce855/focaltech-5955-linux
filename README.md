@@ -201,6 +201,20 @@ The output labels the three file names `A1`, `B`, `A2` and shows three correlati
 
 **Privacy:** Do not upload or commit any `.raw` or PNG fingerprint images. The program only reads private files locally and prints basic numerical diagnostic scores. It creates no stored fingerprint templates.
 
+### Follow-up: alignment-window check on the first three real captures
+
+The first 80 × 64 A–B–A trial produced correlations of **0.132** (A1/A2), **0.078** (A1/B), and **0.130** (A2/B). The same-finger margin was **+0.003**, meaning our current prototype **has not discriminated fingerprints reliably**. A1/A2 reached the default vertical search boundary, `y=-6`.
+
+To check for misalignment without collecting more biometrics, the comparator now optionally searches up to ±14 pixels. The **default remains ±6**; for one repeat with your same three local captures:
+
+```bash
+cd ~/Projects/focaltech-5955-linux
+git pull --ff-only
+.venv/bin/python tools/fingerprint_compare.py --latest-three --max-shift 12
+```
+
+Assess **all three pairs**, not just the intended match: a wider search can artificially raise different-finger scores too. Even if the same-finger score increases, this is a diagnostic and **must not be treated as a secure match**. Longer-term work involves correcting finger placement/rotation and verifying the sensor image conversion.
+
 ## Safety and scope
 
 - Aim: an independently implemented Linux userspace driver, preferably integrated into `libfprint` / `fprintd`.
