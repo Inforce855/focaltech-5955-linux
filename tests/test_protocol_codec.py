@@ -78,6 +78,16 @@ class TestProtocolCodec(unittest.TestCase):
         framed = bytes([0x02]) + body + bytes([xor_bcc(body)])
         self.assertEqual(decode_reply(framed).payload, bytes([0x05]))
 
+    def test_real_no_finger_status_reply(self):
+        # Actual 2808:5955 no-finger response, 11 October 2026.
+        # USB bulk IN returned a complete 6-byte frame plus one 00 suffix.
+        raw = bytes.fromhex("02 00 02 04 06 00 00")
+        self.assertEqual(xor_bcc(raw[1:5]), raw[5])
+        reply = decode_reply(raw)
+        self.assertEqual(reply.reply_type, 0x04)
+        self.assertEqual(reply.payload, bytes([0x06]))
+        self.assertTrue(reply.trailing_zero)
+
     def test_short_frame(self):
         with self.assertRaises(ProtocolError):
             decode_reply(bytes.fromhex("02 00 01 04"))
