@@ -130,6 +130,21 @@ class TestProtocolCodec(unittest.TestCase):
         self.assertEqual(reply.payload, bytes([80]))
         self.assertTrue(reply.trailing_zero)
 
+    def test_candidate_scan_handshake_command(self):
+        # MOH ff_sc check function at 0x180009D80, NOT live-tested.
+        self.assertEqual(
+            encode_command(0x34),
+            bytes.fromhex("02 00 01 34 35"),
+        )
+
+    def test_synthetic_handshake_reply(self):
+        # Expected Windows marker is the little-endian word 0xAA55.
+        body = bytes.fromhex("00 03 04 55 aa")
+        reply_bytes = bytes([0x02]) + body + bytes([xor_bcc(body)])
+        reply = decode_reply(reply_bytes + b"\x00")
+        self.assertEqual(reply.payload, bytes.fromhex("55 aa"))
+        self.assertEqual(int.from_bytes(reply.payload, "little"), 0xAA55)
+
     def test_short_frame(self):
         with self.assertRaises(ProtocolError):
             decode_reply(bytes.fromhex("02 00 01 04"))
