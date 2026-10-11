@@ -320,3 +320,59 @@ After building the native binary, optional synthetic plumbing check:
 ```bash
 python3 -m unittest discover -s tests -p test_real_capture_eval.py -v
 ```
+
+## Cross-session identity consistency check — uses existing 14:24 and 14:55 captures
+
+The single-session practical test showed one promising margin (+0.156 for
+finger A in 64x80), but finger B's score was indistinguishable from a
+different finger (-0.001), and several best alignments hit ±6 pixels.
+This does **not** demonstrate reliable fingerprint identification.
+
+Two sets of PRIVATE captures are already on the owner's Nobara system:
+`11-10-2026_14-24` and `11-10-2026_14-55`. The user intentionally
+reversed which physical finger was called A/B in the second set.
+The new `tools/cross_session_eval.py` tests whether similarity follows
+the **physical finger across the 31-minute gap**, rather than temporary
+sensor conditions, capture position/order or a mistaken impression label.
+
+Run offline from the project root after the native converter is built:
+
+```bash
+cd ~/Projects/focaltech-5955-linux
+git pull --ff-only
+python3 tools/cross_session_eval.py --swapped
+```
+
+It expects one complete set of clearly labelled A1/A2/B1/B2 raw captures
+for each of the two timestamp prefixes and requires eight original
+10,240-byte files (four per session). No filenames need to be typed.
+If you did NOT actually reverse the physical fingers, omit `--swapped`.
+You can select different sessions via `--earlier DD-MM-YYYY_HH-MM` and
+`--later DD-MM-YYYY_HH-MM`.
+
+This tool reuses our compiled, native v3 FT9362-derived image normalizer
+and the existing *exploratory* high-pass translation-correlation scorer.
+For both 64x80 and 80x64, it prints a 4×4 matrix of comparisons, labels
+the eight same-finger hypotheses and eight different-finger controls
+from the operator-supplied identity mapping, and reports:
+
+- mean, minimum and maximum correlation of same/different-finger pairs;
+- strict separation (smallest genuine minus largest different);
+- how many genuine pairs outrank **all** eight different-finger controls;
+- how often the optimal displacement touches the ±6-pixel search boundary.
+
+No image, keypoint, template or descriptor files are created or uploaded.
+Only numerical aggregate scores are printed. Fingerprint captures stay
+in the ignored `local-data/` directory; no USB, sudo or system changes.
+
+**Important:** even positive separation on these eight cross-session
+genuine pairs would be merely an exploratory result on two people/fingers,
+not biometric verification, a secure score threshold or a usable login.
+Negative separation would be a valuable negative finding and would
+prioritise correction/registration and vendor feature-matcher fidelity.
+
+Optional fully synthetic script-level tests:
+
+```bash
+python3 -m unittest discover -s tests -p test_cross_session_eval.py -v
+```
