@@ -18,4 +18,10 @@
 int ft5955_smooth_histogram(const uint32_t *input, float *output,
                             size_t bins, unsigned passes);
 
+/* Float histogram input is used for the second two vendor smoothing passes.
+ * Output need not preserve total mass because edge windows are clipped.
+ * Input/output arrays must be distinct, with at least bins entries. */
+int ft5955_smooth_histogram_f32(const float *input, float *output,
+                                size_t bins, unsigned passes);
+
 #endif
