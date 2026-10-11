@@ -23,8 +23,10 @@
 - [x] Statically reconstruct MOH USB request framing, length and XOR BCC, and basic reply validation (still untested on the hardware).
 - [ ] Verify the raw USB bulk pipe and whether a device initialisation sequence precedes the firmware-info command.
 - [ ] If needed, capture real Windows USB traffic on user-owned hardware.
-- [x] Implement an explicitly confirmed single-shot firmware-information hardware test (not yet run against the sensor).
-- [ ] Confirm the firmware-information command's meaning and compatibility on real hardware before expanding USB OUT support.
+- [x] Implement and successfully run a confirmed single-shot firmware-information hardware test (11 October 2026).
+- [x] Confirm the firmware-information command works on 2808:5955 and returns ASCII firmware information.
+- [x] Correct reply decoding for the verified 50-byte frame followed by one trailing 00 byte.
+- [ ] Recover and validate the finger-status request and any necessary startup sequence before expanding live USB commands.
 
 See [protocol research notes](protocol-research.md).
 
