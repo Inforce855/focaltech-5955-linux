@@ -73,6 +73,29 @@ The returned identifier is a firmware build string, not proof of the physical se
 
 The real captured response is now checked in the offline regression tests; users do **not** need to repeat the live USB command to validate the corrected decoder.
 
+## Finger-status candidate recovered from the matching MOH DLL
+
+**Static disassembly finding; not yet verified on the hardware.**
+
+At preferred-image VA `0x180007818`, the function referenced by the string `ff_sc_ReadFingerStatus`:
+
+1. Loads a two-byte payload into a stack buffer: `73 01` (instruction `mov word ptr [rsp+58], 0x0173`, little-endian in memory).
+2. Passes logical command `0x82`, the address of that buffer, and payload length **2** to the existing `ff_sc_WriteData` helper (`0x180008004`).
+3. On successful write, requests **one byte** from `ff_sc_ReadData` (`0x180007760`), storing it via an output pointer.
+4. A caller near `0x180011560` compares that returned byte with `0x05`. This shows that `0x05` has meaning in at least one Windows control flow, **not** that it unambiguously means finger down.
+
+Using the on-wire frame structure already confirmed by the firmware-information command, the candidate status-read request is:
+
+```text
+02 00 03 82 73 01 f3
+```
+
+The final `f3` is `00 ^ 03 ^ 82 ^ 73 ^ 01`.
+
+**A separate** routine named `ff_sc_query_finger_status` near `0x180009C80` uses a different shared operation that sends logical command `0x80` with a two-byte payload and performs an additional action using `ff_sc_CustomDataWrite` on certain results. This distinct flow may alter status/acknowledgement state; **it is deliberately not part of our first hardware test**.
+
+Added `tools/finger_status_probe.py`: opt-in, one-shot USB status read, no polling and no unverified initialisation commands. The tool checks the exact device/revision and asks the operator to label the test `no-finger` or `finger`. It reports the raw response and a byte value without assigning it a finger-detection meaning. The first recommended experiment is **one no-finger reading**, with a follow-up only after assessing that response.
+
 ## Related project: research only, not a compatible driver
 
 The project [inevitableDivu/focaltech-2808-6658-driver](https://github.com/inevitableDivu/focaltech-2808-6658-driver) has published a packet specification and an experimental Python userspace tool for related FocalTech chips.
