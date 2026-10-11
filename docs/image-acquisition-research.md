@@ -1,0 +1,80 @@
+# Image acquisition: current MOH DLL findings
+
+Status: **static analysis only for image acquisition**. The actual `2808:5955` has not yet returned image pixels. Finger-contact status and firmware information were verified separately on Nobara on 11 October 2026.
+
+The matching Windows binary is `FtWbioDriverUmdfV3.dll` from the MOH 5.10.66.6611 driver archive, held locally (not redistributed).
+
+## 1. The GetImage function
+
+At preferred-image VA `0x180006B74`, `CBiometricDevice::ff_sc_GetImage`:
+
+- Expects an existing device-initialised flag and a caller-supplied destination buffer.
+- Reads one-byte dimensions from device object offsets `+0x5A` and `+0x5B`.
+- Checks caller's image buffer size against **width × height**.
+- Allocates **2 × width × height** bytes as its intermediate acquisition buffer.
+- Calls helper `0x18000793C` to populate that buffer.
+- Optionally normalises/adjusts samples, then calls separate image conversion functions:
+  - special path `0x18000510C` if dimensions are **152 × 40**;
+  - general path `0x180005C78` for other geometry.
+- Copies/produces image information into the caller's output.
+
+**Important:** The 152 × 40 comparison is a code branch, not proof that the physical `2808:5955` has that resolution. The Windows driver supports more than one model. Similarly, apparent 16-bit raw samples do not prove the final sensor image format without a capture.
+
+## 2. Bulk image-read request
+
+The intermediate buffer helper at `0x18000793C`:
+
+- Issues logical command **`0x81` with no payload** through the same `ff_sc_WriteData` infrastructure already used for the successful firmware-info and finger-status requests.
+- After a successful write, calls `ff_sc_ReadData` with a requested size **2 × width × height**.
+
+The corresponding candidate USB command frame, if this is the same already-verified USB transport, is `02 00 01 81 80` (BCC = `00 ^ 01 ^ 81 = 80`).
+
+**Do not send that request yet.** A full scan may require activation and readiness checks; receiving large framed data may require multiple USB IN transfers. The existing short-response probe is unsuitable for imaging. A partial scan could expose private biometric data.
+
+## 3. Image geometry comes from the device
+
+At preferred-image VA `0x180008328`, the Windows driver obtains width and height instead of assuming they are fixed:
+
+1. Calls the shared read helper `0x180007B8C` with selector **`0x03`**, response length **1**, output at device structure offset **`+0x5B`**. This is the candidate *height* field.
+2. Calls that helper with selector **`0x04`**, length **1**, output at offset **`+0x5A`**. This is the candidate *width* field.
+3. Multiplies the two one-byte values and stores the pixel count at `+0x5C`.
+
+Helper `0x180007B8C` issues logical command `0x80` with two payload bytes `[selector, read length]`, then expects a one-byte response.
+
+The complete **candidate metadata packets** are:
+
+| Query | Logical command | Payload | Full USB OUT bytes |
+| --- | --- | --- | --- |
+| Height (offset `+0x5B`) | `80` | `03 01` | `02 00 03 80 03 01 81` |
+| Width (offset `+0x5A`) | `80` | `04 01` | `02 00 03 80 04 01 86` |
+
+Neither query has been tested on the physical sensor. Both are inferred to be metadata reads; their real effects are not yet guaranteed.
+
+## 4. Higher-level image capture is not just GetImage
+
+The capture/scan path at approximately `0x18000CC0C` appears to do additional work **before** calling `ff_sc_GetImage`:
+
+- calls helper `0x180009E80` while preparing image scanning;
+- calls device-mode operation `0x180008500` with argument `0x06`;
+- checks readiness through `0x180009B94` with a bounded retry loop;
+- allocates the output buffer, then invokes `ff_sc_GetImage` at `0x18000CE5B`.
+
+The protocol effects of these operations are not yet independently validated. **Do not invent a shortcut by sending `0x81` without understanding them.**
+
+## 5. Next controlled hardware test (no image capture)
+
+`tools/image_geometry_probe.py` performs a *single* explicitly confirmed image geometry read on the exact same device/revision/interface. By default it is offline only.
+
+```bash
+# Fetch latest code, then dry-run only
+.venv/bin/python tools/image_geometry_probe.py --dimension height
+.venv/bin/python tools/image_geometry_probe.py --dimension width
+
+# One actual metadata request at a time; type SEND for each
+sudo .venv/bin/python tools/image_geometry_probe.py --dimension height --send
+sudo .venv/bin/python tools/image_geometry_probe.py --dimension width --send
+```
+
+If the two replies are valid one-byte values, we'll learn the reported pixel resolution and likely `2 × width × height` raw acquisition size. Do not repeatedly query or force image-acquisition until the results have been reviewed.
+
+No fingerprint image/template should be committed to the public repository. If image capture is eventually implemented, use private local files only and avoid displaying/logging raw pixel hex to terminals or issue trackers.
