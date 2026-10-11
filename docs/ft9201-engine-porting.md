@@ -104,3 +104,41 @@ objdump -p "$MOH/ftWbioEngineAdapter.dll" | awk '
 ```
 
 Do not upload proprietary DLL/INF, biometric captures or reconstructed templates to the public repository. Record only general technical metadata.
+
+
+## MOH engine static imports: ADVAPI32 and SETUPAPI (11 October 2026)
+
+The device owner used read-only `objdump -p` on the locally held **MOH** `ftWbioEngineAdapter.dll` matching the FocalTechFPSSOdriver25H2x64V5.10.66.6611 Windows package. This is static import metadata only: no proprietary binary or actual biometric data is committed.
+
+**ADVAPI32.dll — seven imports:**
+
+- `RegQueryValueExA`
+- `RegOpenKeyExA`
+- `RegCloseKey`
+- `ReportEventA`
+- `RegisterEventSourceA`
+- `DeregisterEventSource`
+- `RegSetKeyValueA`
+
+**SETUPAPI.dll — five imports:**
+
+- `SetupDiDestroyDeviceInfoList`
+- `SetupDiEnumDeviceInfo`
+- `SetupDiGetDeviceInstanceIdA`
+- `SetupDiGetClassDevsA`
+- `SetupDiClassGuidsFromNameExA`
+
+This totals **12 non-KERNEL32 imports**. Functions support Registry configuration, Windows event logging and device enumeration. They do not prove that cryptography or enclaves are absent: dynamic DLL loading and other dependencies remain possible.
+
+Comparison with [OMGrant's `src/ft_engine.c`](https://github.com/OMGrant/ft9201-libfprint/blob/master/src/ft_engine.c): **none of these twelve names is registered in its existing shim inventory**. Its current PE import resolver looks symbols up by name and writes null entries when missing; merely executing our MOH engine in that unmodified loader may crash. KERNEL32 imports also need a complete differential audit, not just this initial list.
+
+**Implementation constraints:** do not add blanket always-success shims or fake registry/device IDs. Check the MOH INF for the engine adapter registration and device IDs, and trace which registry keys or SetupAPI enumeration the DLL requires; provide bounded, accurate compatibility behavior only where needed. No DLL execution, kernel changes, USB writes, biometric enrollment, template publication, system-libfprint replacement or PAM integration until vetted. A proprietary engine should ultimately be loaded only in a suitably isolated, controlled development harness with trusted provenance.
+
+Immediate read-only local command to inspect the MOH INF (not the MOC/FT9365 package):
+
+```bash
+grep -nEi 'VID_2808|PID_5955|EngineAdapter|SensorAdapter|Wbio' \
+  "$MOH"/*.inf
+```
+
+Do not share or publish the proprietary `.dll` or full driver package; harmless INF matching lines or ordinary import names are adequate for technical evaluation.
