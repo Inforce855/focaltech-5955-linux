@@ -5,6 +5,7 @@
  * calibration, Windows DLL equivalence, or authentication reliability.
  */
 #include "ft_focal_tone_v3.h"
+#include "ft_focal_histogram.h"
 #include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
