@@ -46,7 +46,8 @@ See [protocol research notes](protocol-research.md) and [image acquisition findi
 - [x] Verify image width via real hardware metadata response: **80 pixels** (`0x50`); inferred 10,240-byte intermediate raw buffer for 80 × 64.
 - [x] Identify a scan-path handshake candidate `0x34` with expected two-byte `0xAA55` marker (DLL analysis only).
 - [x] Build an opt-in, one-shot handshake tester (not yet hardware-verified).
-- [ ] Verify the handshake on this physical reader.
+- [x] Verify hardware scan handshake `02 00 01 34 35`: correct `55 aa` payload and checksum `f8` (11 October 2026).
+- [ ] Verify optional read-only readiness query (`0x80`, selector `0x01`, two bytes) on the physical reader.
 - [ ] Trace mandatory scan activation, readiness checks and return-to-idle operations before full capture.
 - [x] Build and locally test a private offline 16-bit raw-to-PNG converter, with synthetic tests.
 - [ ] Build bounded multi-transfer image acquisition; validate the pixel format and save images only in ignored local-data.
