@@ -2,7 +2,7 @@
 
 Reverse-engineering and Linux userspace support for the **FocalTech USB fingerprint reader, VID:PID `2808:5955`**.
 
-**Project status: USB communication, contact detection, 80 × 64 image geometry, handshake, and readiness verified; first image-sized USB transfer received (10,246 bytes). No validated fingerprint image or functional fingerprint driver yet.** The device is visible on Linux but was not recognised by `libfprint 1.94.100` and `fprintd 1.94.5` on Nobara (Fedora 44 base).
+**Project status: First physical 80 × 64 fingerprint image files reported working under Nobara (11 October 2026)!** USB communication, contact detection, image geometry, handshake, readiness and image-sized transfers have been demonstrated. Distinct fingers produce visibly different images; repeated captures of the first finger look similar. **Visual observations are not automated identity matching, and no functional `libfprint` driver exists yet.** The device is visible on Linux but was not recognised by `libfprint 1.94.100` and `fprintd 1.94.5` on Nobara (Fedora 44 base).
 
 ## Identified hardware
 
@@ -107,7 +107,7 @@ See [GetImage reverse-engineering notes](docs/image-acquisition-research.md) for
 
 ## Producing a real fingerprint image file
 
-**An image-sized response has now been received (10,246 bytes), but no fingerprint file has yet been saved.** The device reports an 80 × 64 pixel sensor and the matching Windows driver requests a 10,240-byte intermediate buffer. The first response was rejected because of an unexpected nonzero extra byte. The decoder now checks the full frame checksum before accepting a single unknown trailer.
+**First physical fingerprint image files are now reported working (11 October 2026).** The sensor reports 80 × 64 pixels, and the Windows DLL reads a 10,240-byte intermediate sample buffer. Initial image transfer returned 10,246 bytes and was rejected due to an unrecognised extra byte; a subsequent checksum-first decoder allowed one unknown trailer after verifying the frame. User testing of Finger A, Finger B and Finger A again gave visually similar first/third images and a visibly different second image. These are user's observations, not independent inspection or a verified fingerprint matching algorithm.
 
 An **offline, private PNG converter** is available now: [`tools/raw_to_png.py`](tools/raw_to_png.py). It cannot query hardware itself. Once a real 10,240-byte capture exists in the ignored `local-data/` directory, run:
 
@@ -168,6 +168,12 @@ Run the locally prepared offline converter **without sudo**, substituting the fi
 ```
 
 It creates native 80 × 64 16-bit PNGs, enhanced 8-bit versions and 640 × 512 previews. Endianness, contrast and whether the capture contains a usable fingerprint remain to be verified on a real image. Do not attach or commit biometric image files to a public issue, PR or repository.
+
+### First physical fingerprint image files (11 October 2026)
+
+After updating the frame decoder to check the full 10,245-byte frame independently of its extra trailing byte, the device owner confirmed successfully producing image files from **three captures**: first finger, different finger, then the original finger. The first and third images appeared similar, and the second image appeared substantially different. This is promising evidence of finger-dependent sensor imagery, **not a measured false-accept/reject rate or completed enrolment/verification**.
+
+The fingerprint images, native raw buffers and generated PNGs were **not uploaded or committed to GitHub**. The actual 16-bit sample endianness, image orientation, conversion quality, ridge definition, and matching reproducibility remain to be assessed. Recommended next step is *private/offline* image-quality and repeatability analysis before attempting any authentication integration.
 
 ## Safety and scope
 
