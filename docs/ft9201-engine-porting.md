@@ -171,3 +171,36 @@ The *separate* MOC `FtWbioDriverUmdf.inf` includes IDs `0579`, `1579`, `0599`, `
 ### Implications for porting
 
 Start from the MOH engine's actual imports/exports and original WinBio INF settings. Build an **isolated static compatibility inventory** before running the PE loader. Ensure unsupported shims fail *closed* rather than silently writing NULL into the import address table (the FT9201 loader currently logs missing shim names and fills the IAT with NULL). Avoid fprintd/PAM or native authenticator integration until a properly sandboxed synthetic-image engine smoke test succeeds. Our independently validated 64 x 80 sensor memory layout is highly plausible but still requires testing against the vendor engine's accepted image format.
+
+
+## Other FT9201 research: NBN-PATRIC and banianitc (11 October 2026)
+
+Two additional public repositories were inspected directly on GitHub. These concern **`2808:93a9`, not our `2808:5955`**:
+
+- [NBN-PATRIC/ft9201-libfprint](https://github.com/NBN-PATRIC/ft9201-libfprint), especially [PROTOCOL.md](https://github.com/NBN-PATRIC/ft9201-libfprint/blob/main/PROTOCOL.md) and [MATCHING.md](https://github.com/NBN-PATRIC/ft9201-libfprint/blob/main/MATCHING.md).
+- [banianitc/ft9201-fingerprint-driver](https://github.com/banianitc/ft9201-fingerprint-driver), experimental out-of-tree **kernel module**, notably its README warning about occasional kernel oops/panics and having to return the reader to a Windows machine if initialisation leaves it in a non-functioning state. The module does **not** integrate with `libfprint` or login.
+
+### Critical transport distinction
+
+The independently verified NBN-PATRIC protocol for its particular FT9201 revision uses interface 0, **bulk IN `0x83`**, vendor **control requests `0x34` to arm** and **`0x6F` to set the next bulk read**, and a **5,120-byte, unframed, 8-bit 64 × 80** image. NBN-PATRIC reports that banianitc's earlier use of control `0x35` fails to arm bulk reads on its revision. This disagreement **within the same PID family** is a clear warning against copying the FT9201 initialisation sequence to other FocalTech readers.
+
+Our verified 5955 route has **bulk OUT `0x01` / IN `0x82`**, framed `0x81` image command with **10,240 image bytes = 5,120 little-endian 16-bit samples**, and distinct finger-presence semantics. Identical probable 64 × 80 *geometry* does not imply identical USB wire format or ADC calibration. **No FT9201 control-transfer or firmware-init code should be run against 5955.**
+
+### Matching evidence relevant to our approach
+
+NBN-PATRIC's libfprint driver can capture and perform enrolment, **but verification fails**. Their published tests found:
+
+- Native 64 × 80 frames yield only ~1–3 NBIS minutiae per image and no genuine matches across a 90-configuration sweep. Enrolment finishing is **not** verification working.
+- Multi-frame mosaics increase *apparent* minutiae but produce alignment/seam artefacts and no reliable matching; ordinary resizing and contrast tuning did not help.
+- Correlation or multiple subtemplates can appear promising under controlled placement, but against natural, differently positioned touches its reported **d′ ~0.06**, close to chance. Matching against **different fingers captured on the same sensor** is vital: otherwise sensor-pattern artifacts and differing devices give misleadingly optimistic scores.
+- Published vendor-library strings suggest **multiple partial subtemplates per enrolled finger**, not a single stitched/averaged image. This aligns with standard repositioned multi-stage enrolment, but is not proof that our MOH DLL uses identical internals.
+
+These failures help explain why our simple pairwise correlation and OpenCV SIFT have not discriminated both fingers, and strengthen the *research priority* of a validated vendor WinBio engine with correct 64 × 80 calibrated image input.
+
+### Hardware-safety lesson
+
+banianitc's README explicitly warns that its kernel driver can **oops/panic the kernel** and may leave its particular FT9201 unit unable to stream until reinitialised by Windows. This is **not proof our 5955 has the same failure mode** but is a decisive reason to avoid speculative device state writes, guessed resets, firmware uploading and out-of-tree modules during our work. Preserve known-good device state, do read-only static engine analysis, and introduce bounded user-space USB reads/writes only from already tested commands. Do not assume a power cycle or Linux reboot can always undo an undocumented hardware mode change.
+
+NBN-PATRIC includes a script that stops/masks `fprintd` during USB experiments and is tailored to its own environment; **do not reuse it unmodified on Nobara**. Our eventual Linux driver should preserve the distro's services and a safe password login fallback.
+
+Reference projects themselves do not establish real-world reliability for our 5955 device. No fingerprint media, biometric templates, vendor DLL or firmware have been added to this public repository.
