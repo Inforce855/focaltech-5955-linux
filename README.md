@@ -302,6 +302,13 @@ git pull --ff-only
 
 Files are written only into private `local-data/` with different filenames; existing previews are not overwritten. The images and `.raw` files must not be uploaded to GitHub or shared publicly. Public examples will be synthetic only. Details and limitations: [image-format investigation](docs/image-format-investigation.md).
 
+
+### Image-layout clarification after repeated captures
+
+**Little-endian sample decoding is supported by raw-value statistics; the row layout is not established.** Although one four-capture test gave a +0.491 same-finger correlation when samples were arranged as 80 × 64, an independent capture session with the physical fingers swapped gave only +0.234 and +0.197 within-finger correlations, versus a +0.201 different-finger score. Neither trial demonstrated reliable recognition. **The operator reports that the 64 × 80 PNG arrangement looks more anatomically fingerprint-like in its genuine grey data.** Black wiggly marks on one previously edited image were manually drawn, not genuine ridges.
+
+These two arrangements *re-wrap sequential sensor samples into rows*; they are **not a 90° rotation of the same image**. The Windows correction routine's 64-sample row stride adds another unresolved clue. We will preserve both geometric hypotheses and prioritise reconstructing the vendor image conversion rather than guessing a match threshold. No actual fingerprint images, templates or raw bytes are included in GitHub; public examples will be synthetic.
+
 ## Safety and scope
 
 - Aim: an independently implemented Linux userspace driver, preferably integrated into `libfprint` / `fprintd`.
