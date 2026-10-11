@@ -98,6 +98,20 @@ class TestProtocolCodec(unittest.TestCase):
         self.assertEqual(reply.payload, bytes([0x05]))
         self.assertTrue(reply.trailing_zero)
 
+    def test_candidate_image_height_request(self):
+        # MOH DLL helper 0x180008328 queries selector 03, length 01.
+        self.assertEqual(
+            encode_command(0x80, bytes.fromhex("03 01")),
+            bytes.fromhex("02 00 03 80 03 01 81"),
+        )
+
+    def test_candidate_image_width_request(self):
+        # MOH DLL helper 0x180008328 queries selector 04, length 01.
+        self.assertEqual(
+            encode_command(0x80, bytes.fromhex("04 01")),
+            bytes.fromhex("02 00 03 80 04 01 86"),
+        )
+
     def test_short_frame(self):
         with self.assertRaises(ProtocolError):
             decode_reply(bytes.fromhex("02 00 01 04"))
