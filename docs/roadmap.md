@@ -91,3 +91,7 @@ Firmware flashing, guessed USB command bytes, system fingerprint-library replace
 - [x] Verify the Windows MOH general converter first clamps signed-negative words and then applies separate sensor-specific correction; negative clamp alone is not sufficient.
 - [x] Add private little-endian signed-clamped and optional row-normalised image preview experiments for both 80 × 64 and 64 × 80 layouts, with synthetic tests.
 - [ ] Run offline private four-preview experiment on an existing capture, evaluate actual grey sensor patterns separately from any user-added annotations, then revisit matching.
+
+- [x] Capture swapped finger-role A1/A2/B1/B2 session at 14:55 BST: same-pair 80×64 little-endian scores +0.234/+0.197; strongest different-pair +0.201; weak margins +0.032/−0.004.
+- [x] Correct premature claim that a higher 80×64 correlation validates row layout: user observes better fingerprint-like *greyscale* structure at 64×80, while quantitative scores change greatly across sessions. Both remain unverified hypotheses.
+- [ ] Recompare latest four private captures using little-endian --both-layouts at fixed ±6 px; focus subsequent work on reconstructing the Windows image converter, not threshold tuning.
