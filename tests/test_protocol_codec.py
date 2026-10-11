@@ -88,6 +88,16 @@ class TestProtocolCodec(unittest.TestCase):
         self.assertEqual(reply.payload, bytes([0x06]))
         self.assertTrue(reply.trailing_zero)
 
+    def test_real_finger_on_status_reply(self):
+        # Actual 2808:5955 finger-on response, 11 October 2026.
+        # Same command as no-finger test; 05 instead of 06.
+        raw = bytes.fromhex("02 00 02 04 05 03 00")
+        self.assertEqual(xor_bcc(raw[1:5]), raw[5])
+        reply = decode_reply(raw)
+        self.assertEqual(reply.reply_type, 0x04)
+        self.assertEqual(reply.payload, bytes([0x05]))
+        self.assertTrue(reply.trailing_zero)
+
     def test_short_frame(self):
         with self.assertRaises(ProtocolError):
             decode_reply(bytes.fromhex("02 00 01 04"))
