@@ -2,7 +2,26 @@
 
 Reverse-engineering and Linux userspace support for the **FocalTech USB fingerprint reader, VID:PID `2808:5955`**.
 
-**Project status: First physical 80 × 64 fingerprint image files reported working under Nobara (11 October 2026)!** USB communication, contact detection, image geometry, handshake, readiness and image-sized transfers have been demonstrated. Distinct fingers produce visibly different images; repeated captures of the first finger look similar. **Visual observations are not automated identity matching, and no functional `libfprint` driver exists yet.** The device is visible on Linux but was not recognised by `libfprint 1.94.100` and `fprintd 1.94.5` on Nobara (Fedora 44 base).
+**Project status: First physical fingerprint image captures working under Nobara (11 October 2026)!** USB communication, contact detection, image geometry, handshake, readiness and image-sized transfers have been demonstrated. Distinct fingers produce visibly different images; repeated captures of the first finger look similar. **Visual observations are not automated identity matching, and no functional `libfprint` driver exists yet.** The device is visible on Linux but was not recognised by `libfprint 1.94.100` and `fprintd 1.94.5` on Nobara (Fedora 44 base).
+
+
+## Native image-processing prototype (offline, synthetic-only)
+
+We are building a **fully native open-source Linux implementation**, not just a loader that keeps the proprietary Windows matcher. Our first independent C11 image-preparation component lives in [native/](native/). It reads exactly 5,120 little-endian 16-bit measurements and arranges them as **64 columns × 80 rows**, our strongest working layout hypothesis.
+
+It implements a documented **partial** reconstruction of the vendor's image-processing steps: negative signed-word clamping, intensity inversion and histogram construction, followed by our *experimental* 1st/99th-percentile contrast scaling. We have **not** yet reproduced FocalTech's complete histogram smoothing, calibration, feature extractor or matching engine. This component is not suitable for fingerprint identity decisions or login.
+
+**Safest next test on Nobara (no USB or actual biometric data):**
+
+```bash
+cd ~/Projects/focaltech-5955-linux
+git pull --ff-only
+make -C native test
+```
+
+That runs five synthetic-only C tests using a local compiler. No sudo, no pip packages, no firmware changes, no system `libfprint` installation and no fingerprint captures. Results are printed to the terminal; the temporary test binary is built under gitignored `native/build/`.
+
+See [native/README.md](native/README.md) and [native matcher research](docs/moh-engine-native-matcher.md).
 
 ## Identified hardware
 
