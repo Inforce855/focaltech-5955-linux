@@ -215,6 +215,29 @@ git pull --ff-only
 
 Assess **all three pairs**, not just the intended match: a wider search can artificially raise different-finger scores too. Even if the same-finger score increases, this is a diagnostic and **must not be treated as a secure match**. Longer-term work involves correcting finger placement/rotation and verifying the sensor image conversion.
 
+### Diagnose possible 64 × 80 sensor memory layout
+
+The first real fingerprint-comparison experiment did not meaningfully separate finger A from finger B: same-finger correlation **+0.132**, strongest different-finger correlation **+0.130**. A ±12-pixel search did not improve the same-finger score. Increasing translation was therefore not an effective solution.
+
+Further disassembly of the Windows conversion routines revealed **128-byte row strides**, corresponding to **64 samples per row**, across **80 rows** in sensor-specific intermediate-image correction. This is evidence of a possible **64 × 80 intermediate buffer**, despite the device reporting `80 × 64` metadata. It is not conclusive proof that the sensor image is stored or displayed in that orientation.
+
+The converter and comparator now support **both layouts**:
+
+```bash
+cd ~/Projects/focaltech-5955-linux
+git pull --ff-only
+
+# Offline, compare A–B–A scores in both memory layouts:
+.venv/bin/python tools/fingerprint_compare.py --latest-three --both-layouts
+
+# Offline, generate alternate private PNGs for the first fingerprint:
+.venv/bin/python tools/raw_to_png.py \
+  local-data/fingerprint_11-10-2026_13-24-17.raw \
+  --order big --layout 64x80
+```
+
+These do not access USB or change system authentication. The new `-big-64x80-preview.png` is 512 × 640 pixels, saved alongside the existing images without overwriting them. The alternate interpretation is an experimental geometry test, **not yet a biometric identification method**. See [image-format research](docs/image-format-investigation.md).
+
 ## Safety and scope
 
 - Aim: an independently implemented Linux userspace driver, preferably integrated into `libfprint` / `fprintd`.
