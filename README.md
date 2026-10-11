@@ -341,6 +341,17 @@ git pull --ff-only
 
 No new finger captures, USB access, images, stored templates, authentication integration, or upload. Even a strong seam signal is only a clue about physical row layout and could result from sensor-specific artefacts.
 
+
+### Key conclusion: 64 × 80, multi-impression enrollment and potential native WinBio matcher
+
+The second A1/A2/B1/B2 capture set strongly favoured **64 samples per physical row**. The raw little-endian row-seam jump was 5.48–9.96× the normal within-row step when assumed 64 wide, against only 0.90–1.37× at assumed width 80. Vertical neighbouring values were also much closer at stride 64. This agrees with the Windows driver's 128-byte (64-word) memory stride and the owner's visual inspection. **64 × 80 is now the primary working image arrangement**, pending complete correction/format validation.
+
+The owner identified [OMGrant/ft9201-libfprint](https://github.com/OMGrant/ft9201-libfprint), a licensed native `libfprint` driver for a *different* FocalTech `2808:93a9` 96 × 96 reader. It uses a host-side [WinBio engine adapter bridge](https://github.com/OMGrant/ft9201-libfprint/blob/master/src/ft_engine.c) and the vendor's proprietary `ftWbioEngineAdapter.dll`, using **64 × 80** greyscale BIR inputs and multi-impression enrollment (up to eight stages; low-quality/duplicate stages retried). It reportedly provides functional enroll/verify on that model; no claims about 5955 compatibility are established.
+
+Our device's USB protocol is DIFFERENT (5955 endpoints OUT `0x01`/IN `0x82`; FT9201 endpoints OUT `0x02`/IN `0x83`, with its own MCU firmware uploads). **Never transplant its firmware/control sequence or install its driver as-is.** Instead, use the general WinBio engine loading and libfprint integration as reference architecture, retain our verified USB capture, and **first check whether the Windows driver package for `2808:5955` ships a compatible engine DLL exporting `WbioQueryEngineInterface`.** We must still derive correct 16-to-8-bit image calibration/normalisation and safely validate multi-impression enrolment with genuine and different-finger tests.
+
+The detailed findings, independent measurements and native porting phases are recorded in [FT9201 engine porting research](docs/ft9201-engine-porting.md). All real fingerprints remain private; no biometric image/raw/template or proprietary DLL is committed to GitHub. A vendor DLL-backed native Linux driver would not be a fully open-source matcher.
+
 ## Safety and scope
 
 - Aim: an independently implemented Linux userspace driver, preferably integrated into `libfprint` / `fprintd`.
