@@ -142,3 +142,6 @@ Firmware flashing, guessed USB command bytes, system fingerprint-library replace
 - [ ] Reconstruct the full histogram smoothing and tone-map stages from native ELF and cross-check MOH Windows conversion. The current percentile mapping is **our approximation**, not a faithful vendor algorithm.
 - [ ] Reconstruct the vendor's image quality and custom feature descriptors on synthetic data before biometric enrollment or verification.
 - [ ] Implement and validate real multi-impression template enrollment and genuine/impostor separation before ever considering login integration.
+
+- [x] Reverse-engineer one `FtComputeDescriptors` 256-bit histogram-comparison packing branch (average ×0.125, adjacent-cell threshold ×1.05) and write five synthetic-only tests.
+- [ ] Recover histogram construction and sensor-specific branch selection; establish isolated vendor-output parity for extracted descriptors before considering fingerprint matching.
