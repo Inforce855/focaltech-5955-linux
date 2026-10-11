@@ -105,6 +105,32 @@ These are still experimental commands, reconstructed from the matching Windows M
 
 See [GetImage reverse-engineering notes](docs/image-acquisition-research.md) for technical details and the next work required.
 
+## Producing a real fingerprint image file
+
+**No fingerprint image has been captured yet.** The device has confirmed an 80 × 64 pixel sensor and the matching Windows driver requests a 10,240-byte intermediate buffer. The remaining work is to establish the scan-mode/ready handshake and retrieve the complete sensor sample buffer safely.
+
+An **offline, private PNG converter** is available now: [`tools/raw_to_png.py`](tools/raw_to_png.py). It cannot query hardware itself. Once a real 10,240-byte capture exists in the ignored `local-data/` directory, run:
+
+```bash
+.venv/bin/python tools/raw_to_png.py local-data/capture.raw
+```
+
+By default it produces both byte-order interpretations (unverified until inspected). For each: the lossless 80 × 64 16-bit greyscale image, a contrast-stretched 80 × 64 PNG, and a 640 × 512 enlarged PNG preview. All output files are written privately with mode `0600`, without overwriting existing files. They are ignored by Git and must not be uploaded publicly.
+
+### Next diagnostic: read the Windows scan handshake marker
+
+The Windows MOH DLL calls a helper which sends logical command `0x34` and checks a **two-byte** response against the little-endian word `0xAA55`. This is an **unverified** query for this reader; its effects cannot be guaranteed yet.
+
+```bash
+# Preview only: no USB access
+.venv/bin/python tools/scan_handshake_probe.py
+
+# Optional single real handshake request; requires typing SEND
+sudo .venv/bin/python tools/scan_handshake_probe.py --send
+```
+
+The probe sends `02 00 01 34 35` once, validates the bounded response, and does **not** enter scan mode or acquire an image. We should review its response before making any further changes to the reader's state.
+
 ## Safety and scope
 
 - Aim: an independently implemented Linux userspace driver, preferably integrated into `libfprint` / `fprintd`.
