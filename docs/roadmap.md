@@ -136,7 +136,9 @@ Firmware flashing, guessed USB command bytes, system fingerprint-library replace
 - [x] Implement an independent, separately tested C cutoff-search module with five synthetic-only tests; keep existing experimental tone map isolated.
 - [x] Independently integrate the histogram-selected cutoff into experimental native tone mapping; confirm cutoff-to-output arithmetic through native ELF static disassembly; five synthetic tests and sanitizer checks.
 - [x] Validate v3 final scaling arithmetic against static Ubuntu ELF instructions (`0x4f8f1`..`0x4f958`), including the +1e-6 denominator and float-to-integer truncation; six synthetic regression tests under ASan/UBSan.
-- [ ] Independently measure *output parity* against the proprietary normalizer in a controlled, isolated reference environment; static instruction agreement is not sufficient.
+- [x] Execute the recovered original FT9362 Linux normalizer only in an isolated offline analysis namespace with USB-blocking shim and 8 synthetic patterns; independent model achieves byte-identical output across all 8 cases.
+- [x] Add 8 vendor-output synthetic golden vectors to offline C test suite (no proprietary runtime needed on Nobara).
+- [ ] Extend parity with additional pattern extremes and settle FocalTech signed-negative handling, sensor calibration, and Windows 5955 MOH image conversion.
 - [ ] Reconstruct the full histogram smoothing and tone-map stages from native ELF and cross-check MOH Windows conversion. The current percentile mapping is **our approximation**, not a faithful vendor algorithm.
 - [ ] Reconstruct the vendor's image quality and custom feature descriptors on synthetic data before biometric enrollment or verification.
 - [ ] Implement and validate real multi-impression template enrollment and genuine/impostor separation before ever considering login integration.
