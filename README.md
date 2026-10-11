@@ -326,6 +326,21 @@ We now have an **independent offline OpenCV SIFT experiment**, using original pr
 
 The dependency is optional and stays in the project's virtual environment; normal USB/image diagnostics don't require OpenCV. Real biometric images stay local and out of GitHub.
 
+
+### SIFT results: feature detection is not fingerprint verification
+
+The first real private four-capture SIFT trial (11 October 2026, little-endian samples) detected 147–244 keypoints per image in 80 × 64, versus 1,750–2,285 in 64 × 80. Despite this approximately tenfold increase, both same-finger and different-finger pairs produced only **4–6 RANSAC inliers** in either layout. A fitted homography needs as few as four correspondences, so those tiny, indistinguishable inlier counts do **not** establish fingerprint matching. See [c652 comparison](docs/c652-comparison.md) for the full six-pair numerical results.
+
+To investigate which raw row width makes more sense **before** interpolation or OpenCV, the new offline [row-boundary probe](tools/row_boundary_probe.py) checks aggregate 16-bit adjacent-sample discontinuities for proposed 64- and 80-sample row widths:
+
+```bash
+git pull --ff-only
+.venv/bin/python -m unittest discover -s tests -v
+.venv/bin/python tools/row_boundary_probe.py --latest-four
+```
+
+No new finger captures, USB access, images, stored templates, authentication integration, or upload. Even a strong seam signal is only a clue about physical row layout and could result from sensor-specific artefacts.
+
 ## Safety and scope
 
 - Aim: an independently implemented Linux userspace driver, preferably integrated into `libfprint` / `fprintd`.
