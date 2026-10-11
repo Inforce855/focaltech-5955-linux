@@ -112,6 +112,15 @@ class TestProtocolCodec(unittest.TestCase):
             bytes.fromhex("02 00 03 80 04 01 86"),
         )
 
+    def test_real_sensor_height_64_reply(self):
+        # Actual 2808:5955 height reply, 11 October 2026.
+        raw = bytes.fromhex("02 00 02 04 40 46 00")
+        self.assertEqual(xor_bcc(raw[1:5]), raw[5])
+        reply = decode_reply(raw)
+        self.assertEqual(reply.reply_type, 0x04)
+        self.assertEqual(reply.payload, bytes([64]))
+        self.assertTrue(reply.trailing_zero)
+
     def test_short_frame(self):
         with self.assertRaises(ProtocolError):
             decode_reply(bytes.fromhex("02 00 01 04"))
