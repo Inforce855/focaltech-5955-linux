@@ -105,3 +105,25 @@ The strongest different-finger control was +0.253. Thus the margins were **+0.07
 ```
 
 Examine all six scores for each layout. Do not tune authentication thresholds or publish real fingerprint images; any future demo art must be wholly synthetic.
+
+
+## Controlled geometry comparison — same four little-endian captures, ±6 pixels (11 October 2026)
+
+The user reran the exact same private A1/A2/B1/B2 samples, keeping byte order (**little-endian**), correlation method and translation search (±6 pixels) constant, and comparing both tested image layouts. **No biometric files or sample values were uploaded or committed.**
+
+| Comparison | 80 × 64 r | 80 × 64 shift | 64 × 80 r | 64 × 80 shift |
+| --- | ---: | --- | ---: | --- |
+| A1–A2 (same finger A) | **+0.491** | (-2, -6) | +0.157 | (-6, -6) |
+| B1–B2 (same finger B) | +0.176 | (-1, +4) | +0.190 | (-1, +5) |
+| A1–B1 (different) | +0.161 | (-6, +1) | +0.173 | (-6, -2) |
+| A1–B2 (different) | +0.288 | (+0, +4) | +0.141 | (-4, +5) |
+| A2–B1 (different) | +0.128 | (+2, -4) | +0.109 | (-6, +6) |
+| A2–B2 (different) | +0.138 | (+2, -6) | +0.130 | (+6, -6) |
+
+Under **80 × 64**, strongest cross-finger score is **+0.288**: A's genuine margin is **+0.203** (tool prints +0.204 because of unrounded underlying values), B's genuine margin is **−0.112** (tool prints −0.111). Under **64 × 80**, strongest cross-finger score is **+0.173**: genuine margins approximately **−0.016** (A) and **+0.017** (B).
+
+Interpretation: **little-endian 80 × 64 is the leading experimental format**; the sensor itself reported width 80 and height 64. The A repeat pair has substantially higher correlation than all control comparisons in that layout, and the user independently reported visible shifted structure in A1/A2. However **finger B is still less similar to itself than one unrelated-finger pairing**, so no reliable recognition threshold, biometric identification, or deployment claim can be made.
+
+The A1/A2 80 × 64 optimum again reaches **y=-6**, the search boundary; this warrants a finger-placement/coverage investigation, **not** simply increasing the search limit, which inflates different-finger maxima too. The greater consistency of A versus B could reflect position/pressure, poor capture quality, rotation, finger anatomy, sensor artefacts or incorrect correction. These four samples do not discriminate among explanations.
+
+**Recommended next controlled hardware test:** run one more four-capture Enter-triggered session, but **reverse which actual finger is assigned to the two roles**: place former *finger B* twice in the A1/A2 slots, then former *finger A* twice in B1/B2 slots. Compare with **`--latest-four --order little --layout 80x64 --max-shift 6`**. This checks whether the difficulty follows the particular finger or the capture position/order. Results are exploratory and local-only. Do not publish fingerprint images or use for login.
