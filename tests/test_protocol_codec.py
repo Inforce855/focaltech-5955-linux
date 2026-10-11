@@ -145,6 +145,24 @@ class TestProtocolCodec(unittest.TestCase):
         self.assertEqual(reply.payload, bytes.fromhex("55 aa"))
         self.assertEqual(int.from_bytes(reply.payload, "little"), 0xAA55)
 
+    def test_real_scan_handshake_reply(self):
+        # Real 2808:5955 response from the USB device on 11 October 2026.
+        raw = bytes.fromhex("02 00 03 04 55 aa f8 00")
+        self.assertEqual(xor_bcc(raw[1:6]), raw[6])
+        reply = decode_reply(raw)
+        self.assertEqual(reply.reply_type, 0x04)
+        self.assertEqual(reply.payload, bytes.fromhex("55 aa"))
+        self.assertEqual(int.from_bytes(reply.payload, "little"), 0xAA55)
+        self.assertTrue(reply.trailing_zero)
+
+    def test_candidate_scan_readiness_query(self):
+        # Windows readiness routine: selector 01, 2-byte value.
+        # This test is offline only, NOT proof of sensor readiness.
+        self.assertEqual(
+            encode_command(0x80, bytes.fromhex("01 02")),
+            bytes.fromhex("02 00 03 80 01 02 80"),
+        )
+
     def test_short_frame(self):
         with self.assertRaises(ProtocolError):
             decode_reply(bytes.fromhex("02 00 01 04"))
