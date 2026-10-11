@@ -1,6 +1,6 @@
 # Image acquisition: current MOH DLL findings
 
-Status: **static analysis only for image acquisition**. The actual `2808:5955` has not yet returned image pixels. Finger-contact status and firmware information were verified separately on Nobara on 11 October 2026.
+Status: **first live image-sized 10,246-byte transfer received** from `2808:5955` on 11 October 2026, following successful firmware, finger-contact, geometry, handshake and readiness tests. **No biometric file or validated fingerprint image yet:** the previous parser rejected an unexpected nonzero extra byte without checking the frame checksum.
 
 The matching Windows binary is `FtWbioDriverUmdfV3.dll` from the MOH 5.10.66.6611 driver archive, held locally (not redistributed).
 
@@ -176,4 +176,29 @@ The physical FocalTech 2808:5955 replied to the reconstructed selector 01, lengt
 ### First bounded image-read experiment (unverified on hardware)
 
 Windows low-level image helper at `0x18000793C` transmits logical `0x81` with no payload and asks its read abstraction for `2 × 80 × 64 = 10,240` sample bytes. Candidate OUT bytes: **`02 00 01 81 80`**. An opt-in one-shot command can attempt this read **without** enabling the state-changing `0x87` scan mode, deliberately preferring a failed/no-data result over a guessed mode configuration. Image transfer framing is unverified. Only an exactly sized raw transfer or a valid, checksummed 10,240-byte framed payload should be retained, with data saved privately in ignored local-data; never print or commit fingerprint samples. Failure does not authorise blind retries or mode changes.
+
+
+
+## First live image-sized transfer — 11 October 2026
+
+**The physical reader responded to the first one-shot `0x81` request with a full image-sized USB transfer, but no fingerprint file was saved:**
+
+```text
+USB OUT: 02 00 01 81 80   (5/5 bytes written)
+USB IN:  10246 bytes
+Parser:  "Reply length implies 10245 bytes (optionally one observed 00 suffix), but got 10246."
+```
+
+For an 80 × 64 image with 16-bit intermediate samples, the candidate response structure is:
+
+- **10,240 bytes** of possible image sample payload.
+- **5 bytes** total protocol framing (start byte, 2-byte length, reply type, XOR checksum).
+- **1 extra byte** beyond the framed length.
+- Total **10,246 bytes**, precisely the response length observed.
+
+The previous decoder would only trim that extra byte if it were `0x00`. Since it rejected this transfer with a *length* error, the last byte was **not** `0x00`. We have **not confirmed that the frame checksum passes**, whether the extra byte is a trailer or some other information, or whether the response contains a usable live fingerprint. The old probe correctly did not save any biometric data. Do not infer fingerprint success from length alone.
+
+A narrowly scoped decoder fix now checks a 10,245-byte frame **independently**, confirming declared image-payload length `10240`, reply type `0x04`, prefix `0x02`, and XOR BCC. It permits **at most one** further byte of **unknown meaning** only *after* the entire image frame passes those checks; malformed/truncated/oversized transfers and bad checksums continue to be rejected. Valid samples are saved only to private `local-data/`, and no raw pixel content is printed.
+
+**Next:** one operator-authorised repeat of `sudo .venv/bin/python tools/image_capture_probe.py --send` after `git pull --ff-only`, light finger contact, and typing `CAPTURE`. If the checksummed frame validates, the probe should save a private `.raw` file ready for `tools/raw_to_png.py`. If it fails validation, stop and examine **only non-biometric metadata** (packet length, declared frame size, checksum result), not the raw samples.
 
