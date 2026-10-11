@@ -56,3 +56,38 @@ The device owner clarified that **the black wiggly lines in the shared edited im
 The unedited grey sensor content remains inconclusive: visible greyscale variation is not sufficient to establish a real fingerprint pattern or the correctness of either the 80 × 64 or 64 × 80 arrangement. The black lines are a user annotation and the edited file must not be included in quantitative image analysis.
 
 The image itself is **not stored or linked in GitHub**. The next useful tests are entirely local: first compare the original three unedited raw captures in both layouts using `tools/fingerprint_compare.py --latest-three --both-layouts`; then investigate the Windows DLL's signed-sample correction, row ordering, normalisation and histogram operations before claiming viable fingerprint recognition. No authentication or thresholds should be enabled.
+
+## Signed 16-bit diagnostic from four real captures — 11 October 2026
+
+The user ran `tools/raw_sample_diagnostics.py --latest-four` on private A1, A2, B1 and B2 captures. **No raw fingerprint image or biometric sample content was shared or committed.** Only aggregate statistics are recorded here:
+
+| Capture | Big-endian % signed-negative | Little-endian % signed-negative | Little-endian 99th percentile |
+| --- | ---: | ---: | ---: |
+| A1 | 42.1% | **0.0%** | 1,660 |
+| A2 | 51.2% | **0.0%** | 1,616 |
+| B1 | 38.9% | **0.0%** | 2,008 |
+| B2 | 47.6% | **0.0%** | 1,796 |
+
+In little-endian decoding, the four sample medians were 1,132, 1,232, 1,420 and 1,368. Big-endian interpretations had 99th percentiles around 64,515, with about 39–51% of samples interpreted as signed-negative; applying the Windows negative clamp to those byte-swapped values would erase about half the data. In little-endian interpretation, the Windows-style negative clamp changes **no** samples. Most little-endian sensor values fit an approximately **11-bit positive intensity range** (0–2047), although the exact ADC bit depth and any outliers are **unverified**. The sensible low-range distribution is **strong evidence favouring little-endian raw WORDs**, independent of the misleading visual appearance of the earlier big-endian previews.
+
+Further static inspection of `FtWbioDriverUmdfV3.dll` general converter at `0x180005C78` confirmed that it calls a correction routine at `0x180006184`, which starts with a signed-word negativity check and zero clamp (`cmp WORD PTR ...; jge`), then makes additional data-dependent corrections. The later steps negate each 16-bit word and use signed minimum/range/histogram transforms. Reproducing only the clamp **is not the complete Windows correction pipeline**.
+
+### Next private rendering experiment
+
+[`tools/raw_decode_preview.py`](../tools/raw_decode_preview.py) decodes little-endian 16-bit words and generates previews for both the **80 × 64** metadata layout and experimental **64 × 80** intermediate memory layout. For each, it privately outputs:
+
+1. **`signed-clamped`** — negative signed input values clamped to zero, then display contrast stretched over positive foreground measurements.
+2. **`row-normalised-EXPERIMENTAL`** — identical starting data, with a per-row median offset removed for populated rows. This is a *diagnostic stripe-removal hypothesis*, **not** an assertion of Windows-driver behaviour; it can suppress real detail or produce misleading patterns.
+
+Original raw files are never modified. No USB request, biometric template, authentication, network upload or GitHub image commit occurs.
+
+```bash
+cd ~/Projects/focaltech-5955-linux
+git pull --ff-only
+.venv/bin/python -m unittest discover -s tests -v
+.venv/bin/python tools/raw_decode_preview.py \
+    local-data/fingerprint_11-10-2026_14-24-20_A1.raw
+```
+
+The command writes four **private PNG previews** into ignored `local-data/` (two processing variants × two layouts, each 8× enlarged), with distinct filenames and no overwrite. Compare which images show coherent structures rather than artificial stripes. The next matching experiment should use the little-endian inputs and must evaluate both genuine and different-finger pairs, rather than picking a threshold from one comparison.
+
