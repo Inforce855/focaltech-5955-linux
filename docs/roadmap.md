@@ -34,12 +34,17 @@
 - [ ] Implement a rate-limited, interruptible contact monitor if useful (avoid unbounded polling).
 - [ ] Determine whether further initialisation is required for event reporting or imaging.
 
-See [protocol research notes](protocol-research.md).
+See [protocol research notes](protocol-research.md) and [image acquisition findings](image-acquisition-research.md).
 
 ## Phase 4 — Fingerprint functions
 
 - [x] Demonstrate contact and release using repeated one-shot finger-status queries.
-- [ ] Recover the Windows `ff_sc_GetImage` / acquisition protocol, capture framing and image or feature format.
+- [x] Locate `ff_sc_GetImage`: candidate bulk-image logical request `0x81` (not hardware tested).
+- [x] Locate image geometry request path: `0x80` with selectors `03` (height) and `04` (width) (not hardware tested).
+- [x] Add a strictly opt-in image-geometry reader; no imaging or raw biometric storage.
+- [ ] Confirm sensor-reported image width and height from real USB responses.
+- [ ] Trace mandatory scan activation and readiness steps before full capture.
+- [ ] Build bounded multi-transfer image acquisition; validate pixel format and never publish biometric samples.
 - [ ] Determine whether the MOH device returns raw images, processed images or proprietary features.
 - [ ] Evaluate libfprint image processing/template matching for this device; fall back to a separately vetted matching implementation if necessary.
 - [ ] Implement safe enrolment and verification without leaking templates.
