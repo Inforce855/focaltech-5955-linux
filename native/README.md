@@ -13,7 +13,7 @@ make -C native test
 ```
 
 Requires an ordinary C compiler (cc, e.g. GCC or Clang) and make. Compiles
-into an ignored native/build/ directory and runs thirty-six tests on entirely synthetic
+into an ignored native/build/ directory and runs 36 component checks plus 8 byte-output golden vectors on entirely synthetic
 arrays. **No real fingerprint scans are needed and no system files are changed.**
 
 ## Histogram smoothing research
@@ -137,6 +137,35 @@ FocalTech library output. Exact vendor equivalence, image calibration,
 and matching quality remain unverified; no fingerprint or authentication
 decision can be based on this research component.
 
+## First measured output parity against the actual vendor code (11 October 2026)
+
+The original native Ubuntu 2025 proprietary Linux `ft9362_histNormalize` at ELF
+address `0x4f510` was run **locally only in the analysis container**, not
+on the user's Nobara system. It used eight **synthetic-only** 64×80 16-bit
+input patterns, never a user's fingerprint or enrolled template.
+
+Isolation: the original ELF was loaded under an unprivileged user/network
+namespace with no USB device passed through. A private, deliberately inert
+`libgusb.so.2` shim aborted on **any attempted USB API call**. Neither
+the ELF nor its shim was copied to our public GitHub repository.
+
+Our independent algorithm's mathematical output model was checked against
+the **actual original function's 5120-byte outputs** for each vector.
+The byte counts, FNV-1a 64-bit hashes and selected cutoff modes agreed in
+**all eight cases**, including a high-tail/adjusted-cutoff example.
+
+The source file `test_ft_vendor_golden.c` now stores **only synthetic
+input-generation formulas and aggregate reference checksums**; running
+`make -C native test` on Nobara invokes solely our compiled C and
+does NOT load any vendor DLL/ELF, access the fingerprint reader or
+modify system authentication. We deliberately checked broad ramp,
+bimodal, sparse, pseudo-random, column-gradient and near-flat patterns.
+
+**Limitation:** byte parity has been measured for eight synthetic inputs
+against a related FT9362 Linux normalizer, **not** for 2808:5955 actual
+sensor calibration and **not** for the Windows MOH engine or matcher.
+Negative signed samples were not exercised by these golden vectors.
+Successful tests do not establish safe authentication accuracy.
 ## Implementation status
 
 * **Grounded by the 5955 capture measurements:** exactly 5120 16-bit
