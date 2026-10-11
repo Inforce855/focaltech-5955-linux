@@ -64,6 +64,20 @@ class TestProtocolCodec(unittest.TestCase):
         with self.assertRaises(ProtocolError):
             decode_reply(corrupt + b"\x00")
 
+    def test_candidate_finger_status_command(self):
+        # ff_sc_ReadFingerStatus in MOH DLL: command 82, argument bytes 73 01.
+        # This checks construction ONLY; it is not a hardware response.
+        self.assertEqual(
+            encode_command(0x82, bytes.fromhex("73 01")),
+            bytes.fromhex("02 00 03 82 73 01 f3"),
+        )
+
+    def test_synthetic_one_byte_status_reply(self):
+        # Illustrative status value only; meaning of 05 remains unverified.
+        body = bytes.fromhex("00 02 04 05")
+        framed = bytes([0x02]) + body + bytes([xor_bcc(body)])
+        self.assertEqual(decode_reply(framed).payload, bytes([0x05]))
+
     def test_short_frame(self):
         with self.assertRaises(ProtocolError):
             decode_reply(bytes.fromhex("02 00 01 04"))
