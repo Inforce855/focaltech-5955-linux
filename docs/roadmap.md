@@ -23,7 +23,8 @@
 - [x] Statically reconstruct MOH USB request framing, length and XOR BCC, and basic reply validation (still untested on the hardware).
 - [ ] Verify the raw USB bulk pipe and whether a device initialisation sequence precedes the firmware-info command.
 - [ ] If needed, capture real Windows USB traffic on user-owned hardware.
-- [ ] Confirm a harmless read-only information command before implementing USB OUT transfers.
+- [x] Implement an explicitly confirmed single-shot firmware-information hardware test (not yet run against the sensor).
+- [ ] Confirm the firmware-information command's meaning and compatibility on real hardware before expanding USB OUT support.
 
 See [protocol research notes](protocol-research.md).
 
