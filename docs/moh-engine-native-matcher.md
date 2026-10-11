@@ -28,6 +28,23 @@ Important subtlety: these are **text/log references found within proprietary bin
 
 The earlier `tools/sift_compare.py` performed a generic bicubic/CLAHE preprocessing + OpenCV SIFT keypoint and RANSAC comparison. 64 × 80 yielded many more keypoints than 80 × 64 but only 5–6 RANSAC inliers in both genuine and impostor comparisons. This **does not** disprove FocalTech's custom algorithm: we have not reconstructed its image calibration, detector, descriptor, geometric thresholds, extra `binScore`/`recallScore` evidence or multi-template enrolment. This experiment merely shows generic SIFT is inadequate as currently configured.
 
+## 11 October 2026: resolved actual Linux MFS feature ABI
+
+The unstripped Ubuntu FT9362 ELF supplies full DWARF type/layout evidence for
+`FtGetMfsFeatures`, including its `ST_InputForTemplate` input (72 bytes),
+two `ST_Feature` outputs, and a **44-byte** record holding x/y/orientation
+as float32 values plus **eight uint32 descriptor words** (256 bits).
+Static disassembly confirms Gaussian pyramid → DoG pyramid → extrema →
+orientation → descriptors calls. This is firmer evidence than the c652
+README's broad description; the third-party code actually implements
+OpenCV SIFT, not the proprietary vendor feature algorithm.
+
+See [feature extractor DWARF findings](mfs-feature-extractor-dwarf.md) for
+the verified fields, call graph, c652 template-serialization defect,
+limits and specific next offline analysis. These ABI observations come
+from a **related FT9362 ELF**, not independently confirmed for the
+Windows `2808:5955` engine.
+
 ## A realistic, low-risk reverse-engineering sequence
 
 1. **Establish image ingress**: trace `EngineAdapterAcceptSampleData` / `WINBIO_BIR` and the companion `FtWbioDriverUmdfV3.dll` correction path; confirm exactly how a 64 × 80 grid of 16-bit USB readings becomes the algorithm's input (bit depth, polarity, calibration, background, whether 8-bit BIR). No USB tests or firmware changes.
