@@ -254,3 +254,69 @@ Do **not** feed these 512 values directly to the earlier bit packer or
 claim end-to-end descriptor parity, enrollment or authentication accuracy.
 
 The project test suite executes no vendor library and performs no USB I/O.
+
+## First real-fingerprint practical test (PRIVATE, offline)
+
+The synthetic tests establish that our native C algorithm builds and
+follows known arithmetic. To find out what it actually does with the
+**existing genuine 2808:5955 captures**, use the independent local-only
+image converter and diagnostic at `tools/real_capture_eval.py`:
+
+```bash
+cd ~/Projects/focaltech-5955-linux
+git pull --ff-only
+make -C native build/ft5955_normalize_cli
+python3 tools/real_capture_eval.py
+```
+
+The tool automatically selects the latest complete labelled A1/A2/B1/B2
+capture set under the repository's **ignored** `local-data/` folder.
+Alternatively supply four exact `.raw` paths in A1 A2 B1 B2 order.
+All four captures must be regular 10240-byte little-endian sample files.
+If a particular file contains signed-negative words or the image is flat,
+the research converter rejects it with an explicit message instead
+of pretending to know the correct vendor sensor-calibration mode.
+
+It prints each of six pairwise correlations (A1/A2 and B1/B2 genuine
+hypotheses plus four different-finger controls), then the strongest
+cross-finger score and both margins. Translation window = ±6 pixels.
+The numerical similarity backend is the *existing exploratory high-pass
+correlation routine*, NOT FocalTech's still-unfinished 256-bit descriptor
+matcher. Negative or overlapping margins are important diagnostic
+failures to investigate, not something to hide or fix with a guessed threshold.
+
+The script creates **two local/private grayscale PNG contact sheets**:
+
+```text
+local-data/native-real-test/<A1-capture-name>-v3-64x80-contact.png
+local-data/native-real-test/<A1-capture-name>-v3-80x64-contact.png
+```
+
+Each contact sheet places **A1 top-left, A2 top-right, B1 bottom-left,
+B2 bottom-right**. Open them locally in the file manager to inspect
+ridge continuity and static sensor stripes. Do not upload, attach,
+publish, or commit them: they contain real biometric imagery. Files are
+written exclusively under ignored `local-data/`, with `0700` output
+directory / `0600` file permissions and without overwriting existing files.
+Use `--no-previews` to report only numerical results.
+
+Everything runs on existing data without `sudo`, USB, live captures,
+vendor DLL/ELF execution, network connections, firmware, driver
+installation, `fprintd`, PAM or KDE login changes.
+
+The C subprocess uses **our own** `ft5955_tone_v3_normalize` over stdin
+to produce 5120 bytes of 8-bit pixel data on stdout; a standard-library
+Python helper generates private PNGs and reuses the established scorer.
+No external Python dependency or OpenCV is required.
+
+**Meaningful goal:** determine whether the real processed images are
+visually plausible and whether both same-finger pairs consistently outrank
+every different-finger control. A successful run does **not** establish
+a usable or secure biometric matcher. It is an offline engineering
+evaluation of the image-processing stage on actual hardware captures.
+
+After building the native binary, optional synthetic plumbing check:
+
+```bash
+python3 -m unittest discover -s tests -p test_real_capture_eval.py -v
+```
