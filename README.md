@@ -238,6 +238,33 @@ git pull --ff-only
 
 These do not access USB or change system authentication. The new `-big-64x80-preview.png` is 512 × 640 pixels, saved alongside the existing images without overwriting them. The alternate interpretation is an experimental geometry test, **not yet a biometric identification method**. See [image-format research](docs/image-format-investigation.md).
 
+
+### Easier capture session: Enter for each finger (A1, A2, B1, B2)
+
+The existing [`tools/image_capture_probe.py`](tools/image_capture_probe.py) now has an optional **four-capture `--session`** mode, with no repeated `SEND` or `CAPTURE` typing. The capture order is **finger A twice, then finger B twice**. Each capture only occurs after you place your finger and press **Enter**:
+
+```bash
+cd ~/Projects/focaltech-5955-linux
+git pull --ff-only
+
+# Optional dry run; NO device access
+.venv/bin/python tools/image_capture_probe.py --session
+
+# Four manual, Enter-triggered captures
+sudo .venv/bin/python tools/image_capture_probe.py --session --send
+
+# Afterwards, compare four local captures without sudo
+.venv/bin/python tools/fingerprint_compare.py --latest-four
+```
+
+Each Enter sends **one existing `0x81` image request**. The tool waits as long as needed between requests so you can lift, reposition or change fingers. It does **not** automatically capture on finger detection or poll/retry. To **stop**, type `q` and Enter (any nonempty input cancels), or press Ctrl+C. If one capture fails, the sequence stops; completed files are retained.
+
+The four private files have `_A1.raw`, `_A2.raw`, `_B1.raw`, and `_B2.raw` suffixes, respectively, under the ignored `local-data/` folder. Only complete, checksum-validated frames are accepted. The four-file comparison reports **both same-finger scores** and **all four cross-finger scores** for the chosen geometry, with optional `--both-layouts`. It is a research diagnostic, **not fingerprint authentication**.
+
+For a single capture, `--send` now also accepts **Enter instead of `CAPTURE`**. Every new USB read still requires an explicit Enter. The reader is part of the PC's power button: touch it lightly, without pressing the switch.
+
+All genuine biometric captures and PNGs must stay on your machine. In addition to ignoring `local-data/`, the repository now ignores `fingerprint_*.raw` and `fingerprint_*.png` anywhere in the working tree. A future public demonstration will use a separately generated **synthetic** image, not a real fingerprint.
+
 ## Safety and scope
 
 - Aim: an independently implemented Linux userspace driver, preferably integrated into `libfprint` / `fprintd`.
