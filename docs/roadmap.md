@@ -63,6 +63,11 @@ See [protocol research notes](protocol-research.md) and [image acquisition findi
 - [x] Revisit the matching Windows MOH image converter: its preprocessing at 0x180006184 uses 64-sample/128-byte row strides across 80 rows, suggesting a 64 × 80 intermediate array.
 - [x] Add an offline two-layout comparator and an alternative private 64 × 80 PNG rendering option, with synthetic unit tests.
 - [ ] Compare private real A–B–A captures in both 80 × 64 and 64 × 80 layouts, and inspect 64 × 80 PNG preview before further algorithm changes.
+- [x] Add controlled four-shot **A1, A2, B1, B2** capture mode (`--session --send`), requiring only Enter immediately before each existing `0x81` request; cancelling/failure stops safely.
+- [x] Label each real raw capture privately and implement an offline four-capture comparison of two same-finger pairs against all four different-finger combinations.
+- [x] Add file-ignore protection for fingerprint-named RAW/PNG files, plus synthetic offline session and comparator selection tests.
+- [ ] Test four-capture Enter flow on the actual Nobara PC and review the resulting non-biometric correlation scores.
+
 - [ ] Independently validate pixel interpretation, ridge quality and repeatability with multiple private local comparisons (without sharing biometric data).
 - [ ] Validate the image payload and sensor pixel ordering before attempting enrollment.
 - [ ] Determine whether the MOH device returns raw images, processed images or proprietary features.
