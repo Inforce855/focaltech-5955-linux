@@ -79,3 +79,29 @@ The strongest cross-finger score (+0.118) is higher than **both** same-finger sc
 The Windows MOH general image converter at VA `0x180005C78` calls correction routine `0x180006184`, which explicitly checks **signed 16-bit values** (`cmp word ...; jge`) and sets negative input samples to zero before sensor correction, then negates 16-bit samples and performs signed min/range and histogram-based output mapping. The current raw converter interprets bytes as **unsigned** `H` values, in either endian order, before percentile-stretching. These are **not equivalent processing paths**, potentially explaining the noisy images and weak correlation scores. The exact correction routine is not yet fully reproduced; resist premature identity claims.
 
 No biometric files or edited images have been committed to GitHub.
+
+
+## Four-capture test: little-endian, 64 × 80, ±12-pixel search (11 October 2026)
+
+The same four private samples used for the earlier big-endian comparisons were compared again, now interpreted as **little-endian 16-bit** with experimental **64 × 80** row-major layout and a ±12-pixel search. The user reported only numerical scores and metadata; **no real fingerprint image, raw sample, or template was committed or shared with the repository**.
+
+| Pair | Correlation | Shift | Overlap pixels |
+| --- | ---: | --- | ---: |
+| A1 vs A2 (same finger A) | **+0.323** | (+12, +8) | 2,400 |
+| B1 vs B2 (same finger B) | +0.210 | (-3, -8) | 2,940 |
+| A1 vs B1 (different) | +0.212 | (-12, -1) | 2,680 |
+| A1 vs B2 (different) | +0.206 | (-12, -9) | 2,360 |
+| A2 vs B1 (different) | +0.221 | (-12, +7) | 2,440 |
+| A2 vs B2 (different) | +0.253 | (+10, -8) | 2,520 |
+
+The strongest different-finger control was +0.253. Thus the margins were **+0.070** for finger A and **−0.043** for finger B. Finger A appears more consistent but finger B still does not separate from impostor controls, and **no secure verification is supported**.
+
+**Critical confound:** these scores cannot be compared directly against the preceding big-endian experiment (+0.089/+0.081), which used both a different byte order and a narrower **±6-pixel** alignment window. The apparent increase could reflect more coherent low-bit-depth data, alignment search overfitting, altered preprocessing, or a combination. Multiple pairs hit the ±12 boundary, and the best same-finger alignment used only **2,400 overlapping pixels**; taking the highest correlation across many offsets can inflate scores for unrelated fingers.
+
+**Next controlled test:** run exactly the same four raw files with **little-endian, both 80 × 64 and 64 × 80 layouts, and the original ±6-pixel search**, keeping all other processing constant:
+
+```bash
+.venv/bin/python tools/fingerprint_compare.py --latest-four --order little --both-layouts --max-shift 6
+```
+
+Examine all six scores for each layout. Do not tune authentication thresholds or publish real fingerprint images; any future demo art must be wholly synthetic.
