@@ -78,3 +78,18 @@ sudo .venv/bin/python tools/image_geometry_probe.py --dimension width --send
 If the two replies are valid one-byte values, we'll learn the reported pixel resolution and likely `2 × width × height` raw acquisition size. Do not repeatedly query or force image-acquisition until the results have been reviewed.
 
 No fingerprint image/template should be committed to the public repository. If image capture is eventually implemented, use private local files only and avoid displaying/logging raw pixel hex to terminals or issue trackers.
+
+## Live image-height query — 11 October 2026
+
+**Confirmed on the physical FocalTech 2808:5955 reader:**
+
+- Command (bulk OUT, 7/7 bytes): `02 00 03 80 03 01 81`.
+- Response (bulk IN, 7 bytes): `02 00 02 04 40 46 00`.
+- Declared data length: `0x0002` (response type `04` and one-byte result `40`).
+- XOR checksum: `00 ^ 02 ^ 04 ^ 40 = 46` — **valid**.
+- Extra trailing `00` matches the pattern from earlier verified responses.
+- Reported image **height: 64 pixels** (`0x40`).
+
+The image width is **not yet known**. Do not assume a resolution of 80 × 64 or infer a byte count until the width query succeeds. This is a metadata response, not fingerprint image data.
+
+**Next hardware test:** one explicit width query (`--dimension width --send`), after which calculate `2 × width × 64` bytes as the Windows driver's expected intermediate acquisition buffer size. The number of USB transfers needed will depend on protocol framing and transfer behaviour.
