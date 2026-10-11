@@ -84,6 +84,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input", type=Path, help="Private 10240-byte raw capture; no USB access")
     parser.add_argument("--order", choices=("big", "little", "both"), default="both")
+    parser.add_argument("--layout", choices=("80x64", "64x80"), default="80x64",
+                        help="row-major pixel layout; 64x80 is experimental")
     parser.add_argument("--output-dir", type=Path, default=Path("local-data"))
     parser.add_argument("--zoom", type=int, default=8, help="Preview zoom (1..16, default 8)")
     args = parser.parse_args()
@@ -93,17 +95,20 @@ def main() -> int:
         raw = args.input.read_bytes()
         if len(raw) != RAW_BYTES:
             raise ValueError(f"Input must be {RAW_BYTES} bytes, got {len(raw)}")
+        width, height = map(int, args.layout.split("x"))
         for order in (("big", "little") if args.order == "both" else (args.order,)):
             samples = decode_samples(raw, order)
             enhanced = to_8bit(samples)
             raw16 = b"".join(n.to_bytes(2, "big") for n in samples)
             prefix = f"{args.input.stem}-{order}"
+            if args.layout != "80x64":
+                prefix += f"-{args.layout}"
             products = {
-                f"{prefix}-original16.png": greyscale_png(raw16, WIDTH, HEIGHT, bits=16),
-                f"{prefix}-contrast.png": greyscale_png(enhanced, WIDTH, HEIGHT),
+                f"{prefix}-original16.png": greyscale_png(raw16, width, height, bits=16),
+                f"{prefix}-contrast.png": greyscale_png(enhanced, width, height),
                 f"{prefix}-preview.png": greyscale_png(
-                    upscale_nn(enhanced, WIDTH, HEIGHT, args.zoom),
-                    WIDTH * args.zoom, HEIGHT * args.zoom,
+                    upscale_nn(enhanced, width, height, args.zoom),
+                    width * args.zoom, height * args.zoom,
                 ),
             }
             for name, data in products.items():
@@ -114,7 +119,7 @@ def main() -> int:
                   f"{len(set(samples))} distinct values")
     except (OSError, ValueError) as exc:
         parser.exit(1, f"Error: {exc}\n")
-    print("Byte order, polarity and mapping are not yet validated against live images.")
+    print("Byte order, polarity and 80x64 versus 64x80 layout remain experimental.")
     return 0
 
 
