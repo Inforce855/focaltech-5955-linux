@@ -132,6 +132,8 @@ Firmware flashing, guessed USB command bytes, system fingerprint-library replace
 - [x] Independently implement the observed five-bin, three-pass histogram smoothing filter with five synthetic tests (not yet integrated with image conversion).
 - [x] Implement research-only 256-bin three-pass + 250-bin two-pass histogram pipeline with five synthetic tests; verify branch ratio from FT9362 ELF.
 - [x] Add separately testable 200/250 vs 250/250 contrast-cap experiment and five synthetic-only tests; not a verified vendor-equivalent transform.
+- [x] Correct earlier fixed 20% contrast cap assumption: the vendor ELF actually performs a sliding-window histogram cutoff search (bins 240 or 190), using a dynamic threshold and fallback.
+- [x] Implement an independent, separately tested C cutoff-search module with five synthetic-only tests; keep existing experimental tone map isolated.
 - [ ] Reconstruct the full histogram smoothing and tone-map stages from native ELF and cross-check MOH Windows conversion. The current percentile mapping is **our approximation**, not a faithful vendor algorithm.
 - [ ] Reconstruct the vendor's image quality and custom feature descriptors on synthetic data before biometric enrollment or verification.
 - [ ] Implement and validate real multi-impression template enrollment and genuine/impostor separation before ever considering login integration.
