@@ -20,7 +20,8 @@
 - [x] Identify an XOR-based `ff_sc_CalcBCC` routine in the matching Windows MOH DLL.
 - [x] Locate relevant Windows function-name strings for sensor information and USB communication.
 - [x] Compare another FT9366-related project; found major USB interface differences from `2808:5955`.
-- [ ] Recover command framing, lengths, check-byte coverage and response status.
+- [x] Statically reconstruct MOH USB request framing, length and XOR BCC, and basic reply validation (still untested on the hardware).
+- [ ] Verify the raw USB bulk pipe and whether a device initialisation sequence precedes the firmware-info command.
 - [ ] If needed, capture real Windows USB traffic on user-owned hardware.
 - [ ] Confirm a harmless read-only information command before implementing USB OUT transfers.
 
