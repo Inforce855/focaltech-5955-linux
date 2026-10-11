@@ -15,7 +15,7 @@ WIDTH = 80
 HEIGHT = 64
 RAW_LENGTH = WIDTH * HEIGHT * 2  # 10240
 FRAMED_LENGTH = RAW_LENGTH + 5   # prefix + BE length + type + checksum
-MAX_WIRE_BYTES = FRAMED_LENGTH + 1  # optional observed trailing 00
+MAX_WIRE_BYTES = FRAMED_LENGTH + 1  # optional single trailer; image trailer unverified
 
 
 @dataclass(frozen=True)
@@ -50,12 +50,28 @@ def extract_image(data: bytes) -> TransferImage:
     if len(data) >= 3 and data[0] == 0x02:
         declared = int.from_bytes(data[1:3], 'big')
         if declared == RAW_LENGTH + 1:
-            if len(data) == FRAMED_LENGTH + 1 and data[-1] == 0:
-                data = data[:-1]
-            reply = decode_reply(data)
+            # The hardware returned 10246 bytes on the first 0x81 test.
+            # Short replies used a 00 trailer, but the last byte of that
+            # image-sized reply was not 00. Rather than assuming the trailer
+            # is part of the image or ignoring a bad checksum, validate the
+            # FIRST 10245 bytes as a complete independent protocol frame.
+            # Only then is a *single* unverified transport trailer ignored.
+            if len(data) not in (FRAMED_LENGTH, FRAMED_LENGTH + 1):
+                raise ProtocolError(
+                    f'Image frame needs {FRAMED_LENGTH} bytes plus at most '
+                    f'one trailer; got {len(data)} bytes'
+                )
+            trailer = data[FRAMED_LENGTH] if len(data) == FRAMED_LENGTH + 1 else None
+            reply = decode_reply(data[:FRAMED_LENGTH])
             if reply.prefix != 0x02 or len(reply.payload) != RAW_LENGTH:
                 raise ProtocolError('Framed image dimensions/type differ from expected')
-            return TransferImage(reply.payload, 'framed/checksummed')
+            if trailer is None:
+                description = 'framed/checksummed, no trailer'
+            elif trailer == 0:
+                description = 'framed/checksummed, trailing 00'
+            else:
+                description = 'framed/checksummed, nonzero trailer (meaning UNVERIFIED)'
+            return TransferImage(reply.payload, description)
         if declared + 4 == len(data) or declared + 5 == len(data):
             raise ProtocolError('Sensor returned a non-image response, not pixel data')
     if len(data) == RAW_LENGTH:
