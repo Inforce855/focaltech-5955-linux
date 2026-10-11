@@ -163,6 +163,23 @@ class TestProtocolCodec(unittest.TestCase):
             bytes.fromhex("02 00 03 80 01 02 80"),
         )
 
+    def test_real_scan_ready_reply(self):
+        # Actual 2808:5955 USB IN, 11 October 2026.
+        raw = bytes.fromhex("02 00 03 04 a5 5a f8 00")
+        self.assertEqual(xor_bcc(raw[1:6]), 0xF8)
+        parsed = decode_reply(raw)
+        self.assertEqual(parsed.reply_type, 0x04)
+        self.assertEqual(parsed.payload, bytes.fromhex("a5 5a"))
+        self.assertEqual(int.from_bytes(parsed.payload, "little"), 0x5AA5)
+        self.assertTrue(parsed.trailing_zero)
+
+    def test_candidate_image_request(self):
+        # Image helper VA 0x18000793C, hardware command NOT tested.
+        self.assertEqual(
+            encode_command(0x81),
+            bytes.fromhex("02 00 01 81 80"),
+        )
+
     def test_short_frame(self):
         with self.assertRaises(ProtocolError):
             decode_reply(bytes.fromhex("02 00 01 04"))
