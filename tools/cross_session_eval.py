@@ -17,7 +17,8 @@ import re
 import sys
 
 from fingerprint_compare import compare, preprocess_samples
-from real_capture_eval import DEFAULT_CAPTURES, convert_using_native, read_private_capture
+from real_capture_eval import (DEFAULT_CAPTURES, convert_using_native,
+                               read_private_capture, similarity_percent)
 
 LABELS = ("A1", "A2", "B1", "B2")
 LAYOUTS = {"64x80": (64, 80), "80x64": (80, 64)}
@@ -97,22 +98,30 @@ def summarize(records) -> None:
     genuine_above = sum(score > greatest_different for score in genuine)
     edge = sum(abs(dx) == 6 or abs(dy) == 6
                for _, _, _, _, dx, dy in records)
-    print("  Early capture vs late capture (G=same physical finger, D=different):")
-    print("                       late A1     late A2     late B1     late B2")
+    print("  Early vs late, similarity index (G=same finger, D=different):")
+    print("                         late A1     late A2     late B1     late B2")
     for ei in range(4):
         row = [r for r in records if r[0] == ei]
-        cells = "  ".join(f"{r[3]:+.3f}{'G' if r[2] else 'D'}"
-                          for r in row)
-        print(f"  early {LABELS[ei]:<2}            {cells}")
-    print(f"  Genuine scores:   mean={sum(genuine)/8:+.3f}, "
-          f"min={least_genuine:+.3f}, max={max(genuine):+.3f}")
-    print(f"  Different scores: mean={sum(different)/8:+.3f}, "
-          f"min={min(different):+.3f}, max={greatest_different:+.3f}")
-    print(f"  Strict separation (min genuine minus max different): "
-          f"{least_genuine - greatest_different:+.3f}")
+        cells = "  ".join(
+            f"{similarity_percent(r[3]):5.1f}%{'G' if r[2] else 'D'}"
+            for r in row
+        )
+        print(f"  early {LABELS[ei]:<2}             {cells}")
+    print(f"  Genuine scores:   mean={similarity_percent(sum(genuine)/8):.1f}%, "
+          f"min={similarity_percent(least_genuine):.1f}%, "
+          f"max={similarity_percent(max(genuine)):.1f}%")
+    print(f"  Different scores: mean={similarity_percent(sum(different)/8):.1f}%, "
+          f"min={similarity_percent(min(different)):.1f}%, "
+          f"max={similarity_percent(greatest_different):.1f}%")
+    margin = least_genuine - greatest_different
+    margin_points = (similarity_percent(least_genuine) -
+                     similarity_percent(greatest_different))
+    print(f"  Strict separation: {margin_points:+.1f} percentage points "
+          f"(r difference={margin:+.3f})")
     print(f"  Genuine pairs beating EVERY different-finger control: "
           f"{genuine_above}/8")
     print(f"  Best shifts hitting +/-6 pixel boundary: {edge}/16")
+    print("  Similarity % = max(0, correlation) × 100; NOT identity probability.")
     print("  Not authentication, not a match threshold, not a security decision.")
 
 
