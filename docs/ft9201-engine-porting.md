@@ -142,3 +142,32 @@ grep -nEi 'VID_2808|PID_5955|EngineAdapter|SensorAdapter|Wbio' \
 ```
 
 Do not share or publish the proprietary `.dll` or full driver package; harmless INF matching lines or ordinary import names are adequate for technical evaluation.
+
+
+## Direct analysis of owner-provided 7_Fingerprint-module.zip (11 October 2026)
+
+The original **4,271,168-byte** `7_Fingerprint-module.zip` had previously been uploaded by the owner and was available directly in the working container. This analysis inspected it in-place, **rather than asking for any further transfers or terminal commands**. All extracted DLLs and INF files remained private in the analysis environment; **no proprietary binaries or biometric data are committed to GitHub**.
+
+### INF identifies our exact 2808:5955 reader
+
+The UTF-16 MOH `FtWbioDriverUmdfV3.inf` (21 November 2025; `DriverVer 5.10.66.6611`) explicitly lists hardware IDs `USB\VID_2808&PID_C6D5`, `USB\VID_2808&PID_65D5`, and **`USB\VID_2808&PID_5955`** at lines 21–23, repeated in the additional installation section at lines 28–30. Its `WinBio\Configurations\0` registers:
+
+- `EngineAdapterBinary = ftWbioEngineAdapter.DLL`
+- `SensorAdapterBinary = ftWbioSensorAdapter.DLL`
+- `StorageAdapterBinary = ftWbioStorageAdapter.DLL`
+
+This **directly links the uploaded MOH engine to a vendor-provided Windows driver package supporting PID 5955**; stronger than filename matching. It does not independently prove which internal matching mode or geometry is selected for each supported hardware revision.
+
+The *separate* MOC `FtWbioDriverUmdf.inf` includes IDs `0579`, `1579`, `0599`, `059C`, and `1599`; **not PID 5955**. Its separate `ftSecureEngineAdapter.dll` contains bcrypt imports; do not confuse the MOC secure engine with our MOH engine.
+
+### Read-only PE inspection of the matching MOH DLL
+
+- `MOH/ftWbioEngineAdapter.dll`: 2,847,280-byte 64-bit PE DLL, exports `WbioQueryEngineInterface`.
+- Its PE import table names **98 functions in KERNEL32**, **7 in ADVAPI32** (`RegQueryValueExA`, `RegOpenKeyExA`, `RegCloseKey`, `ReportEventA`, `RegisterEventSourceA`, `DeregisterEventSource`, `RegSetKeyValueA`), **5 in SETUPAPI** (`SetupDiDestroyDeviceInfoList`, `SetupDiEnumDeviceInfo`, `SetupDiGetDeviceInstanceIdA`, `SetupDiGetClassDevsA`, `SetupDiClassGuidsFromNameExA`).
+- KERNEL32 imports also include `FlsAlloc`, `FlsGetValue`, `FlsSetValue`, `FlsFree`, `ReadFile`, `SetEndOfFile`, `ReadConsoleW`, `GetFileSizeEx`, `GetTempPathW`, `Sleep`, `QueryPerformanceFrequency`, `GetLocalTime`, `GetDateFormatW`, `GetTimeFormatW`, `CompareStringW`, `GetLocaleInfoW`, `GetFileAttributesExW`, `InterlockedPushEntrySList`, among others. **Some are not registered by the FT9201 loader**. The earlier belief that 'only 12 extra functions are needed' was **incorrect**; full import coverage and actual call semantics must be audited.
+- The MOH sensor adapter exports `WbioQuerySensorInterface`; the MOH storage adapter exports `WbioQueryStorageInterface`, but these are more complex Windows components and are not required for the first standalone matcher ABI study. The storage DLL imports `bcrypt.dll` and `CRYPT32.dll`, even though the **engine DLL itself** does not statically import those libraries.
+- Neither an external DLL nor vendor engine code was executed, and no USB messages or biometric operations were performed.
+
+### Implications for porting
+
+Start from the MOH engine's actual imports/exports and original WinBio INF settings. Build an **isolated static compatibility inventory** before running the PE loader. Ensure unsupported shims fail *closed* rather than silently writing NULL into the import address table (the FT9201 loader currently logs missing shim names and fills the IAT with NULL). Avoid fprintd/PAM or native authenticator integration until a properly sandboxed synthetic-image engine smoke test succeeds. Our independently validated 64 x 80 sensor memory layout is highly plausible but still requires testing against the vendor engine's accepted image format.
