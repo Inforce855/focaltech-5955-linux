@@ -93,3 +93,18 @@ No fingerprint image/template should be committed to the public repository. If i
 The image width is **not yet known**. Do not assume a resolution of 80 × 64 or infer a byte count until the width query succeeds. This is a metadata response, not fingerprint image data.
 
 **Next hardware test:** one explicit width query (`--dimension width --send`), after which calculate `2 × width × 64` bytes as the Windows driver's expected intermediate acquisition buffer size. The number of USB transfers needed will depend on protocol framing and transfer behaviour.
+
+## Live image-width query — 11 October 2026
+
+The sensor confirmed the other metadata dimension:
+
+- USB OUT: `02 00 03 80 04 01 86` (7/7 bytes sent).
+- USB IN: `02 00 02 04 50 56 00` (7 bytes received).
+- Payload `0x50` = **80 pixels wide**, with validated BCC `0x56` and one trailing `00` byte.
+- Previous height query returned `0x40` = **64 pixels high**.
+
+**Verified image geometry: 80 × 64 = 5,120 pixels.** From the Windows driver's two-byte intermediate sample format, the likely raw image buffer is **10,240 bytes (10 KiB)**, excluding any transport headers/trailers and any final converted output. This is not a captured fingerprint image.
+
+The special 152 × 40 processing branch in the DLL therefore does not match the dimensions returned by this specific reader; the general processing path should apply.
+
+**Next:** reverse-engineer scan setup, readiness checks, and multi-transfer framing before testing the image-read command. The raw image must stay private and local.
