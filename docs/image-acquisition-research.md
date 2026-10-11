@@ -121,3 +121,19 @@ After validating the sensor's actual `80 × 64` geometry, the disassembly of the
 **Do not send these commands or automatically sequence them yet.** The firmware-info/geometry tests prove the transport frame for short metadata replies, not this stateful acquisition path. In particular, the current `receive_reply` routine is designed for tiny responses and cannot receive the 10,240-byte sample buffer correctly.
 
 Next engineering work: independently validate the scan/setup command payloads, establish what states are modified and how to restore idle mode, and implement a length-bounded multi-transfer reader that rejects malformed frames without logging or publishing biometric samples.
+
+## Offline PNG tooling and next handshake test
+
+On 11 October 2026, the original Windows MOH DLL was inspected locally with `llvm-objdump` to confirm the image capture control flow. A private, offline image converter has been added at `tools/raw_to_png.py`, with synthetic converter tests. It was tested offline with a non-biometric gradient: the generated images opened correctly as 80 × 64 16-bit grayscale, 80 × 64 8-bit contrast enhanced, and 640 × 512 PNG preview. **This is not a hardware fingerprint image.**
+
+The user's actual fingerprint image has **not yet been acquired**. The raw intermediate buffer is expected to be 10,240 bytes, but whether the samples are big-endian, little-endian, linearly mapped or polarity-inverted remains unverified. The converter preserves 16-bit values and generates both endian interpretations for later inspection. Output remains in ignored `local-data/` with private file permissions.
+
+The Windows helper at VA `0x180009D80` sends logical command `0x34` with no payload, then requests a two-byte response. The code compares its little-endian word to `0xAA55`. The corresponding candidate framed command is:
+
+```text
+02 00 01 34 35
+```
+
+The newly added `tools/scan_handshake_probe.py` can **optionally** send this one request with explicit confirmation, without entering image-acquisition mode or attempting any fingerprint capture. This command is still untested against the physical reader. If it returns the expected `55 aa` payload, that corroborates our understanding of a scan-path handshake. It does not by itself establish that the later mode-change, readiness poll or `0x81` image request can be run safely.
+
+Next priorities: verify handshake response; reconstruct the 0x87 scan-mode payload and idle restoration; implement strictly bounded 10,240-byte framed acquisition to a private file; use offline converter to make and inspect the genuine PNG. Do **not** publish captured fingerprint pixels or templates.
