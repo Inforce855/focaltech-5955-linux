@@ -52,7 +52,9 @@ See [protocol research notes](protocol-research.md) and [image acquisition findi
 - [ ] Trace mandatory scan activation, readiness checks and return-to-idle operations before full capture.
 - [x] Build and locally test a private offline 16-bit raw-to-PNG converter, with synthetic tests.
 - [x] Add a guarded 0x81-only image-read probe that does not modify the separate 0x87 scan mode; bounded private storage; 9 synthetic transfer tests.
-- [ ] Validate one real image transfer on the physical reader (the 0x81 experiment may time out without scan activation).
+- [x] Receive first image-sized transfer on physical sensor: **10,246 USB bytes** on `0x81`, but checksum and pixel content not yet verified; no private capture saved on this attempt.
+- [x] Update image transfer parser to allow one unknown trailer byte **only after** a complete 10,245-byte frame passes protocol checksum and length validation.
+- [ ] Repeat one explicitly authorised image request and confirm checksum, private raw capture and visible fingerprint image.
 - [ ] Validate the image payload and sensor pixel ordering before attempting enrollment.
 - [ ] Determine whether the MOH device returns raw images, processed images or proprietary features.
 - [ ] Evaluate libfprint image processing/template matching for this device; fall back to a separately vetted matching implementation if necessary.
