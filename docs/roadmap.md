@@ -7,23 +7,29 @@
 - [x] Check installed Nobara `fprintd` / `libfprint` support.
 - [x] Identify the matching MOH Windows driver package.
 
-## Phase 2 — Safe diagnostic application
+## Phase 2 — Safe diagnostic application (baseline complete)
 
 - [x] Add a descriptor-only diagnostic command.
 - [x] Add an explicitly opted-in, timed IN-only listener.
-- [ ] Test the diagnostic app on the actual Nobara system.
-- [ ] Record non-sensitive observations and permission behaviour.
+- [x] Run descriptor inspection on the actual Nobara system.
+- [x] Test IN-only listening for 15 seconds: **0 non-empty packets**, 11 October 2026.
+- [ ] Document non-root device permissions, when needed.
 
-## Phase 3 — Protocol research
+## Phase 3 — Protocol research (in progress)
 
-- [ ] Independently establish message framing and checksum/status handling.
-- [ ] If needed, inspect Windows USB traffic from user-owned hardware.
-- [ ] Validate harmless, read-only commands before adding any USB OUT support.
+- [x] Identify an XOR-based `ff_sc_CalcBCC` routine in the matching Windows MOH DLL.
+- [x] Locate relevant Windows function-name strings for sensor information and USB communication.
+- [x] Compare another FT9366-related project; found major USB interface differences from `2808:5955`.
+- [ ] Recover command framing, lengths, check-byte coverage and response status.
+- [ ] If needed, capture real Windows USB traffic on user-owned hardware.
+- [ ] Confirm a harmless read-only information command before implementing USB OUT transfers.
+
+See [protocol research notes](protocol-research.md).
 
 ## Phase 4 — Fingerprint functions
 
 - [ ] Detect finger-present transitions.
-- [ ] Determine whether image acquisition or on-device matching is available.
+- [ ] Determine image-acquisition or on-device matching capabilities.
 - [ ] Implement safe enrolment and verification without leaking templates.
 
 ## Phase 5 — Linux desktop integration
