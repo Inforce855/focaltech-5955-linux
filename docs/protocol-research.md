@@ -30,7 +30,7 @@ Strings and development paths are *leads*, not proofs of chip or live wire proto
 
 Static inspection of the PE disassembly shows a function at image RVA `0x658C` (VA `0x18000658C` at preferred image base) which references the diagnostic string `ff_sc_CalcBCC`. Its active calculation loops over a pointer and 16-bit length, XORing successive input bytes into an initially zero accumulator, then returns the one-byte XOR.
 
-This supports a likely **XOR-based block check character (BCC)**. It does *not* tell us which bytes in a command are covered, where the check byte is placed, or whether all commands use this checksum. No live packet format has yet been recovered.
+The outgoing frame and live firmware-information response subsequently confirmed that the relevant frame BCC XORs the two length bytes, the command/response-type byte and all payload bytes. See [frame format and live capture](usb-frame-format.md).
 
 ## Firmware-version request path: partially recovered from static disassembly
 
@@ -41,7 +41,7 @@ The MOH `FtWbioDriverUmdfV3.dll` firmware-version function appears to begin at p
 3. The response is treated as a bounded, NUL-terminated string and logged using `[Driver] I fw info: %s`.
 4. The routine later examines the string for `APP`, and, if found, calls another shared helper (`0x180007B8C`) with arguments `0x05` and `0x02`, after which it logs a `version.chipid` value. These may be logical subcommands, not literal USB bytes.
 
-**Important:** Helper `0x180008004` invokes an object virtual function; we have not yet proven its final USB transfer encoding. We therefore **do not know the full outgoing wire packet**, its framing or checksum coverage. The number `0x30` must **not** be sent raw from our Linux probe based on this analysis alone.
+**Updated after hardware success:** following additional analysis of the USB writer, the command's full on-wire representation was reconstructed as `02 00 01 30 31` and successfully sent from Nobara on 11 October 2026.
 
 The next task is to trace the object's implementation of those send/read methods, or compare a genuine WinUSB trace of the request and response. No protocol-write capability is being enabled in the current probe.
 
@@ -55,7 +55,23 @@ This validates the implementation against our current static protocol model, **n
 
 A further look at the MOH DLL disassembly shows that the routine at preferred-image VA `0x180008B80` calls several different helpers in sequence, including `0x180008780`, `0x180008328`, and `0x1800080C0`. The latter receives different one-byte arguments in the setup path. The exact effect of these calls is **not yet verified**, and we cannot currently establish which are mandatory before a firmware-information request.
 
-**Do not transmit the reconstructed request yet.** First trace these helpers and establish device startup requirements and the bulk-pipe mapping, then add a deliberate single-shot diagnostic with limited timeouts.
+The firmware-information command succeeded on the live reader **without** the separate setup path. Other fingerprint operations may still need configuration or wake-up commands. Do not transmit unverified configuration commands.
+
+## First successful live firmware-information exchange — 11 October 2026
+
+The user ran `sudo .venv/bin/python tools/firmware_probe.py --send`, explicitly confirming the single hardware transfer.
+
+- USB OUT endpoint `0x01`: **5/5 bytes** transmitted: `02 00 01 30 31`.
+- USB IN endpoint `0x82`: **51 bytes** received.
+- Wire header `02 00 2e 04` declares **46 bytes** of response type and payload.
+- Decoded firmware information: **`FT936x_APP_FW3032_USB_DEC_SV0.5_5849_PowerKey`**.
+- The next byte, **`51`**, is the correct XOR BCC of bytes 1 through 48. It is **not** a `Q` in the firmware string.
+- A final **`00`** appeared *after* the completed 50-byte framed response. Its exact purpose is unknown; the codec now tolerates **only one** such suffix.
+- The initial codec rejected the 51-byte USB transfer because it expected exactly 50 bytes. This was a framing/parsing problem, **not** a failed USB transaction.
+
+The returned identifier is a firmware build string, not proof of the physical sensor's exact silicon or firmware update history. The live communication milestone is verified; **finger detection, imaging, matching and `fprintd` integration remain unimplemented**.
+
+The real captured response is now checked in the offline regression tests; users do **not** need to repeat the live USB command to validate the corrected decoder.
 
 ## Related project: research only, not a compatible driver
 
@@ -69,8 +85,7 @@ The [OMGrant/ft9201-libfprint](https://github.com/OMGrant/ft9201-libfprint) proj
 
 ## Next research tasks
 
-1. Trace the MOH DLL's outgoing USB transfer call sites to recover packet headers, lengths and integrity check coverage.
-2. Identify the matching incoming response parser, including error/status handling.
-3. Determine whether device startup requires a host-to-device initialisation sequence.
-4. Verify one **read-only information request** from multiple independent clues before enabling it in the test app; ideally corroborate using a user-controlled Windows USB capture.
-5. Leave experimental firmware writes, register writes, reset and power-mode commands out of the Linux test application.
+1. Trace the Windows MOH driver's **finger status** request and response semantics.
+2. Verify whether finger status can be read without additional initialisation or configuration.
+3. Only then add a single, explicitly confirmed status query to the hardware tool.
+4. Keep firmware writes, register writes, resets and power-mode changes out of the prototype.
