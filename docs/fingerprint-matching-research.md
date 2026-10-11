@@ -44,3 +44,17 @@ git pull --ff-only
 - Fingerprints cannot be changed like passwords; keep `.raw`, templates and PNGs in the local ignored private directory, with limited file permissions. Never publish them in repository commits or issues.
 
 Next: obtain actual A–B–A scores from the real sensor privately; compare different capture conditions. Depending on results, study the matching Windows DLL's image conversion and the current `libfprint` image processing/matching pipeline. Do not introduce a security decision until robust enrolment, repeatability and independent impostor testing exist.
+
+## First physical A–B–A scores — 11 October 2026
+
+The owner ran the existing offline, big-endian comparator against three real private captures made at 13:24:17 (A1), 13:25:25 (B), and 13:26:45 (A2), with the default ±6-pixel translation search. The raw images remain local and were not uploaded.
+
+| Pair | Best correlation | Shift (x, y) | Overlap |
+| --- | ---: | ---: | ---: |
+| A1 vs A2, same-finger hypothesis | +0.132 | (-2, -6) | 3,036 px |
+| A1 vs B, different-finger control | +0.078 | (-3, +1) | 3,315 px |
+| A2 vs B, different-finger control | +0.130 | (-4, -4) | 3,072 px |
+
+The same-finger pair barely ranks first: its advantage over the strongest different-finger comparison is only about **+0.003**. That is **not meaningful discrimination** and certainly not enough to configure an authentication threshold. The A1→A2 best shift ends at `y=-6`, precisely the existing search boundary. This could reflect larger translation or accidental boundary maximisation; it is not proof of any image registration fix.
+
+The **next no-new-capture diagnostic** is to run `--max-shift 8` using the exact same private files, and report **all three pair scores** rather than focusing only on A1–A2. Larger search windows can raise impostor scores as well. Longer term the preprocessing and sample orientation, nonrigid finger placement and static sensor artefacts need to be examined locally. Do not declare identity matches based on this trial.
