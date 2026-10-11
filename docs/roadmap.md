@@ -42,7 +42,8 @@ See [protocol research notes](protocol-research.md) and [image acquisition findi
 - [x] Locate `ff_sc_GetImage`: candidate bulk-image logical request `0x81` (not hardware tested).
 - [x] Locate image geometry request path: `0x80` with selectors `03` (height) and `04` (width) (not hardware tested).
 - [x] Add a strictly opt-in image-geometry reader; no imaging or raw biometric storage.
-- [ ] Confirm sensor-reported image width and height from real USB responses.
+- [x] Verify image height via real hardware metadata response: **64 pixels** (`0x40`).
+- [ ] Verify image width with a separate one-shot metadata request.
 - [ ] Trace mandatory scan activation and readiness steps before full capture.
 - [ ] Build bounded multi-transfer image acquisition; validate pixel format and never publish biometric samples.
 - [ ] Determine whether the MOH device returns raw images, processed images or proprietary features.
