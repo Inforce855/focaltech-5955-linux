@@ -114,7 +114,7 @@ The special 152 × 40 processing branch in the DLL therefore does not match the 
 After validating the sensor's actual `80 × 64` geometry, the disassembly of the image capture caller around preferred-image VA `0x18000CC0C` provides several more concrete clues:
 
 1. It calls setup helper `0x180009E80` with argument `0`. That helper invokes `0x180009D80`, which issues logical command **`0x34`** (no payload) and reads **two bytes**. The helper checks for **`0xAA55`** in the returned 16-bit word and can perform additional retries/operations if the first attempt fails. Whether the bytes arrive as `55 AA` or in another interpretation still requires verification; do not assume the word value is literal wire order.
-2. The capture caller then invokes mode helper `0x180008500` with mode argument **`6`**. That branches through `0x180008780` (preparation) and `0x1800080C0`, which sends logical command **`0x87`** with three payload bytes. For that branch the code passes a `0x40` setting. The full effects are not yet established and may alter sensor power/scan state.
+2. The capture caller invokes mode helper `0x180008500` with mode argument **`6`**. **Correction (12 October 2026):** static branch tracing shows this selects `0x6C`, **not `0x40`**. The mode-7 branch, instead, selects `0x40`. Mode 6's code reaches `0x1800080C0`, which sends logical command **`0x87`** with three payload bytes. The command's effects and safe idle restoration remain unverified; it must not be sent to the live device.
 3. The caller waits 10 ms and checks readiness with `0x180009B94`, up to a bounded number of attempts. That helper uses logical command **`0x80`** to request a **two-byte** value and tests it against **`0x5AA5`**. The request is not the same as our already-confirmed width/height selectors.
 4. Only after these steps does the caller allocate a `width × height` output buffer, invoke `ff_sc_GetImage` (`0x180006B74`), then consume/convert the result. The inner raw-image helper `0x18000793C` requests `2 × width × height` bytes via logical command **`0x81`**.
 
@@ -215,6 +215,50 @@ This is the first report of actual finger-dependent image files from the Linux p
 
 This milestone supports moving from transport reverse-engineering to local-only quality checks: compare same-finger versus different-finger samples while accounting for contact pressure, translation and rotation; confirm which 16-bit endian interpretation produces coherent ridges; then investigate host-side enhancement and matching. Do not turn on KDE/PAM biometric authentication until enrolment and matching have been validated with a password fallback.
 
+
+## FT6206 touchscreen 0x87 cross-check and mode-6 correction (12 October 2026)
+
+A separate FocalTech FT6206/FT5x06 capacitive **touchscreen** controller
+datasheet assigns I²C **register address `0x87`** to
+`TIMEENTERMONITOR`, the delay before an idle controller transitions
+from Active to Monitor mode. Adjacent registers include `0x86`
+(automatic mode transition) and `0x88` / `0x89` (active/monitor
+reporting periods). Confirmed in the 2010 FT5x06 application note
+<https://threefivedisplays.com/wp-content/uploads/datasheets/touch_driver_datasheets/FT5x06_REV_0_7_REG.pdf>
+(section 2.1.15, PDF page index 13) and the FT6206 application note
+<https://www.buydisplay.com/download/ic/FT6206.pdf>.
+**This is a different chip family and interface**; coincident hexadecimal
+values do not establish the same register map or firmware semantics.
+
+Read-only inspection of the **matching 2808:5955 MOH Windows sensor DLL**
+`FtWbioDriverUmdfV3.dll` provides stronger, independent evidence:
+
+- `0x18000cd44`: the scan caller passes **mode number 6** to
+  `0x180008500`.
+- `0x180008530`–`0x180008577`: the mode selector branches by mode value.
+  The **mode-6** branch is at `0x18000865a` and sets
+  **`0x6c`** at `0x180008679`–`0x180008689`.
+  The different **mode-7** branch (`0x18000859d`–`0x180008609`)
+  uses **`0x40`**. Earlier research notes mistakenly attributed
+  `0x40` to mode 6; this is now corrected.
+- `0x1800080e6`–`0x180008101`: the command writer loads
+  **`CL=0x87`**, with a **three-byte payload** built as
+  `[selected_value, 0x01, selected_value]`. For the mode-6 branch,
+  the corresponding *static* payload would be
+  `[0x6c, 0x01, 0x6c]`.
+- That `0x87` goes to the existing proprietary **USB framed command
+  writer** `0x180008004`; it is not an I²C register-address operation
+  like the FT6206 touchscreen use of `0x87`. The three payload bytes'
+  individual sensor-side meaning is still unknown.
+
+**Conclusion:** The touchscreen document is interesting background about
+FocalTech's power/mode terminology, but offers **no verified explanation**
+for the missing 5955 scan rows and is **not** a command reference for the
+fingerprint reader. Do not try to access FT6206 register `0x87` on the
+5955, transmit this statically recovered state-changing USB command, or
+modify scan/idle/autosuspend states based on this resemblance.
+Prioritise further non-executing analysis of sensor preparation and
+idle restoration.
 
 ## Static Windows acquisition-readiness recheck (12 October 2026)
 
