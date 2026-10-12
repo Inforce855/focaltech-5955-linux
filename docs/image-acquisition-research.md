@@ -371,3 +371,39 @@ status is absent or any reply is malformed, it **does not send `0x81`**.
 On successful retrieval it prints only total zeros and number of
 leading/total/trailing all-zero rows, saves a private RAW file, and
 returns. Do not upload any RAW/PNG data or run undocumented mode writes.
+
+## First physical preflight capture result (12 October 2026)
+
+Operator executed `sudo .venv/bin/python tools/scan_preflight_capture.py --send`
+with finger held gently on the sensor and explicit `CAPTURE` confirmation.
+The previously audited sequential command path worked on the exact 2808:5955:
+
+| Request | Response | Elapsed host time |
+|---|---|---|
+| `0x34` handshake | 8-byte valid reply, `0xaa55` | 0.5 ms |
+| `0x82 73 01` finger status | 7-byte valid reply, contact `0x05` | 0.2 ms |
+| `0x80 01 02` readiness | 8-byte valid reply, `0x5aa5` | 0.5 ms |
+| `0x81` image | 10,246-byte framed/checksummed reply; nonzero **unverified** trailing byte | 16.5 ms |
+
+Private image filename: `fingerprint_12-10-2026_01-56-41.raw`
+(kept locally, **not** committed or uploaded). For little-endian
+64×80 image geometry, offline raw-count aggregation found:
+
+- **13.5% zero-valued pixels**, but **0 leading, 0 total and 0 trailing fully blank rows**.
+- No `0x87` mode write, reset, firmware/configuration change, unbounded
+  retry, USB autosuspend change or fprintd/PAM integration.
+- `16.5 ms` measures host image request and receive, **not** the sensor's
+  exposure/readout time. Readiness marker `0x5aa5` was also observed
+  outside explicit scan mode, so it does **not** prove a fresh
+  image is ready.
+- This is **one** uncontrolled comparison with earlier incomplete
+  captures (e.g. 16 fully blank rows and 22.9% zeros in 00:47 A1).
+  It cannot establish that the preflight caused the absence of blank
+  rows; other prior captures already had no all-zero rows.
+
+**Next non-invasive observation:** run the already implemented
+`raw_sample_diagnostics.py --spatial-zeros` against this one private
+capture to identify whether the 13.5% zeros cluster toward the top,
+middle or bottom, without sharing biometric image content. If that
+remains ambiguous, compare repeated captures using the same finger
+and consistent placement while keeping the `0x87` mode change disabled.
