@@ -407,3 +407,58 @@ capture to identify whether the 13.5% zeros cluster toward the top,
 middle or bottom, without sharing biometric image content. If that
 remains ambiguous, compare repeated captures using the same finger
 and consistent placement while keeping the `0x87` mode change disabled.
+
+## Local bounded contact viewer (12 October 2026)
+
+The operator wanted an on-screen way to distinguish a **diagonal top-left
+zero-value wedge** from loss of USB scan rows, especially because the power
+button reader on the PC front is reached at a downward finger angle.
+A new optional `tools/live_contact_viewer.py` is a **local snapshot/time-lapse
+viewer**, not a proven continuous native scanning API.
+
+- Local Tk desktop GUI runs as **normal user**, never as root. A short-lived
+  `sudo -n` helper validates **only 2808:5955 bcdDevice 2003** and uses
+  the already-tested `0x34 → 0x82 → 0x80 → 0x81` sequence, with the same
+  framing/checksum validation. The helper uses a local stdout pipe to
+  transfer *exactly 10,240 raw bytes* into GUI memory and terminates.
+  It does not print samples, save biometric media, or open a network port.
+- Click **Capture one frame** for a snapshot or explicitly click
+  **8-frame preview (1/sec)** for a strictly bounded eight-frame sequence,
+  with **Stop** and a >=1-second inter-frame interval; no continuous
+  polling, retries after errors, untested commands, `0x87`, resets,
+  firmware/USB power/config changes, or libfprint/PAM changes.
+- Side-by-side in-memory 64×80 little-endian images (nearest-neighbour
+  enlarged): a *contrast-stretched* raw preview, and an **exact-zero map**
+  with **white = original sample 0**, black = nonzero. The map is not
+  a validated finger-contact segmentation: zeros may be firmware masking,
+  analog thresholding, incomplete acquisition or physical coverage.
+  Prints only percentages in top/middle/bottom bands and full-zero rows.
+- Requires Tkinter in the standard OS Python. The project venv requires
+  only existing PyUSB and built-in Python modules; no Pillow, GTK, pip
+  dependencies or privileged graphical application. For live use, `sudo -v`
+  is deliberately done **in the terminal first** so that the GUI never
+  needs to collect a password. On expiry the viewer reports an error.
+
+Offline first (no sensor communication):
+
+```bash
+cd ~/Projects/focaltech-5955-linux
+git pull --ff-only
+.venv/bin/python -m unittest discover -s tests -p test_live_contact_viewer.py -v
+.venv/bin/python tools/live_contact_viewer.py --file local-data/fingerprint_12-10-2026_01-56-41.raw
+```
+
+Opt-in bounded live comparison, after offline check:
+
+```bash
+sudo -v
+.venv/bin/python tools/live_contact_viewer.py --send
+```
+
+Place finger gently on the sensor and click **Capture one frame** first.
+Only once that succeeds, use the eight-frame preview if desired.
+No raw images/templates/PNG screenshots should be committed or shared;
+share *aggregate text metrics only*, or a deliberately obscured diagram
+if desired. A successful 8-frame sequence cannot establish
+sensor acquisition timing or Windows-style mode-6 initialization; the
+same 0x5AA5 readiness marker can occur in idle mode.
