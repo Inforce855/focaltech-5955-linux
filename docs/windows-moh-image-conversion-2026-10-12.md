@@ -91,3 +91,11 @@ A deeper trace substantially narrows the unresolved `0x1800016A4` stage; the bra
 **Consequences:** Our presently working USB reader performs no selector-07 query or conditional decryption. If the physical device reports flag 1, a missing decrypt stage could completely invalidate our image-conversion tests; if it reports 0, the branch is bypassed and is not the explanation for the zero-minutiae results. Previously visible apparent ridge structure suggests some meaningful spatial signal, but is not proof of either encryption mode. This distinction must be resolved *before* attributing the failure entirely to histogram normalisation.
 
 The next non-hardware work is to document the exact `0x180001120` input/output and chaining logic and inspect the code that uses the flag. Do not modify USB protocol, disable encryption, patch the DLL, or publish real fingerprints/keys as part of this research.
+
+## Resolved on working Windows VM — 12 October 2026
+
+A **live Windows guest restart followed by successful fingerprint login** on this exact 2808:5955 sensor was observed with the host's redacting usbmon monitor. Its `0x80` selector `0x07` response was **validly framed and checksum verified as byte `00`**. This is now an observed device property in the tested Windows startup, resolving the earlier *unknown* status above.
+
+Since `ff_sc_GetImage` invokes the optional AES-like wrapper only when `device+0x268 == 1`, the **conditional AES step is bypassed in this working configuration**. Do not implement it as a prerequisite for the current sensor's Linux capture. Focus on the general `0x180005C78` path, including spatial correction `0x180006184`, its histogram and adaptive cutoff, and eventually the vendor feature extractor. This does not prove all capture and enrollment modes behave identically.
+
+Full redacted trace interpretation: [Windows VM USB observation](windows-vm-usb-observation-2026-10-12.md).
