@@ -183,8 +183,8 @@ class ContactViewer:
 
         ttk.Label(outer, text="Raw image — contrast for viewing").grid(row=1, column=0)
         ttk.Label(outer, text="Exact zeros — white = 0, black = nonzero").grid(row=1, column=1)
-        self.left = ttk.Label(outer, width=55)
-        self.right = ttk.Label(outer, width=55)
+        self.left = tk.Label(outer, relief="solid", bd=1)
+        self.right = tk.Label(outer, relief="solid", bd=1)
         self.left.grid(row=2, column=0, padx=(0, 8), pady=(4, 8))
         self.right.grid(row=2, column=1, pady=(4, 8))
 
@@ -192,7 +192,7 @@ class ContactViewer:
         ttk.Label(outer, textvariable=self.readout, justify="left").grid(
             row=3, column=0, columnspan=2, sticky="w", pady=(0, 8))
         self.message = tk.StringVar(value=(
-            "Every frame needs a deliberate click; no background scanning."
+            "Each snapshot or bounded preview requires a deliberate click."
             if enabled else "Offline inspection — no USB access."))
         ttk.Label(outer, textvariable=self.message, wraplength=780,
                   justify="left").grid(row=4, column=0, columnspan=2, sticky="w")
@@ -232,8 +232,8 @@ class ContactViewer:
             tk.PhotoImage(data=base64.b64encode(zero_png).decode("ascii"),
                           format="png"),
         ]
-        self.left.configure(image=self.images[0], width=WIDTH * ZOOM)
-        self.right.configure(image=self.images[1], width=WIDTH * ZOOM)
+        self.left.configure(image=self.images[0])
+        self.right.configure(image=self.images[1])
         self.last_raw = raw  # replace prior in-memory buffer
         stats = frame_statistics(raw)
         self.readout.set(
