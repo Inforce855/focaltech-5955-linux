@@ -85,3 +85,25 @@ llvm-objdump -d --x86-asm-syntax=intel \
 ```
 
 These commands disassemble the locally held DLL without executing Windows code or reading biometric data.
+
+
+## Recovered MFB 256-bit comparison descriptor
+
+A deeper disassembly of `0x1800C8990`, which is **directly called twice** by the MFB descriptor stage (`0x1800C32F5` and `0x1800C3322`), reveals the actual descriptor encoding, not merely suggestive BRISK function names:
+
+1. **45 radial sampling positions.** A 45-entry read-only array beginning at `0x1801EAE20` consists of 2D `float32` points on three circles: **10 points at radius 4, 15 at radius 8, and 20 at radius 13**. `0x1800C8B46` sets the `0x2D` (=45) sample loop count; `0x1800C8B50..C8C06` rotates/translates each sampling position and reads an image float. The coordinate transform includes cosine/sine-like factors read from the feature and ±0.5 adjustment before float-to-int truncation, then bounds checks against image width/height (`0x1800C8BC0..C8BED`). An invalid point is represented by `-1.0f` (`0x1801FC980`). The precise orientation angle convention and scale normalisation are not yet fully characterized.
+2. **256 selected comparisons.** A 512-byte table beginning at `0x1801EAC20`, immediately **before** the radial points, contains **256 distinct-index pairs**. Each of its 512 unsigned-byte indices is in `0..44`, covering all 45 positions, and no pair compares an index with itself. The table's proprietary contents are **not copied into Git**.
+3. **Bit generation.** At `0x1800C8C18`, the code sets `r9d = 0x40` (64 groups). Every iteration processes four 2-index comparisons (`0x1800C8C35..C8D43`). It loads two valid sampled intensities, skips the comparison if either is negative, and executes `bts` to set its output bit when the second intensity is less than the first (e.g. `comiss` at `0x1800C8C52`, `bts` at `0x1800C8C5B`). That is **64 × 4 = 256 binary decisions**.
+4. **Exact per-feature record size.** The MFB stage allocates `0x2C` (=44) bytes per feature at `0x1800C32C9`, confirmed again by the output-record stride at `0x1800C8D87`. The descriptor lives at offsets `+0x0C..+0x2B`, i.e. **32 bytes / 256 bits**. The first 12 bytes are three copied 32-bit fields from the detected feature object (`0x1800C8D49..C8D59`); those fields' exact semantic labels remain unresolved.
+
+**This is the first byte-/instruction-level recovery of the mode-1 FocalTech descriptor.** It is strongly consistent with a custom BRISK-style binary local descriptor, but **not** evidence that ordinary OpenCV BRISK produces the same 256 bits. Feature **detection**, orientation, scale, thresholds, template serialization and final score remain unverified.
+
+### Reproducible private-binary audit
+
+A dependency-free, read-only audit script is available at [`tools/audit_moh_engine_features.py`](../tools/audit_moh_engine_features.py). It checks the exact researched DLL SHA256 and PE layout, validates the initial algorithm parameters, 45 concentric sample points, 256 indexed intensity pairs, and selected instruction signatures for the loop/bit/record stride. It prints **only aggregate configuration and structural counts**, not proprietary lookup bytes, and never opens biometric captures. It has been executed successfully against the private matching engine DLL in an isolated local analysis environment.
+
+```bash
+python3 tools/audit_moh_engine_features.py /path/to/private/ftWbioEngineAdapter.dll
+```
+
+This is not a feature-extraction implementation, and it is not connected to Windows Hello, libfprint or USB acquisition. Full feature-extractor equivalence will require reconstructing the interest-point detector and scale/orientation transform before any real-sample matching claims are possible.
