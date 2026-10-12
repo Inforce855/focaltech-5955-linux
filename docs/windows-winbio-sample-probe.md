@@ -73,3 +73,23 @@ References:
 - https://learn.microsoft.com/en-us/windows/win32/api/winbio/nf-winbio-winbiocapturesample
 - https://learn.microsoft.com/en-us/windows/win32/api/winbio/nf-winbio-winbioasyncopensession
 - https://learn.microsoft.com/en-us/windows/win32/api/winbio/nf-winbio-winbiocancel
+
+## Second Windows diagnostic result — 12 October 2026
+
+The authorized operator ran `tools/windows_winbio_async_probe.ps1` inside the offline Windows VirtualBox guest, elevated:
+
+```text
+FocalTech Windows WinBio bounded format probe (no saved biometrics).
+Stage: Intermediate; timeout: 15s.
+WinBioAsyncOpenSession HRESULT: 0x8007000E
+```
+
+This is `E_OUTOFMEMORY` at **asynchronous session open**. The program **did not reach fingerprint capture**, so the output is not evidence of a bad image, an unsupported intermediate BIR, or any issue with Linux sensor calibration. Microsoft lists `E_OUTOFMEMORY` explicitly for `WinBioAsyncOpenSession`; it can denote resource allocation failure, but **does not by itself establish guest RAM exhaustion**. The program's input flags, system pool/database and callback method have been reviewed against documented signatures. No specific root cause has been confirmed.
+
+The original synchronous `WinBioOpenSession` returned `S_OK`, but its `WinBioCaptureSample` then waited indefinitely. There is no reason to keep repeating capture tests or to adjust VM RAM, Windows Biometric Service, FocalTech service, or Windows Hello configurations without better evidence.
+
+**Disposition: PAUSE the WinBio capture probes.** The working Windows Hello login and read-only USB traces remain valid reference evidence. Continue with static/offline reconstruction of Windows image converter `FtWbioDriverUmdfV3.dll` VA `0x180005C78` and later vendor feature-matching routines, rather than relying on a WBF sample API that has not yet yielded any BIR. Previous scripts remain experimental and should not be rerun as standard steps.
+
+Sources:
+- https://learn.microsoft.com/en-us/windows/win32/api/winbio/nf-winbio-winbioasyncopensession
+- https://learn.microsoft.com/en-us/windows/win32/api/winbio/nf-winbio-winbiocapturesample
