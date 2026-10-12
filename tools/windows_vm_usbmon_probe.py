@@ -98,6 +98,11 @@ class RedactedMonitor:
         self.flag_pending = False
         self.small_replies = 0
         self.image_transfers = 0
+        self.gpio_requests = 0
+        self.status_queries = 0
+        self.last_status: int | None = None
+        self.status_changes = 0
+        self.pending_selector: int | None = None
 
     def accept(self, line: str) -> list[str]:
         match = EVENT_RE.match(line.strip())
@@ -129,12 +134,23 @@ class RedactedMonitor:
                 return ["Windows requested a fingerprint image (0x81)"]
             if command == 0x80:
                 selector = parameters[0] if parameters else None
+                self.pending_selector = selector
+                if selector == 0x02:
+                    self.status_queries += 1
+                    if self.status_queries == 1:
+                        return ["Windows finger-status polling started (0x80 selector 0x02; repeats counted)"]
+                    return []
                 if selector == 0x07 and len(parameters) >= 2:
                     self.request_07 += 1
                     self.flag_pending = True
                     return ["Windows queried image-processing mode (0x80 selector 0x07)"]
                 return [f"Windows metadata read (0x80 selector "
                         f"{'0x%02x' % selector if selector is not None else 'unknown'})"]
+            if command == 0x37:
+                self.gpio_requests += 1
+                if self.gpio_requests == 1:
+                    return ["Windows GPIOSet command (0x37; parameters redacted; repeats counted)"]
+                return []
             if command == 0x87:
                 return [f"Windows mode-control command 0x87 ({len(parameters)} parameter bytes; redacted)"]
             return [f"Windows command 0x{command:02x} ({len(parameters)} parameter bytes; redacted)"]
@@ -152,7 +168,17 @@ class RedactedMonitor:
             if payload is None:
                 return []
             self.small_replies += 1
-            if self.flag_pending:
+            selector = self.pending_selector
+            self.pending_selector = None
+            if selector == 0x02 and len(payload) == 1:
+                status_byte = payload[0]
+                if status_byte != self.last_status:
+                    self.last_status = status_byte
+                    self.status_changes += 1
+                    return [f"Windows finger-status BYTE changed to 0x{status_byte:02x} "
+                            "(meaning not yet inferred)"]
+                return []
+            if selector == 0x07 and self.flag_pending:
                 self.flag_pending = False
                 if len(payload) == 1 and payload[0] in (0, 1):
                     self.flag_07 = payload[0]
@@ -166,6 +192,10 @@ class RedactedMonitor:
         return [
             "Windows VM USB observation summary:",
             f"  Request counts: {values or 'none observed'}",
+            f"  Finger-status queries (0x80 selector 0x02): {self.status_queries}",
+            f"  GPIOSet commands (0x37): {self.gpio_requests}",
+            f"  Finger-status byte changes: {self.status_changes} (last: "
+            + (f"0x{self.last_status:02x}" if self.last_status is not None else "not observed") + ")",
             f"  0x81 image requests: {self.image_reads}",
             f"  Large USB IN transfers: {self.image_transfers} (contents always redacted)",
             f"  0x07 selector requests: {self.request_07}",
