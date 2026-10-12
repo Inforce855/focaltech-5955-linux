@@ -102,8 +102,8 @@ Neither original logs nor biometric images should be committed. Only the aggrega
 0x82 (2 parameters, hidden)
 0x37 (GPIOSet; repeated commands suppressed by monitor)
 0x34 (handshake)
-0x30 (0 parameters)
-IN 51 bytes (data redacted; NOT known to be a fingerprint)
+0x30 (firmware-information request, 0 parameters)
+IN 51 bytes (firmware-information reply, content redacted)
 0x80 selector 0x05
 0x80 selector 0x07
   validated single-byte response: 0x00
@@ -131,7 +131,7 @@ The owner supplied event lines, **not the final full counts summary**, so no tot
 1. **The physical unit, in this Windows initialization, reports selector `0x07` = `0x00`.** The MOH DLL branches on device-object offset `+0x268 == 1` before invoking its conditional AES-like raw-image transform. Therefore the observed initialization **bypasses that conditional decryption path**. This directly resolves the uncertainty recorded earlier in [MOH conversion research](windows-moh-image-conversion-2026-10-12.md). It does not exclude unrelated transformations elsewhere in the DLL.
 2. **A successful Windows authentication used exactly one observed `0x81` and a 10,246-byte image-sized IN response.** This agrees with Linux's framed capture size; it does **not** prove the samples are bitwise identical, or that the conversion algorithms match.
 3. The `0x80/0x02` status response transitions **`00 → 01 → 00`** across contact and release. These values are a different status interface from Linux's already observed `0x82 73 01` values `06` absent and `05` present; do not conflate them.
-4. Windows initialization includes `0x34` and `0x30` (followed by 51-byte response), metadata selectors `05`, `07`, `03`, `04`, `01` and GPIO-related `0x37`. The redacted log does **not** reveal `0x82` payloads or exact meaning of `0x30`; no speculative USB operations are recommended.
+4. Windows initialization includes `0x34` and `0x30` (followed by 51-byte response), metadata selectors `05`, `07`, `03`, `04`, `01` and GPIO-related `0x37`. The redacted log does **not** reveal `0x82` payloads; no speculative USB operations are recommended. The existing, previously hardware-verified Linux `tools/firmware_probe.py` identifies `0x30` as the **firmware-information command** and previously received a 51-byte Windows-compatible framed firmware reply. Thus the observed Windows startup includes a known firmware query, not an extra fingerprint image.
 5. **No `0x87` was displayed** in this observed sequence. This is not proof Windows never uses it in any other mode or setup.
 
 ### Updated engineering priority
