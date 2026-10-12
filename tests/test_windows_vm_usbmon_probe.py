@@ -69,6 +69,35 @@ class UsbmonProbeTests(unittest.TestCase):
         self.assertIn("redacted", notes[0])
         self.assertNotIn("de", notes[0])
 
+    def test_repeated_windows_hello_polls_do_not_spam(self):
+        status_query = "a 100 S Bo:1:005:1 -115 7 = 02000380020180"
+        # Command BCC: 03 ^ 80 ^ 02 ^ 01 = 80
+        gpio_set = "a 101 S Bo:1:005:1 -115 8 = 0200043701010132"
+        status_reply_zero = "a 102 C Bi:1:005:2 0 7 = 02000204000600"
+        first = self.m.accept(status_query)
+        self.assertIn("polling", first[0])
+        self.assertEqual(len(self.m.accept(gpio_set)), 1)
+        self.assertEqual(self.m.accept(gpio_set), [])
+        self.assertEqual(self.m.accept(status_reply_zero), ["Windows finger-status BYTE changed to 0x00 (meaning not yet inferred)"])
+        for _ in range(100):
+            self.assertEqual(self.m.accept(status_query), [])
+            self.assertEqual(self.m.accept(status_reply_zero), [])
+            self.assertEqual(self.m.accept(gpio_set), [])
+        self.assertEqual(self.m.status_queries, 101)
+        self.assertEqual(self.m.gpio_requests, 102)
+        self.assertEqual(self.m.status_changes, 1)
+
+    def test_finger_status_changes_reported_once(self):
+        poll = "a 100 S Bo:1:005:1 -115 7 = 02000380020180"
+        off = "a 101 C Bi:1:005:2 0 7 = 02000204000600"
+        on = "a 102 C Bi:1:005:2 0 7 = 02000204010700"
+        self.m.accept(poll)
+        self.m.accept(off)
+        self.m.accept(poll)
+        lines = self.m.accept(on)
+        self.assertIn("0x01", lines[0])
+        self.assertEqual(self.m.status_changes, 2)
+
 
 if __name__ == "__main__":
     unittest.main()
