@@ -93,3 +93,49 @@ git pull --ff-only
 The monitor will now show meaningful status transitions with much less output. To discover selector `0x07`, the monitor must be active **before the Windows driver initializes**; locking/unlocking a running Windows instance is unlikely to show startup-only queries. That future test may use a controlled Windows restart with the monitor already active, without changing Windows' driver or issuing any unverified sensor commands. USB device bus/address can change on re-enumeration, so treat a missing `0x07` as *not observed*, never as flag zero.
 
 Neither original logs nor biometric images should be committed. Only the aggregate command observations above are retained.
+
+## Second reference trace: full Windows VM restart + fingerprint login — 12 October 2026
+
+**Direct observation, not inferred from static code:** The owner began redacted `usbmon` monitoring on Linux **before restarting the working Windows VM**. After the Windows guest restarted, they successfully authenticated using their fingerprint. The reported trace shows:
+
+```text
+0x82 (2 parameters, hidden)
+0x37 (GPIOSet; repeated commands suppressed by monitor)
+0x34 (handshake)
+0x30 (0 parameters)
+IN 51 bytes (data redacted; NOT known to be a fingerprint)
+0x80 selector 0x05
+0x80 selector 0x07
+  validated single-byte response: 0x00
+0x80 selector 0x03
+0x80 selector 0x04
+0x80 selector 0x01
+0x80 selector 0x03
+0x80 selector 0x04
+0x80 selector 0x02 (repeated finger-status polling begins)
+  validated finger-status byte: 0x00
+0x82 (2 parameters, hidden)
+0x82 (2 parameters, hidden)
+  validated finger-status byte: 0x01
+0x82 (2 parameters, hidden)
+0x81 (fingerprint image requested)
+IN 10246 bytes (image content REDACTED)
+0x82 (2 parameters, hidden)
+  validated finger-status byte: 0x00
+```
+
+The owner supplied event lines, **not the final full counts summary**, so no total counts are asserted for this second run.
+
+### Conclusions that are now evidence-backed
+
+1. **The physical unit, in this Windows initialization, reports selector `0x07` = `0x00`.** The MOH DLL branches on device-object offset `+0x268 == 1` before invoking its conditional AES-like raw-image transform. Therefore the observed initialization **bypasses that conditional decryption path**. This directly resolves the uncertainty recorded earlier in [MOH conversion research](windows-moh-image-conversion-2026-10-12.md). It does not exclude unrelated transformations elsewhere in the DLL.
+2. **A successful Windows authentication used exactly one observed `0x81` and a 10,246-byte image-sized IN response.** This agrees with Linux's framed capture size; it does **not** prove the samples are bitwise identical, or that the conversion algorithms match.
+3. The `0x80/0x02` status response transitions **`00 → 01 → 00`** across contact and release. These values are a different status interface from Linux's already observed `0x82 73 01` values `06` absent and `05` present; do not conflate them.
+4. Windows initialization includes `0x34` and `0x30` (followed by 51-byte response), metadata selectors `05`, `07`, `03`, `04`, `01` and GPIO-related `0x37`. The redacted log does **not** reveal `0x82` payloads or exact meaning of `0x30`; no speculative USB operations are recommended.
+5. **No `0x87` was displayed** in this observed sequence. This is not proof Windows never uses it in any other mode or setup.
+
+### Updated engineering priority
+
+Stop treating missing AES decryption as the leading cause of libfprint's zero-minutiae results for this hardware in the **observed mode**. The priority is now to reproduce and validate the ordinary, unencrypted conversion path `ff_sc_GetImage → 0x180005C78` with its already-disassembled spatial helper `0x180006184`, and then determine whether the vendor feature extractor, rather than NBIS, is required.
+
+Do not commit Windows binaries, keys, fingerprint-image buffers, templates, or full usbmon dumps. Only command metadata and the non-biometric one-byte mode/status observations above are included here.
