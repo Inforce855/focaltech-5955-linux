@@ -311,3 +311,63 @@ failure/idle restoration and a non-invasive image-quality gate on stored
 captures; only after the effects and safe rollback are understood
 should a controlled operator-approved hardware experiment be considered.
 Never automatically send `0x87`, modify USB configuration or retry blindly.
+
+## First guarded capture preflight using verified commands (12 October 2026)
+
+New experimental tool: [`tools/scan_preflight_capture.py`](../tools/scan_preflight_capture.py).
+The owner suggested moving toward a more Windows-like acquisition path
+after observing 5, 9 and 16 all-zero leading rows in otherwise complete
+sensor frames. The owner explicitly authorised a controlled initialisation
+test. This **first stage** reuses commands that were **individually observed
+to work** on the exact physical 2808:5955; it does **not** implement the
+complete Windows mode-control sequence.
+
+The script opens one explicitly validated USB interface, then performs:
+
+1. **Exactly one** established `0x34` handshake, validate reply `0xAA55`.
+2. **Exactly one** established `0x82 73 01` finger-presence query,
+   require reported status `0x05` before proceeding.
+3. A 10-ms host-side delay, then **exactly one** established
+   `0x80 01 02` readiness query, validate `0x5AA5`.
+4. **Exactly one** already-tested `0x81` image read, with the existing
+   bounded USB receiver, strict framed payload validation, and private
+   ignored `local-data/` storage. Report only zero percentage and
+   blank-row counts using **64×80 little-endian** raw sample geometry.
+
+**Limitations:**
+
+- **DOES NOT send logical `0x87`**, firmware, resets, untested setup
+  commands or any other newly inferred packets. `0x87` mode-6 writes
+  and reliable idle rollback remain under static investigation.
+- The Windows driver also performs preparation *before* mode 6, which
+  this script does not reproduce. The readiness marker `0x5AA5` was
+  already observed in idle mode, so validating it cannot establish
+  that a new exposure is complete or that initialization succeeded.
+- The host's 10-ms delay tests neither firmware internal settling nor
+  multiple sensor-side scans. The three read-only-query operations are
+  only individually characterised; **their combination is an experiment**.
+- Every request is opt-in (`--send` plus typing `CAPTURE`), no retries,
+  no automatic polling; unexpected values abort further requests.
+- One-frame output alone cannot establish statistical improvement.
+  Compare blank-row counts against the previous 12 captures without
+  claiming that any differences prove causality.
+
+**Nobara synthetic-only tests (no USB):**
+
+```bash
+cd ~/Projects/focaltech-5955-linux
+git pull --ff-only
+python3 -m unittest discover -s tests -p test_scan_preflight_capture.py -v
+```
+
+**Single opted-in live trial, only after tests pass:**
+
+```bash
+sudo .venv/bin/python tools/scan_preflight_capture.py --send
+```
+
+Place a finger gently on the sensor, then type `CAPTURE`. If finger
+status is absent or any reply is malformed, it **does not send `0x81`**.
+On successful retrieval it prints only total zeros and number of
+leading/total/trailing all-zero rows, saves a private RAW file, and
+returns. Do not upload any RAW/PNG data or run undocumented mode writes.
