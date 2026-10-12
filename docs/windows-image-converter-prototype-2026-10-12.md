@@ -71,3 +71,12 @@ No fingerprint image written to disk. Add private PGM path to opt in.
 **Observation:** 1,221 of 5,120 pixels (approximately **23.8%**) reached the output's saturation threshold. This is substantial clipping, but without independent validation against the actual DLL's processed output it is **not proof of defective calibration or wrong reconstruction**. No biometric image or template is included here.
 
 **Next controlled action:** use the existing `ft5955_windows_converter_probe` with an explicit output `local-data/ft5955_windows_candidate.pgm`; examine the 64×80 PGM **only locally**, comparing ridge clarity and spatial orientation with earlier private Linux previews. The CLI refuses to overwrite an existing file. Do not publish fingerprint screenshots, input raw data, or BIRs. If the image is saturated or unreadable, investigate stage-by-stage numeric equivalence rather than changing Windows Hello or USB commands.
+
+
+## User visual assessment of first private PGM
+
+After running the independent converter on the previously saved private capture, the operator viewed the local PGM **without sharing the image**. They report that the fingerprint ridges are **substantially darker and easier to see**, with **much less intermediate grey**: the image looks more black-and-white than the previous Linux normalizations.
+
+They also describe a **triangular missing/contact-looking region in the top-left corner**, consistent with an area visible in earlier previews. Their front-mounted reader requires an awkward angled finger placement, so incomplete sensor contact is one **plausible**, unverified explanation. The image's 1,221 saturated-white pixels (23.8%) must **not** automatically be equated with the triangular missing region: pixel counts alone cannot establish spatial distribution or origin.
+
+**Next minimal experiment:** lift finger completely (to trigger a fresh capture), position it centrally with as much sensor contact as feasible, take **one** new private 10,240-byte capture through the already-working Linux acquisition route, and run the same isolated converter. Compare local previews and aggregate saturation metrics. Do **not** change USB commands, Windows Hello or libfprint yet. No private fingerprint pixels, templates or raw buffers are added to Git.
