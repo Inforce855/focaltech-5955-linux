@@ -55,3 +55,19 @@ View PGM only on your own system (e.g. Gwenview). The CLI will refuse to overwri
 Our actual **MOH** `ftWbioEngineAdapter.dll` is PE32+ x86-64 (SHA256 `a4f037c260e8c86718675ddb6540467a9006ab26184858eb5b8726137185d57c`). Read-only import inspection shows `KERNEL32.dll`, `ADVAPI32.dll` and `SETUPAPI.dll`; `WbioQueryEngineInterface` is exported. This means it could be a candidate for **separate, private, offline engine compatibility research**, but the FT9201 loader needs at least additional shims and ABI verification. It must not simply be installed or wired into login.
 
 **Next decision point:** inspect locally generated PGM for ridge visibility and run an **isolated** offline minutiae diagnostic on the candidate output. If NBIS still gives zero on sharp, non-saturated images, prioritize studying the vendor's own matcher and its BIR input, using OMGrant's documented open-source method as a reference, while keeping the original long-term fully native implementation goal clear.
+
+## First physical-capture test — 12 October 2026
+
+The owner compiled the standalone converter on Nobara; all synthetic tests passed. Without contacting the device or the Windows VM, they ran it on a previously acquired **private**, exactly 10,240-byte 16-bit unframed raw sensor capture. The program returned:
+
+```text
+Experimental 5955 Windows-conversion reconstruction; NOT DLL-validated.
+Conversion: OK; image 64x80
+Shifted 16-bit min/max: 0/2000
+Cutoff bin: 166; scaling denominator: 1328; saturated pixels: 1221
+No fingerprint image written to disk. Add private PGM path to opt in.
+```
+
+**Observation:** 1,221 of 5,120 pixels (approximately **23.8%**) reached the output's saturation threshold. This is substantial clipping, but without independent validation against the actual DLL's processed output it is **not proof of defective calibration or wrong reconstruction**. No biometric image or template is included here.
+
+**Next controlled action:** use the existing `ft5955_windows_converter_probe` with an explicit output `local-data/ft5955_windows_candidate.pgm`; examine the 64×80 PGM **only locally**, comparing ridge clarity and spatial orientation with earlier private Linux previews. The CLI refuses to overwrite an existing file. Do not publish fingerprint screenshots, input raw data, or BIRs. If the image is saturated or unreadable, investigate stage-by-stage numeric equivalence rather than changing Windows Hello or USB commands.
