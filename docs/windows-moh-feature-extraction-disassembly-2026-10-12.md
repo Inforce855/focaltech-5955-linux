@@ -141,3 +141,15 @@ FocalTech driver 8-bit image
 The **shared Gaussian/DoG/scale-space detector** is a notable finding: BRISK-named MFB orientation/description does *not* prove the keypoint detector is standard BRISK. This DLL apparently combines a Gaussian/DoG-style keypoint pipeline with a **custom 256-bit BRISK-like descriptor**. We have **not** established byte-for-byte conformity with SIFT, BRISK, OpenCV, or the exact detector octave/threshold/refinement rules, nor the real runtime algorithm-mode value.
 
 **Next missing instruction-level information:** inspect `0x1800C4610` (extrema selection, refinement and acceptance thresholds), the keypoint-orientation path around `0x1800C20EB..0x1800C34D0`, and the three 32-bit metadata fields preceding each descriptor. Validate these using synthetic images independently from Windows Hello.
+
+
+## Initial matching stage: a RANSAC candidate-count lower bound
+
+Read-only disassembly of the actual matching engine near `0x180076F20` provides one first hard lower bound on matching **geometry** (as distinct from overall login acceptance):
+
+- Function `0x180076F20` is associated with `FtRansacNew` diagnostic strings. Its third register argument, `r8w`, is zero-extended into `r13d` at `0x180076F58`; the function then executes `cmp r13d, 0x3` at **`0x180076FAB`** followed by `jae 0x18007700F` at **`0x180076FAF`**.
+- With a non-null candidate-set pair but **fewer than three** candidate correspondences, the routine takes an error/early-exit path (printing `focaltech-lib:FtRansacNew...setLength < 3` if verbose logging is enabled), instead of starting its allocation/fit logic.
+- At **three or more** candidates, it enters the fitting stage and allocates working arrays. This is a prerequisite for *this* geometric subroutine, **not an established number of matching features required to authenticate**. Later consistency, score, overlap and acceptance thresholds may impose much stronger conditions.
+- A match attempt need not generate a one-to-one descriptor for every one of the 45 radial sampling positions: those **45 positions describe each individual candidate feature**. Multiple candidate features can each carry a 256-bit comparison descriptor.
+
+Confirmed by actual native assembly; no private biometric data were examined. Windows Hello's selected runtime matching pathway and final acceptance policy remain unverified.
