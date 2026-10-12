@@ -107,3 +107,37 @@ python3 tools/audit_moh_engine_features.py /path/to/private/ftWbioEngineAdapter.
 ```
 
 This is not a feature-extraction implementation, and it is not connected to Windows Hello, libfprint or USB acquisition. Full feature-extractor equivalence will require reconstructing the interest-point detector and scale/orientation transform before any real-sample matching claims are possible.
+
+
+## Image-pyramid and keypoint-detection sequence
+
+Additional **direct cross-references and log strings** in the matching engine resolve much more of the first half of the **mode-1 MFB pipeline**:
+
+| Step | Code evidence in MFB extractor `0x1800C14F0` | Cross-check against alternate MFS extractor |
+| --- | --- | --- |
+| Initial image setup | `FtCreateInitImg` call at `0x1800C18EC` → helper `0x1800C36C0` | MFS calls the same helper at `0x1800BEFCD` |
+| Gaussian scale-space pyramid | `FtBuildGaussPyr cost` log referenced at `0x1800C1A9E` | MFS log at `0x1800BF165` |
+| Difference-of-Gaussian pyramid | `FtBuildDogPyr` helper `0x1800C41B0` called from `0x1800C1C01`, with elapsed-time log at `0x1800C1C57` | MFS calls same helper at `0x1800BF2D6`, log at `0x1800BF32C` |
+| Scale-space keypoint extrema | `FtScaleSpaceExtrema` elapsed-time log referenced at `0x1800C1E7A`; near call `0x1800C1E21` → `0x1800C4610` | MFS corresponding log at `0x1800BF63B` |
+| Orientation of MFB features | `FtCalcBriskFeatureOris cost time` log referenced at `0x1800C2CE4` | MFS uses distinct `FtCalcMfsFeatureOris` |
+| MFB feature description | `FtMfbDescriptors_x_2` log at `0x1800C3376`; directly calls `0x1800C8990` at `0x1800C32F5` and `0x1800C3322` | MFS uses `FtComputeDescriptors_x_2` |
+
+**Working architectural sketch, with stages anchored to observed calls/logs:**
+
+```text
+FocalTech driver 8-bit image
+    → FtCreateInitImg
+    → Gaussian scale-space pyramid
+    → Difference-of-Gaussian pyramid
+    → scale-space extrema / keypoint candidates
+    → MFB orientation (BRISK-named)
+    → per-keypoint 45 rotated sample positions
+    → 256 ordered intensity comparisons
+    → 256-bit binary descriptor in a 44-byte feature record
+    → vendor template construction
+    → downstream geometric matching / RANSAC / match scores
+```
+
+The **shared Gaussian/DoG/scale-space detector** is a notable finding: BRISK-named MFB orientation/description does *not* prove the keypoint detector is standard BRISK. This DLL apparently combines a Gaussian/DoG-style keypoint pipeline with a **custom 256-bit BRISK-like descriptor**. We have **not** established byte-for-byte conformity with SIFT, BRISK, OpenCV, or the exact detector octave/threshold/refinement rules, nor the real runtime algorithm-mode value.
+
+**Next missing instruction-level information:** inspect `0x1800C4610` (extrema selection, refinement and acceptance thresholds), the keypoint-orientation path around `0x1800C20EB..0x1800C34D0`, and the three 32-bit metadata fields preceding each descriptor. Validate these using synthetic images independently from Windows Hello.
