@@ -5,6 +5,11 @@ Reverse-engineering and Linux userspace support for the **FocalTech USB fingerpr
 **Project status: First physical fingerprint image captures working under Nobara (11 October 2026)!** USB communication, contact detection, image geometry, handshake, readiness and image-sized transfers have been demonstrated. Distinct fingers produce visibly different images; repeated captures of the first finger look similar. **Visual observations are not automated identity matching, and no functional `libfprint` driver exists yet.** The device is visible on Linux but was not recognised by `libfprint 1.94.100` and `fprintd 1.94.5` on Nobara (Fedora 44 base).
 
 
+### Windows MOH image-conversion disassembly (12 October 2026)
+
+Read-only analysis of the **matching 2808:5955 MOH Windows DLL**, rather than a related model, has identified the complete call path to the 64×80 pre-histogram spatial helper at `0x180006184`, including signed-negative clamping, fixed 64×80 edge repair and four-neighbour impulse removal. The later histogram conversion and optional pre-processing branch are not yet fully reproduced. An independent standalone C11 implementation and synthetic tests of **only the spatial helper** are in `native/ft5955_windows_spatial.c` and `native/test_ft5955_windows_spatial.c`. See **[MOH image-conversion disassembly and evidence](docs/windows-moh-image-conversion-2026-10-12.md)**. No proprietary driver binaries or biometric samples are in the repository.
+
+
 ## Native image-processing prototype (offline, synthetic-only)
 
 We are building a **fully native open-source Linux implementation**, not just a loader that keeps the proprietary Windows matcher. Our first independent C11 image-preparation component lives in [native/](native/). It reads exactly 5,120 little-endian 16-bit measurements and arranges them as **64 columns × 80 rows**, our strongest working layout hypothesis.
