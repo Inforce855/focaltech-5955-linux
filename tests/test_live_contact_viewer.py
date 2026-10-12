@@ -4,11 +4,11 @@ Never access the USB reader or write fingerprint data to disk.
 """
 from __future__ import annotations
 
-from io import BytesIO
 from pathlib import Path
 import struct
 import subprocess
 import sys
+from types import ModuleType
 import unittest
 from unittest.mock import patch
 
@@ -25,12 +25,9 @@ def sample(leading: int = 0, *, value: int = 1276) -> bytes:
 class ViewerTests(unittest.TestCase):
     def test_uses_bounded_known_commands(self):
         self.assertEqual(viewer.MAX_FRAMES, 8)
-        self.assertGreaterEqual(viewer.INTERVAL_SECONDS, 1)
+        self.assertGreaterEqual(viewer.MIN_REQUEST_INTERVAL_SECONDS, 1)
         self.assertEqual(len(viewer.checked_packets()), 4)
-        self.assertEqual([p[1] for p in viewer.STEPS] if hasattr(viewer, "STEPS")
-                         else [0x34, 0x82, 0x80, 0x81],
-                         [0x34, 0x82, 0x80, 0x81])
-        self.assertEqual([p[3] for p in __import__("scan_preflight_capture").STEPS],
+                 self.assertEqual([p[3] for p in __import__("scan_preflight_capture").STEPS],
                          list(viewer.checked_packets()))
 
     def test_zero_band_stats_for_synthetic_data(self):
@@ -80,6 +77,119 @@ class ViewerTests(unittest.TestCase):
         with patch.object(viewer.subprocess, "run", return_value=failed):
             with self.assertRaisesRegex(RuntimeError, "sudo authorisation expired"):
                 viewer.invoke_helper()
+
+
+    def test_eight_touch_session_never_scans_on_timer_or_retries_automatically(self):
+        class Widget:
+            def __init__(self, *args, **kwargs):
+                self.options = dict(kwargs)
+            def grid(self, **kwargs):
+                pass
+            def pack(self, **kwargs):
+                pass
+            def configure(self, **kwargs):
+                self.options.update(kwargs)
+        class Variable:
+            def __init__(self, value=""):
+                self.value = value
+            def set(self, value):
+                self.value = value
+            def get(self):
+                return self.value
+        class Root:
+            def __init__(self):
+                self.destroyed = False
+            def title(self, value):
+                pass
+            def resizable(self, *args):
+                pass
+            def protocol(self, *args):
+                pass
+            def after(self, *args):
+                pass
+            def destroy(self):
+                self.destroyed = True
+
+        tk = ModuleType("tkinter")
+        ttk = ModuleType("tkinter.ttk")
+        tk.Label = Widget
+        tk.StringVar = Variable
+        tk.PhotoImage = Widget
+        ttk.Label = ttk.Frame = ttk.Button = Widget
+        tk.ttk = ttk
+        modules = {"tkinter": tk, "tkinter.ttk": ttk}
+        with patch.dict(sys.modules, modules):
+            root = Root()
+            gui = viewer.ContactViewer(root, enabled=True)
+            with patch.object(viewer.threading, "Thread") as mock_thread:
+                gui.begin_session()
+                self.assertEqual(mock_thread.call_count, 1)
+                self.assertEqual(gui.session_limit, 8)
+                self.assertTrue(gui.working)
+
+                # A completed first scan does NOT automatically queue frame 2.
+                gui.mailbox.put(("frame", sample()))
+                gui.mailbox.put(("done",))
+                gui.drain()
+                self.assertEqual(gui.session_taken, 1)
+                self.assertFalse(gui.working)
+                self.assertEqual(mock_thread.call_count, 1)
+                self.assertIn("LIFT", gui.message.get())
+                self.assertEqual(gui.next_btn.options["state"], "normal")
+
+                # Operator clicks too early, while finger is absent.
+                # Keep previous image and allow an explicit new attempt.
+                gui.last_started = 0.0
+                gui.next_capture()
+                self.assertEqual(mock_thread.call_count, 2)
+                gui.mailbox.put(("error", "Capture stopped: RuntimeError: No finger detected (status 0x06); no image read"))
+                gui.mailbox.put(("done",))
+                gui.drain()
+                self.assertEqual(gui.session_taken, 1)
+                self.assertEqual(gui.session_limit, 8)
+                self.assertEqual(mock_thread.call_count, 2)
+                self.assertIn("Re-touch", gui.message.get())
+
+                # Operator re-touches, and must explicitly click again.
+                gui.last_started = 0.0
+                gui.next_capture()
+                self.assertEqual(mock_thread.call_count, 3)
+                gui.mailbox.put(("frame", sample(2)))
+                gui.mailbox.put(("done",))
+                gui.drain()
+                self.assertEqual(gui.session_taken, 2)
+                self.assertEqual(mock_thread.call_count, 3)
+                gui.stop()
+                self.assertEqual(gui.session_limit, 0)
+                self.assertEqual(gui.next_btn.options["state"], "disabled")
+                self.assertEqual(mock_thread.call_count, 3)
+                gui.close()
+                self.assertTrue(root.destroyed)
+
+    def test_click_rate_limit_does_not_schedule_usb(self):
+        class FakeThread:
+            starts = 0
+            def __init__(self, *args, **kwargs):
+                pass
+            def start(self):
+                self.starts += 1
+        class MinimalGUI:
+            working = False
+            stopping = False
+            enabled = True
+            last_started = 100.0
+            def __init__(self):
+                self.message = type("Message", (), {"set": lambda s, msg: setattr(s, "value", msg)})()
+                self.updated = False
+            def update_controls(self):
+                self.updated = True
+        gui = MinimalGUI()
+        with patch.object(viewer.time, "monotonic", return_value=100.3), \
+             patch.object(viewer.threading, "Thread", FakeThread):
+            result = viewer.ContactViewer.request_frame(gui)
+        self.assertFalse(result)
+        self.assertFalse(gui.working)
+        self.assertIn("at least one second", gui.message.value)
 
 
 if __name__ == "__main__":
