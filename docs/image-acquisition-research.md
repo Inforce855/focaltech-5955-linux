@@ -422,11 +422,23 @@ viewer**, not a proven continuous native scanning API.
   framing/checksum validation. The helper uses a local stdout pipe to
   transfer *exactly 10,240 raw bytes* into GUI memory and terminates.
   It does not print samples, save biometric media, or open a network port.
-- Click **Capture one frame** for a snapshot or explicitly click
-  **8-frame preview (1/sec)** for a strictly bounded eight-frame sequence,
-  with **Stop** and a >=1-second inter-frame interval; no continuous
-  polling, retries after errors, untested commands, `0x87`, resets,
-  firmware/USB power/config changes, or libfprint/PAM changes.
+- New observation from operator testing: **the sensor does not deliver a
+  new image until the finger is lifted and re-touched**. A timed eight-frame
+  loop naturally fails when its contact preflight sees `0x06` during
+  the off-sensor part of that cycle. This is evidence that image
+  acquisition may be finger-event driven, though scan-state details remain
+  unverified.
+- GUI revised from the timed eight-frame loop to **Start 8-touch session**
+  followed by **Capture next** once for each *physical lift/re-touch*.
+  Each click issues exactly one preflight+capture. No automatic scanning,
+  timeout-based retries, polling or USB requests while the user is
+  deliberately lifting the finger. A >=1-second request-start interval
+  remains enforced and **End session** cancels future requests. If contact
+  status `0x06` is observed after a click, that attempt is not counted
+  and the operator can place their finger and explicitly try again.
+  Protocol/transport failures still terminate the session.
+- Never sends untested commands, `0x87`, reset, firmware/USB
+  power/config changes or libfprint/PAM changes.
 - Side-by-side in-memory 64×80 little-endian images (nearest-neighbour
   enlarged): a *contrast-stretched* raw preview, and an **exact-zero map**
   with **white = original sample 0**, black = nonzero. The map is not
@@ -456,7 +468,11 @@ sudo -v
 ```
 
 Place finger gently on the sensor and click **Capture one frame** first.
-Only once that succeeds, use the eight-frame preview if desired.
+Once that succeeds, click **Start 8-touch session** with your finger
+already resting on the sensor. After the first capture, **lift your
+finger fully**, **place it back**, then click **Capture next**. Repeat
+for up to eight fresh touches. The application will never scan while
+waiting for you to reposition, and no mode changes are performed.
 No raw images/templates/PNG screenshots should be committed or shared;
 share *aggregate text metrics only*, or a deliberately obscured diagram
 if desired. A successful 8-frame sequence cannot establish
