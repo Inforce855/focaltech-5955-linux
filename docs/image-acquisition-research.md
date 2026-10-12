@@ -478,3 +478,56 @@ share *aggregate text metrics only*, or a deliberately obscured diagram
 if desired. A successful 8-frame sequence cannot establish
 sensor acquisition timing or Windows-style mode-6 initialization; the
 same 0x5AA5 readiness marker can occur in idle mode.
+
+## Automatic lift-and-re-touch contact preview (12 October 2026)
+
+User testing established the guided 8-frame loop was awkward because
+this sensor needs a **fresh finger release and contact** before an image
+changes. The timed capture previously saw status `0x06` while the
+finger was raised and stopped. The user requested fully automatic
+finger detection: no mouse click between acquisitions.
+
+New `tools/auto_contact_capture.py` is an experimental bounded helper
+for the existing `tools/live_contact_viewer.py`. Running the GUI with
+`--send` automatically launches one short-lived `sudo -n` helper that
+claims only the verified exact 2808:5955 USB interface. It performs
+the established `0x34` handshake once, then checks the validated
+`0x82 73 01` contact command every **500 ms at most**. It must
+observe **`0x06` finger absent before `0x05` finger present**; exactly
+one verified preflight `0x80` and one `0x81` image read follows
+each detected fresh contact. Continued `0x05` cannot retrigger an
+image. Initially present fingers must be lifted before first capture.
+
+Bounded session: at most **240 finger-status queries (~two minutes)**
+or **eight valid new image buffers**, whichever finishes first.
+The Stop button sends `q` through the private local pipe; no USB
+commands are queued after the current transaction. A new bounded
+session can be explicitly restarted from the GUI. No disk image
+writes, automatic USB command retries, mode `0x87`, resets, altered
+system permissions or PAM/fprintd configuration. All rendered
+images and the raw-byte IPC pipe remain local/private.
+
+**Important limitation:** Repeated status polling and edge-driven
+capture are new operating patterns; earlier hardware experiments
+validated the individual commands, **not** high-frequency or
+continuous polling. This conservative two-per-second, 240-query
+cap prevents an unbounded scan loop. The `0x5aa5` register still
+does not prove a new image is complete, and the original zero
+regions may be contact boundaries or acquisition/masking effects.
+Capture outcomes must be examined before making stronger claims.
+
+Start with finger lifted, from a normal GUI user session:
+
+```bash
+cd ~/Projects/focaltech-5955-linux
+git pull --ff-only
+.venv/bin/python -m unittest discover -s tests -p test_live_contact_viewer.py -v
+sudo -v
+.venv/bin/python tools/live_contact_viewer.py --send
+```
+
+After first status `0x06`, touch once and let the image appear.
+Lift fully for at least half a second, then touch again; the
+viewer captures the next frame without any manual click.
+Stop after a few touches if behaviour is unexpected. Only aggregate
+metadata may be shared, never original fingerprint media.
