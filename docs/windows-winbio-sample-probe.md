@@ -36,3 +36,40 @@ A screenshot of two *different* live impressions (Linux and Windows) can reveal 
 Replacing the live USB input is a **biometric-replay/authentication-bypass experiment**, not a direct converter test. It can require a modified USB transport or guest driver, disturb the working VM's authentication path, and introduce state/timing and format effects that obscure the imaging question. **We are not implementing an injection into the login path.** Prefer an offline single-buffer image converter comparison, or an explicitly isolated non-authentication vendor-engine test harness.
 
 Keep fingerprint PNGs, BIRs, ISO/ANSI records, raw captures and templates **local**, out of Git and out of chat. Only aggregate measurements and format/status text may be shared.
+
+## Troubleshooting: synchronous sample waits indefinitely — 12 October 2026
+
+On the author's offline VirtualBox guest, the initial PowerShell probe printed:
+
+```text
+WinBioOpenSession HRESULT: 0x00000000
+Now lift your finger fully, then press once. The call waits for a capture.
+```
+
+but `WinBioCaptureSample()` produced **no subsequent result**, despite the reader successfully authenticating through Windows Hello elsewhere. **This does not mean the intermediate image is available, nor prove the driver is broken.** Microsoft's `WinBioCaptureSample` documentation states that a synchronous system-pool capture can **block indefinitely until its calling application has window focus and a sample arrives**, and that supported stage/purpose combinations are sensor-specific.
+
+For the next test, the original unbounded probe has been superseded by **[`tools/windows_winbio_async_probe.ps1`](../tools/windows_winbio_async_probe.ps1)**, which uses Microsoft's recommended `WinBioAsyncOpenSession` callback notification route, waits a bounded **15 seconds** for a capture-completion callback, and calls `WinBioCancel` if none arrives. The script prints only an HRESULT and BIR block sizes, not pixels or template data. Its code has been statically reviewed against the WinBio signatures but **has not been executed in the user's VM**.
+
+Host-side:
+
+```bash
+cd ~/Projects/focaltech-5955-linux
+git pull --ff-only
+cp tools/windows_winbio_async_probe.ps1 /path/to/your/existing/shared/folder/
+```
+
+Guest-side, from an **elevated Windows PowerShell window**, having copied the script to `C:\Users\Corel\Downloads`, run **in the same interactive PowerShell process** (no new child PowerShell):
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass -Force
+.\windows_winbio_async_probe.ps1
+```
+
+**Keep the VirtualBox guest and PowerShell window focused during the test**. Lift your finger entirely, then touch once. Do not navigate back to the Linux host while capture waits. If capture never completes, the script should print a timeout and attempt cancellation instead of waiting forever.
+
+If the new script also produces no USB capture or returns a rejected HRESULT, document the result and stop: do not disable Windows Hello, the Focalfp service or Windows security. Further analysis should favour the existing, offline DLL conversion path over guessing sensor setup commands.
+
+References:
+- https://learn.microsoft.com/en-us/windows/win32/api/winbio/nf-winbio-winbiocapturesample
+- https://learn.microsoft.com/en-us/windows/win32/api/winbio/nf-winbio-winbioasyncopensession
+- https://learn.microsoft.com/en-us/windows/win32/api/winbio/nf-winbio-winbiocancel
