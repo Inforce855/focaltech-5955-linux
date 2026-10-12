@@ -27,7 +27,7 @@ class ViewerTests(unittest.TestCase):
         self.assertEqual(viewer.MAX_FRAMES, 8)
         self.assertGreaterEqual(viewer.MIN_REQUEST_INTERVAL_SECONDS, 1)
         self.assertEqual(len(viewer.checked_packets()), 4)
-                 self.assertEqual([p[3] for p in __import__("scan_preflight_capture").STEPS],
+        self.assertEqual([p[3] for p in __import__("scan_preflight_capture").STEPS],
                          list(viewer.checked_packets()))
 
     def test_zero_band_stats_for_synthetic_data(self):
