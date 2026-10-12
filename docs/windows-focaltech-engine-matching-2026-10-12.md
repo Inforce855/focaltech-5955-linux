@@ -55,3 +55,8 @@ The previously tested generic libfprint NBIS/bozorth3 path returned **zero minut
 - [OpenCV SIFT overview](https://docs.opencv.org/5.0/py_tutorials/py_features/py_sift_intro/py_sift_intro.html): explains scale-space extrema, orientation assignment and descriptor matching as a **conceptual comparison**, not proof that FocalTech runs ordinary SIFT.
 - [BRISK feature detection/description](https://docs.opencv.org/3.0-alpha/modules/features2d/doc/feature_detection_and_description.html): conceptual comparison for the `FtCalcBriskFeatureOris` string.
 - [OMGrant/ft9201-libfprint PORTING.md](https://github.com/OMGrant/ft9201-libfprint/blob/master/PORTING.md): working **different FocalTech reader** (FT9201) leveraging its engine via a Linux PE loader. Not a drop-in solution for 2808:5955.
+
+## Dispatch correction and recovered binary descriptor — 12 October 2026
+
+The original matcher-analysis document identified MFS/SIFT-like and BRISK-named functions by embedded diagnostic strings. A subsequent **direct instruction trace** shows that the compiled **initial algorithm mode is 1**, and `FtGetTemplate` dispatches mode 1 to `FtGetMfbFeatures` (the BRISK-named path), while modes 0/2/3/4 reach MFS and mode 5 reaches MFS v2. Crucially, the MFB descriptor routine has now been recovered at the machine-instruction level: **45 sampling points (radii 4/8/13; 10/15/20 samples), 256 comparisons and a 44-byte record with a 32-byte binary descriptor**. The mode is mutable, so Windows Hello's **actual runtime mode is still unknown**. All evidence, code addresses and caveats: [MOH feature-extraction disassembly](docs/windows-moh-feature-extraction-disassembly-2026-10-12.md).
+
