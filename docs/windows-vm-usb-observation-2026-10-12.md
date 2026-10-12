@@ -162,3 +162,32 @@ After the Windows VM restart and successful fingerprint sign-in, the monitor ter
 The command counts are internally consistent: **228 `0x80` requests = 221 repeated `0x02` status queries + seven observed startup metadata queries** (`0x05`, `0x07`, `0x03`, `0x04`, `0x01`, `0x03`, `0x04`). The two large bulk-IN transfers likewise have distinct, observed lengths: **51 bytes** from firmware-information request `0x30` and **10,246 bytes** from fingerprint-image request `0x81`. They are **not** two fingerprint captures. The three status transitions are `0x00 → 0x01 → 0x00` (idle, contact, release in the observed Windows login sequence).
 
 **Boundary of the evidence:** Only commands/sizes and selected non-biometric status/flag bytes were recorded. This does **not** demonstrate bit-identical image samples between Linux and Windows or prove what the 226 `0x37` commands do physically. Further progress should target the complete `0x180005C78` spatial/histogram image conversion and the separately proprietary fingerprint feature extractor, keeping current working USB capture untouched. No fingerprint data or full USB dumps are published.
+
+## Windows driver file stack and next-stage comparison — 12 October 2026
+
+The owner supplied Device Manager → **FocalTech Fingerprint reader → Driver File Details** screenshots from the successfully authenticating VirtualBox guest. The list displays Microsoft's `WUDFRd.sys` and Windows Biometric Framework plug-in components alongside the FocalTech vendor components:
+
+| Archived matching MOH driver package file | Relevant role |
+| --- | --- |
+| `FtWbioDriverUmdfV3.dll` | Device-facing user-mode driver; `ff_sc_GetImage` and `0x180005C78` convert incoming sensor data |
+| `ftWbioSensorAdapter.dll` | Sensor interface; exports `WbioQuerySensorInterface` |
+| `ftWbioEngineAdapter.dll` | Biometric engine interface; vendor feature extraction and matching |
+| `ftWbioStorageAdapter.dll` | Storage adapter interface |
+| `focalFpSrvcDeamon.exe` | Separate `Focalfp Service`, not assumed to be the extraction engine |
+| `FocalFpEventLog.dll` | Vendor event-logging component |
+
+The original **MOH** `FtWbioDriverUmdfV3.inf` (UTF-16, from previously supplied private archive) confirms the device ID `USB\\VID_2808&PID_5955`, lists the above files, configures the UMDF driver and installs `focalFpSrvcDeamon` with `ServiceType=0x110` (own-process Windows service) and `StartType=0x2` (**automatic start**). The daemon imports `PowerRegisterSuspendResumeNotification`, `PowerSettingRegisterNotification`, `CM_Reenumerate_DevNode`, and SetupAPI routines, suggesting **power and device lifecycle management**; that is an inference from imported functions, not proof of all its runtime tasks. **Do not disable or modify the daemon** during the successful baseline test.
+
+The dialog's **Provider: Microsoft Corporation** refers to the selected Windows system driver (`WUDFRd.sys`); the same file-list view includes FocalTech vendor DLLs. Do not misidentify the proprietary converter as Microsoft's code.
+
+### Should we capture a processed Windows image?
+
+**Yes, if available through supported APIs, after checking access and format — not by dumping Windows Hello process memory.** We already have the encrypted/unencrypted flag (0), USB image size (10,246 bytes framed) and a live Windows fingerprint verification. A capture from **after** the MOH driver image converter will test the critical missing Linux conversion stage; another USB packet capture alone won't provide that.
+
+**First, noninvasively check whether the Windows Biometric Framework permits `WinBioOpenSession(WINBIO_FLAG_RAW)` followed by `WinBioCaptureSample(WINBIO_DATA_FLAG_INTERMEDIATE)`**. Microsoft's API explicitly defines `RAW` (as captured), `INTERMEDIATE` (cleaned and filtered), and `PROCESSED` (purpose-ready). These are *requests*, not a guarantee that FocalTech implements or exposes them. They require an authorized local administrator for raw access; Windows may return `E_ACCESSDENIED`, `E_NOTIMPL` or a secure-sensor error. The resulting `WINBIO_BIR` may be vendor-specific rather than a directly viewable grayscale PNG. Reference documentation: https://learn.microsoft.com/en-us/windows/win32/api/winbio/nf-winbio-winbiocapturesample and https://learn.microsoft.com/en-us/windows/win32/api/winbio_adapter/nc-winbio_adapter-pibio_engine_accept_sample_data_fn.
+
+**First diagnostic should report only:** HRESULT and BIR total length, header/standard/vendor block lengths, data format metadata, not image pixels, templates, raw buffers, screenshots or hashes of a fingerprint. Any sensitive sample, if the API allows one, stays only in volatile guest memory. It must not be uploaded, published in GitHub, saved to an unencrypted VM snapshot, or included in arbitrary process memory dumps.
+
+If the framework denies the request, proceed with static reproduction of `0x180005C78` and careful instrumentation at the vendor driver's 8-bit output boundary *inside a disposable, private test VM* if authorized and technically feasible. Do **not** alter the working driver or interfere with Windows Hello authentication just to obtain a sample.
+
+The independently reconstructed Windows spatial helper in `native/ft5955_windows_spatial.c` covers only one part of this pipeline. The histogram and adaptive-cutoff stage remain unimplemented, and even a correct grayscale image may not work with NBIS if the vendor feature extractor uses non-minutiae descriptors.
