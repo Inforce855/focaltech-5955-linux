@@ -215,3 +215,55 @@ This is the first report of actual finger-dependent image files from the Linux p
 
 This milestone supports moving from transport reverse-engineering to local-only quality checks: compare same-finger versus different-finger samples while accounting for contact pressure, translation and rotation; confirm which 16-bit endian interpretation produces coherent ridges; then investigate host-side enhancement and matching. Do not turn on KDE/PAM biometric authentication until enrolment and matching have been validated with a password fallback.
 
+
+## Static Windows acquisition-readiness recheck (12 October 2026)
+
+Context: the owner observed intermittently missing **entire sensor rows**
+in valid 10,240-byte raw frames. Among three four-capture sessions,
+11 Oct 14:24 A1 had 9 leading all-zero rows, 11 Oct 14:55 B1 had
+5, and 12 Oct 00:47 A1 had 16. Other captures had no all-zero rows;
+some had smaller zero regions, including at the bottom. Every one
+was an operator-authorised discrete image request. USB sysfs reported
+`power/control=on`, `runtime_status=active`: normal USB autosuspend
+was disabled, so that is not an adequate explanation.
+
+### Confirmed directly from matching MOH Windows driver
+
+Read-only disassembly of the **matching PID 5955 MOH package**
+`FtWbioDriverUmdfV3.dll`, extracted from the user's previously
+provided `7_Fingerprint-module.zip`. The DLL was **not executed**.
+Relevant preferred-image x64 virtual addresses:
+
+| Call site | Observation | Interpretation/limit |
+|---|---|---|
+| `0x18000cc49`–`0x18000cc76` | Capturing caller invokes an imported device-service callback before setup. | Exact higher-level meaning still unknown. |
+| `0x18000cce0`–`0x18000ccea` | Calls helper `0x180009e80` with argument 0. | This is more than direct image reading. |
+| `0x180009ef2`–`0x180009f47` | Helper performs prior handshake check (`0x180009d80`), can issue another internal operation and sleep 1 ms on a bounded retry path. | Its precise scan-controller side effects are **not** safely established. |
+| `0x18000cd41`–`0x18000cd53` | Sets mode `6` through helper `0x180008500`. | That mode follows preparation at `0x180008780` and an `0x87` logical command through `0x1800080c0`; **state-changing, not tested on PID 5955**. |
+| `0x18000cd93`–`0x18000cdb3` | `Sleep(10)` then `0x180009b94`, with the counter initialised to six; failure loops. | At most six checks spaced by ~10 ms (+USB/computation), *not* an unbounded retry. |
+| `0x180009bc1`–`0x180009c65` | The readiness helper reads selector `01`, length `02` with logical `0x80` and compares little-endian return to `0x5AA5`. | The device **also returned `0x5AA5` in an idle/no-explicit-mode test**. Therefore this alone is *not a proven freshly captured frame-complete signal*. |
+| `0x18000cdf0`–`0x18000ce5b` | Only after readiness success does caller allocate output and call `0x180006b74` once. | **One host-side image extraction call** per passage; multiple sensor-side internal exposures remain unknown. |
+| `0x180006c65`–`0x180006c81`, `0x180007967`–`0x1800079e9` | The inner image routine allocates 2 bytes per sensor sample, sends logical `0x81` and reads that buffer. | This is the same image request our prototype uses, but without the full state sequence. |
+
+The sleep import is confirmed from the PE `KERNEL32.dll` import table:
+the call through IAT `0x180019090` resolves to `Sleep`. No inference
+from the timing alone proves that the sensor itself captures multiple
+frames. **Multi-impression enrollment** (lift/reposition across stages)
+is a separate concept from multiple internal exposures per capture.
+
+### Hypothesis and safe next steps
+
+An underspecified scan start/ready sequence could plausibly explain
+intermittent zero-filled image rows **despite full checksummed USB packets**.
+However, the data also fits contact/masking or other sensor-side timing
+behaviour; no root cause is proven. Distinguish three stages:
+(1) status `0x82 73 01` detecting contact (`05` present, `06` absent),
+(2) Windows capture *preparation/scan state*, and (3) image buffer `0x81`.
+Neither status `05` nor `0x5AA5` by itself establishes a full image.
+
+**No device commands have been added or tested as a result of this trace.**
+Next work is read-only reconstruction of mode-6 state transitions,
+failure/idle restoration and a non-invasive image-quality gate on stored
+captures; only after the effects and safe rollback are understood
+should a controlled operator-approved hardware experiment be considered.
+Never automatically send `0x87`, modify USB configuration or retry blindly.
