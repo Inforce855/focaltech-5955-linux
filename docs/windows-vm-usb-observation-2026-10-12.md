@@ -139,3 +139,26 @@ The owner supplied event lines, **not the final full counts summary**, so no tot
 Stop treating missing AES decryption as the leading cause of libfprint's zero-minutiae results for this hardware in the **observed mode**. The priority is now to reproduce and validate the ordinary, unencrypted conversion path `ff_sc_GetImage → 0x180005C78` with its already-disassembled spatial helper `0x180006184`, and then determine whether the vendor feature extractor, rather than NBIS, is required.
 
 Do not commit Windows binaries, keys, fingerprint-image buffers, templates, or full usbmon dumps. Only command metadata and the non-biometric one-byte mode/status observations above are included here.
+
+## Complete second Windows VM trace summary (user-confirmed, 12 October 2026)
+
+After the Windows VM restart and successful fingerprint sign-in, the monitor terminated with the following **aggregate counts**, supplementing the event order above:
+
+| Monitor field | Observed value |
+| --- | ---: |
+| Logical command `0x30` (firmware query) | 1 |
+| Logical command `0x34` (handshake) | 1 |
+| Logical command `0x37` (GPIOSet) | 226 |
+| Logical command `0x80` (all metadata/status requests) | 228 |
+| Logical command `0x81` (image request) | **1** |
+| Logical command `0x82` | 5 |
+| `0x80` selector `0x02` status queries | 221 |
+| `0x37` GPIOSet count | 226 |
+| Finger-status changes | 3 (ending at `0x00`) |
+| Large bulk-IN transfers | **2** |
+| `0x80` selector `0x07` requests | 1 |
+| Validated selector `0x07` response | **0** (optional AES decrypt branch bypassed) |
+
+The command counts are internally consistent: **228 `0x80` requests = 221 repeated `0x02` status queries + seven observed startup metadata queries** (`0x05`, `0x07`, `0x03`, `0x04`, `0x01`, `0x03`, `0x04`). The two large bulk-IN transfers likewise have distinct, observed lengths: **51 bytes** from firmware-information request `0x30` and **10,246 bytes** from fingerprint-image request `0x81`. They are **not** two fingerprint captures. The three status transitions are `0x00 → 0x01 → 0x00` (idle, contact, release in the observed Windows login sequence).
+
+**Boundary of the evidence:** Only commands/sizes and selected non-biometric status/flag bytes were recorded. This does **not** demonstrate bit-identical image samples between Linux and Windows or prove what the 226 `0x37` commands do physically. Further progress should target the complete `0x180005C78` spatial/histogram image conversion and the separately proprietary fingerprint feature extractor, keeping current working USB capture untouched. No fingerprint data or full USB dumps are published.
