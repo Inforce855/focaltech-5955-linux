@@ -15,6 +15,9 @@
 #if defined(FT5955_OFFLINE_QUERY_SAMPLE_HINT)
 extern void ft_engine_log_sample_hint(void);
 #endif
+#if defined(FT5955_OFFLINE_PROBE_COMMIT)
+extern void ft_engine_probe_commit_offline(void);
+#endif
 #if defined(FT5955_OFFLINE_QUERY_EXTENDED_ENROLLMENT_STATUS)
 extern void ft_engine_log_extended_enrollment_status(void);
 #endif
@@ -187,12 +190,22 @@ int main(int argc,char **argv)
         fprintf(stderr,"[5955] UpdateEnrollment sample %d: %d (0=complete,1=more,2=rejected).\\n",i-2,update);
         if(update<0 || update>2) return 3;
         if(update==0){
-            fprintf(stderr,"[5955] ENROLLMENT COMPLETE (in memory). No CommitEnrollment performed.\\n");
+            fprintf(stderr,"[5955] Capture collection reached UpdateEnrollment S_OK.\\n");
+#if defined(FT5955_OFFLINE_PROBE_COMMIT)
+            fprintf(stderr,"[5955] Attempting experimental CommitEnrollment into mock storage ONLY.\\n");
+            ft_engine_probe_commit_offline();
+#else
+            fprintf(stderr,"[5955] No CommitEnrollment performed.\\n");
+#endif
             result=0;
             break;
         }
     }
     if(result!=0) fprintf(stderr,"[5955] Additional DISTINCT captures required to complete enrolment.\\n");
+#if defined(FT5955_OFFLINE_PROBE_COMMIT)
+    fprintf(stderr,"[5955] In-memory commit probe finished; no template persisted, printed or saved.\\n");
+#else
     fprintf(stderr,"[5955] No biometric template committed, printed, or saved.\\n");
+#endif
     return 0; /* successful diagnostic even if enrolment is incomplete */
 }
