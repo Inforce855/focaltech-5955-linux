@@ -12,6 +12,9 @@
 #define MAX_DIM 2048
 #define MAX_PIXELS (MAX_DIM*MAX_DIM)
 #define BAD_CAPTURE UINT32_C(0x80098008)
+#if defined(FT5955_OFFLINE_QUERY_EXTENDED_ENROLLMENT_STATUS)
+extern void ft_engine_log_extended_enrollment_status(void);
+#endif
 
 static int token(FILE *fp, char *out, size_t cap)
 {
@@ -104,6 +107,9 @@ int main(int argc,char **argv)
             return 3;
         }
         int update=ft_engine_enroll_update();
+#if defined(FT5955_OFFLINE_QUERY_EXTENDED_ENROLLMENT_STATUS)
+        ft_engine_log_extended_enrollment_status();
+#endif
         fprintf(stderr,"[5955] UpdateEnrollment sample %d: %d (0=complete,1=more,2=rejected).\\n",i-2,update);
         if(update<0 || update>2) return 3;
         if(update==0){
