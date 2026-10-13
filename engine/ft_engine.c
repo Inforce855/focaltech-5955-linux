@@ -25,6 +25,7 @@
 #include <sys/syscall.h>
 #include <asm/prctl.h>
 #include "ft5955_compat_time.h"
+#include "ft5955_compat_fls.h"
 
 typedef uint8_t u8; typedef uint16_t u16; typedef uint32_t u32; typedef uint64_t u64;
 #define MS __attribute__((ms_abi))
@@ -151,7 +152,6 @@ static int  MS sh_GetStringTypeW(u32 t,const u16*s,int c,u16*out){ for(int i=0;i
 static void MS sh_GetSystemInfo(void*p){ memset(p,0,64); u8*b=p; *(u32*)(b+0)=9; *(u32*)(b+4)=4096; }
 static void MS sh_GetSystemTimeAsFileTime(u64*ft){ static u64 t=0x01d0000000000000ULL; *ft=(t+=100000); }
 static u32  MS sh_GetTickCount(void){ static u32 t=1000; return (t+=5); }
-static int  MS sh_QueryPerformanceCounter(u64*c){ static u64 t=0; *c=(t+=1000); return 1; }
 static int  MS sh_IsDebuggerPresent(void){ return 0; }
 static int  MS sh_IsProcessorFeaturePresent(u32 f){ return 1; }
 static void* MS sh_EncodePointer(void*p){ return p; }
@@ -186,6 +186,10 @@ static void register_shims(void){
   reg("EnterCriticalSection",sh_EnterCS);reg("LeaveCriticalSection",sh_LeaveCS);reg("DeleteCriticalSection",sh_DeleteCS);
   reg("InitializeSListHead",sh_InitSList);reg("InterlockedFlushSList",sh_FlushSList);
   R(TlsAlloc);R(TlsFree);R(TlsGetValue);R(TlsSetValue);
+  reg("FlsAlloc", (void*)ft5955_FlsAlloc);
+  reg("FlsGetValue", (void*)ft5955_FlsGetValue);
+  reg("FlsSetValue", (void*)ft5955_FlsSetValue);
+  reg("FlsFree", (void*)ft5955_FlsFree);
   R(GetCurrentProcess);R(GetCurrentProcessId);R(GetCurrentThreadId);
   reg("GetCurrentThread", (void*)ft5955_GetCurrentThread);
   R(GetModuleHandleW);R(GetModuleHandleA);R(GetModuleHandleExW);R(GetModuleFileNameA);R(GetModuleFileNameW);
@@ -434,7 +438,8 @@ static u32 MS st_AddRecord(void*pipe,u8*rec,u8 sub){
 
 static u64 g_storage_vt[0x100/8];
 static u64 g_sensor_vt[0x100/8];
-static void build_storage_vtable(void){
+/* Not used until verified 5955 WinBio Attach is enabled. */
+static void __attribute__((unused)) build_storage_vtable(void){
   for(int i=0;i<0x100/8;i++){ g_storage_vt[i]=(u64)st_default; g_sensor_vt[i]=(u64)st_default; }
   g_storage_vt[0x68/8]=(u64)st_AddRecord;
   g_storage_vt[0x78/8]=(u64)st_QueryBySubject;
@@ -452,7 +457,7 @@ static void *g_iface;
 
 void ft_engine_geometry(int *w,int *h){ if(w)*w=ENG_W; if(h)*h=ENG_H; }
 
-static int g_loaded = 0;
+static int g_loaded __attribute__((unused)) = 0;
 /* Experimental 5955-only interface smoke-test. Does NOT Attach, enroll or
  * use USB. Run only in an offline, isolated test environment. */
 int ft_engine_smoke_interface(const char *dll_path){
