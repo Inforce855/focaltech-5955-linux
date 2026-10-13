@@ -75,6 +75,8 @@ def main():
     ap.add_argument("archive",type=Path,help="local FocalTech driver ZIP")
     ap.add_argument("--captures-dir",type=Path,
                     default=ROOT/"local-data/enroll-captures")
+    ap.add_argument("--with-enrollment-parameters",action="store_true",
+                    help="opt-in offline call to standard WinBio SetEnrollmentParameters after CreateEnrollment")
     ap.add_argument("--limit",type=int,default=16,
                     help="number of existing PGM images, 2-20 (default: 16)")
     args=ap.parse_args()
@@ -88,9 +90,11 @@ def main():
         if not stat.S_ISREG(st.st_mode):
             ap.error(f"Not a regular private PGM file: {path}")
     print(f"Replaying {len(files)} existing local PGM captures. No USB or new scans.")
+    if args.with_enrollment_parameters:
+        print("EXPERIMENT: SetEnrollmentParameters enabled (unknown finger subtype).")
     try:
         proc=subprocess.run(
-            ["bash",str(BATCH),str(args.archive.resolve()),*map(str,files)],
+            ["bash",str(BATCH),*(["--with-enrollment-parameters"] if args.with_enrollment_parameters else []),str(args.archive.resolve()),*map(str,files)],
             cwd=ROOT,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
             text=True,timeout=120,check=False)
     except subprocess.TimeoutExpired:
@@ -100,6 +104,9 @@ def main():
         print(f"Isolated diagnostic failed (exit {proc.returncode}).",file=sys.stderr)
         # Avoid printing uncontrolled binary/vendor logs.
         return proc.returncode
+    setup=re.search(r"ENROLL_DIAG set_params_hr=0x([0-9a-fA-F]{8}) subfactor=(\d+)",proc.stderr)
+    if args.with_enrollment_parameters:
+        print("SetEnrollmentParameters result:",(f"0x{setup.group(1)}; subfactor={setup.group(2)}" if setup else "NOT CONFIRMED"))
     ok=summarize(proc.stderr,files)
     return 0 if ok else 1
 
