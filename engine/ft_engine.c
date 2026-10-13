@@ -42,6 +42,7 @@
 #include "ft5955_compat_sysinfo.h"
 #include "ft5955_compat_env.h"
 #include "ft5955_compat_slist.h"
+#include "ft5955_compat_registry.h"
 #include "ft5955_compat_teb_layout.h"
 
 typedef uint8_t u8; typedef uint16_t u16; typedef uint32_t u32; typedef uint64_t u64;
@@ -230,6 +231,10 @@ static void __attribute__((unused)) register_shims(void){
   reg("GetEnvironmentStringsW", (void*)ft5955_GetEnvironmentStringsW);
   reg("FreeEnvironmentStringsW", (void*)ft5955_FreeEnvironmentStringsW);
   reg("SetEnvironmentVariableW", (void*)ft5955_SetEnvironmentVariableW);
+  reg("RegOpenKeyExA", (void*)ft5955_RegOpenKeyExA);
+  reg("RegQueryValueExA", (void*)ft5955_RegQueryValueExA);
+  reg("RegCloseKey", (void*)ft5955_RegCloseKey);
+  reg("RegSetKeyValueA", (void*)ft5955_RegSetKeyValueA);
   R(RtlCaptureContext);R(RtlLookupFunctionEntry);R(RtlVirtualUnwind);R(RtlUnwindEx);R(RtlPcToFileHeader);
   R(SetUnhandledExceptionFilter);R(UnhandledExceptionFilter);R(RaiseException);R(TerminateProcess);R(ExitProcess);
 #undef R
