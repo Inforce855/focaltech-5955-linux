@@ -1081,7 +1081,7 @@ int ft_engine_probe_commit_offline(void){
   memset(g_rec_identity,0,sizeof g_rec_identity);
   memset(g_rec_template,0,sizeof g_rec_template);
   g_rec_tsize=0; g_have_record=0;
-  return 0;
+  return ready; /* report successful in-memory commit after secure wipe */
 }
 #endif
 
