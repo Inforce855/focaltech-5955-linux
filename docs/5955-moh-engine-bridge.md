@@ -331,11 +331,34 @@ directory, verifies the original MOH SHA256, checks the image structure
 and removes the extracted DLL and helper afterwards. It neither
 loads executable DLL code nor accesses USB/fingerprints.
 
-**Important limitations:** header/section checks and the bounded
-import walker are only partial PE safety checks. The inherited export
-parser, loaded-image permissions/lifetime, relocation assumptions,
-failure-path resource cleanup and Windows ABI/shim correctness still
-require separate review. Passing this test is **not** authorisation
+**Bounded export lookup:** the original FT9201 export resolver trusted
+the DLL's name, ordinal and function tables without verifying their
+ranges. `ft5955_pe_find_export` now checks export-directory limits,
+array sizes, function/name RVAs, string terminators and ordinals, and
+rejects forwarded exports (not callable functions). The guarded loader
+additionally requires the returned RVA to lie inside a section marked
+executable. The SHA-pinned, read-only probe reconstructs the image in
+non-executable heap memory and checks the real MOH
+`WbioQueryEngineInterface` export.
+
+Synthetic export test:
+
+    cc -std=c11 -O2 -Wall -Wextra -Werror -Iengine \\
+      engine/ft5955_pe_exports.c tests/test_moh_pe_exports.c \\
+      -o /tmp/ft5955_pe_exports_test
+    /tmp/ft5955_pe_exports_test
+
+Re-run the **private original DLL** metadata probe to verify this export
+on Nobara; it never executes the DLL:
+
+    python3 tools/moh_pe_guard_probe.py '/home/tim/Downloads/7_Fingerprint-module.zip'
+    python3 -m unittest discover -s tests -p 'test_moh_loader_teb_gate.py'
+    bash tools/build_moh_engine_smoke.sh
+
+**Important limitations:** header, section, import and export checks are
+still only partial PE safety checks. Loaded-image permissions/lifetime,
+relocation assumptions, failure-path resource cleanup and Windows ABI/shim
+correctness require separate review. Passing this test is **not** authorisation
 to enable vendor DLL execution or to integrate with system
 fprintd/PAM. Registered import names remain **86/110, 24 missing**.
 
