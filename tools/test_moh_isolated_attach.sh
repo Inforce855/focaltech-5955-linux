@@ -37,6 +37,7 @@ PY
 # Compile a separate opt-in binary; leave the normal guarded build unchanged.
 gcc -std=gnu11 -O0 -g -Wall -Wextra -Wno-unused-parameter \
   -DFT5955_ALLOW_DLL_EXECUTION_AFTER_AUDIT -DFT5955_ALLOW_UNVERIFIED_ATTACH \
+  -DFT5955_OFFLINE_SENSOR_SIZE_SIM \
   -pthread -Iengine engine/ft_engine.c engine/ft5955_compat_time.c \
   engine/ft5955_compat_fls.c engine/ft5955_compat_locale.c \
   engine/ft5955_compat_datetime.c engine/ft5955_compat_locale_enum.c \
