@@ -39,7 +39,7 @@ class GatedTebWiring(unittest.TestCase):
 
     def test_no_runtime_gate_removed(self):
         self.assertIn("#ifndef FT5955_ALLOW_DLL_EXECUTION_AFTER_AUDIT", SOURCE)
-        self.assertIn("#ifndef FT5955_ALLOW_UNVERIFIED_ATTACH", SOURCE)
+        self.assertIn("#if !defined(FT5955_ALLOW_UNVERIFIED_ATTACH) || !defined(FT5955_ALLOW_DLL_EXECUTION_AFTER_AUDIT)", SOURCE)
         self.assertIn('return -100;', SOURCE)
 
 
