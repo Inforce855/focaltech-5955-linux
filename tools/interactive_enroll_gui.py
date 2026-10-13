@@ -43,29 +43,34 @@ class EnrolGUI:
         self.capture_running=False
         self.last_feedback="none"
         root.title("FocalTech 5955 — live experimental enrolment")
-        root.geometry("530x650")
-        root.resizable(False,False)
+        # Keep the controls accessible on short screens and permit resizing.
+        root.geometry("530x590")
+        root.minsize(450,450)
+        root.resizable(True,True)
         root.protocol("WM_DELETE_WINDOW",self.close)
-        frame=ttk.Frame(root,padding=20)
+        frame=ttk.Frame(root,padding=(14,10))
         frame.pack(fill="both",expand=True)
         ttk.Label(frame,text="Fingerprint enrolment",font=("Sans",17,"bold")).pack()
         ttk.Label(frame,text="Place your finger on the sensor. Lift fully between touches.",
                   wraplength=460,justify="center").pack(pady=(6,4))
         ttk.Label(frame,text="12 usable touches required • Windows-like inverted polarity • no fingerprint saved",
                   wraplength=460,justify="center").pack(pady=(0,8))
-        self.canvas=tk.Canvas(frame,width=260,height=330,highlightthickness=0)
+        self.canvas=tk.Canvas(frame,width=224,height=272,highlightthickness=0)
         self.canvas.pack()
         self.draw_target("idle")
         self.status=tk.StringVar(value="Ready to start. Live enrolment is experimental; no fingerprint will be saved.")
-        ttk.Label(frame,textvariable=self.status,wraplength=460,justify="center",
-                  font=("Sans",11)).pack(pady=10)
+        status_label=ttk.Label(frame,textvariable=self.status,wraplength=460,justify="center",
+                               font=("Sans",11))
+        status_label.pack(pady=(4,5))
         self.diagnostic=tk.StringVar(value="Last engine result: awaiting first capture")
-        ttk.Label(frame,textvariable=self.diagnostic,wraplength=480,justify="center",
-                  font=("Sans",9)).pack(pady=(0,6))
+        diagnostic_label=ttk.Label(frame,textvariable=self.diagnostic,wraplength=480,justify="center",
+                                   font=("Sans",9))
+        diagnostic_label.pack(pady=(0,3))
         self.progress=tk.StringVar(value="Touches: 0   •   Usable: 0   •   Rejected: 0   •   NOT COMPLETE")
-        ttk.Label(frame,textvariable=self.progress).pack(pady=3)
+        progress_label=ttk.Label(frame,textvariable=self.progress)
+        progress_label.pack(pady=3)
         buttons=ttk.Frame(frame)
-        buttons.pack(pady=15)
+        buttons.pack(pady=(5,5))
         self.start_button=ttk.Button(buttons,text="Start enrolment",command=self.start)
         self.start_button.pack(side="left",padx=8)
         self.stop_button=ttk.Button(buttons,text="Stop",command=self.stop,state="disabled")
@@ -73,9 +78,22 @@ class EnrolGUI:
         self.next_button=ttk.Button(frame,text="Continue: next eight touches",
                                     command=self.next_touches,state="disabled")
         self.next_button.pack()
+
+        # Pin all status readouts and controls ABOVE the tall illustration.
+        # Previously they extended beyond the fixed-height 650px window.
+        for widget, spacing in (
+            (status_label, (5,3)),
+            (diagnostic_label, (0,3)),
+            (progress_label, (0,4)),
+            (buttons, (3,5)),
+            (self.next_button, (0,6)),
+        ):
+            widget.pack_forget()
+            widget.pack(before=self.canvas,pady=spacing)
+
         ttk.Label(frame,text="The target is illustrative, not an anatomical coverage map.\n"
                   "A completed session does not enrol Linux login or create a persistent template.",
-                  justify="center",wraplength=450).pack(pady=15)
+                  justify="center",wraplength=450).pack(pady=(5,5))
         self.active=False
         root.after(100,self.drain)
 
@@ -116,6 +134,9 @@ class EnrolGUI:
                           capstyle=tk.ROUND)
         c.create_text(130,307,text="FINGERPRINT TARGET",fill=colour,
                       font=("Sans",10,"bold"))
+        # Scale the existing illustration to fit a shorter display. It is
+        # decorative only; no fingerprint pixels or biometric data are shown.
+        c.scale("all",0,0,224/260,272/330)
 
     def update_progress(self):
         state="COMPLETE (temporary; not saved)" if self.complete else "NOT COMPLETE"
