@@ -25,7 +25,7 @@ int main(int argc,char **argv) {
   if(argc!=3 || strcmp(argv[1],"--interactive-enroll")) return 2;
   setvbuf(stdout,NULL,_IOLBF,0);
   if(ft_engine_open(argv[2])!=0) { puts("ERROR attach"); return 1; }
-  ft_engine_enroll_begin();
+  if(ft_engine_enroll_begin()!=0) { puts("ERROR create-enrollment"); return 3; }
   puts("READY");
   uint8_t image[W*H];
   for(int i=1;i<=96;i++) {
