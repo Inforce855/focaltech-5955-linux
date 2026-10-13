@@ -2,7 +2,6 @@
  * Synthetic minimal PE32+ fixture; no proprietary DLL, USB or biometrics.
  */
 #include "ft5955_pe_guard.h"
-#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -47,23 +46,39 @@ static void fixture(uint8_t *file)
     wr32(file, S2+20, 0x800);
     wr32(file, S2+36, 0xc0000040);
 }
-static void rejected(const uint8_t *p, size_t len)
+/* Report failed cases with a source line rather than aborting with SIGABRT
+ * and leaving a core dump in the user's systemd-coredump directory. */
+static unsigned failures;
+#define CHECK(expr) do { \
+    if (!(expr)) { \
+        fprintf(stderr, "PE guard test failed on line %d: %s\\n", __LINE__, #expr); \
+        ++failures; \
+    } \
+} while (0)
+
+static void rejected_line(const uint8_t *p, size_t len, int case_line)
 {
     struct ft5955_pe_layout d;
     memset(&d, 0xa5, sizeof d);
-    assert(ft5955_pe_guard(p, len, &d) == -1);
+    int result = ft5955_pe_guard(p, len, &d);
+    if (result != -1) {
+        fprintf(stderr, "PE guard unexpectedly accepted malformed input from line %d (result=%d)\\n",
+                case_line, result);
+        ++failures;
+    }
 }
+#define rejected(p, len) rejected_line((p), (len), __LINE__)
 int main(void)
 {
     uint8_t p[LEN];
     struct ft5955_pe_layout d;
     fixture(p);
-    assert(ft5955_pe_guard(p, LEN, &d) == 0);
-    assert(d.image_size == 0x4000 && d.headers_size == 0x400);
-    assert(d.entry_rva == 0x1000 && d.section_count == 2);
-    assert(d.import_rva == 0x2100 && d.import_size == 0x40);
-    assert(d.image_base == UINT64_C(0x180000000));
-    assert(d.section_table == S1);
+    CHECK(ft5955_pe_guard(p, LEN, &d) == 0);
+    CHECK(d.image_size == 0x4000 && d.headers_size == 0x400);
+    CHECK(d.entry_rva == 0x1000 && d.section_count == 2);
+    CHECK(d.import_rva == 0x2100 && d.import_size == 0x40);
+    CHECK(d.image_base == UINT64_C(0x180000000));
+    CHECK(d.section_table == S1);
     rejected(p, 0x200); /* truncated before section raw data */
     rejected(p, 0);     /* empty file */
 
@@ -79,7 +94,11 @@ int main(void)
     fixture(p); wr32(p, OPT+16, 0x2100); rejected(p, LEN);
     fixture(p); wr32(p, OPT+112+8, 0); rejected(p, LEN);
     fixture(p); wr32(p, OPT+112+8, 0x3900); rejected(p, LEN);
-    fixture(p); wr32(p, OPT+112+8+4, 0x300); rejected(p, LEN);
+    /* The import data starts 0x100 into a 0x400-byte raw section:
+     * exactly 0x300 bytes FIT and must be accepted. One extra byte fails. */
+    fixture(p); wr32(p, OPT+112+8+4, 0x300);
+    CHECK(ft5955_pe_guard(p, LEN, &d) == 0);
+    fixture(p); wr32(p, OPT+112+8+4, 0x301); rejected(p, LEN);
     fixture(p); wr32(p, OPT+112+9*8, 0x2800); rejected(p, LEN);
     fixture(p); wr32(p, OPT+112+9*8+4, 1); rejected(p, LEN);
     fixture(p); wr32(p, S1+20, 0xb00); rejected(p, LEN); /* raw file overflow */
@@ -88,6 +107,10 @@ int main(void)
     fixture(p); wr32(p, S1+36, 0xe0000020); rejected(p, LEN); /* W+X */
     fixture(p); wr32(p, S1+8, UINT32_MAX); rejected(p, LEN);
     fixture(p); wr32(p, S2+16, 0x100); rejected(p, LEN); /* import not raw-backed */
+    if (failures) {
+        fprintf(stderr, "5955 PE guard: %u synthetic case(s) failed\\n", failures);
+        return 1;
+    }
     puts("5955 conservative PE header/section guard: synthetic tests OK");
     return 0;
 }
