@@ -5,8 +5,17 @@
 # API shims are incomplete. Run only after reviewing and accepting the risk.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-if [[ $# != 2 || ! -f "$1" || ! -f "$2" ]]; then
-  echo "Usage: bash tools/test_moh_isolated_pgm_accept.sh /path/to/7_Fingerprint-module.zip /path/to/ft5955_windows_candidate.pgm" >&2
+if [[ $# != 2 ]]; then
+  echo "Usage: bash tools/test_moh_isolated_pgm_accept.sh /path/to/7_Fingerprint-module.zip /path/to/candidate.pgm" >&2
+  exit 2
+fi
+if [[ ! -f "$1" ]]; then
+  echo "ERROR: Vendor driver archive not found: $1" >&2
+  exit 2
+fi
+if [[ ! -f "$2" ]]; then
+  echo "ERROR: PGM image not found: $2" >&2
+  echo "Locate it with: find /home/tim -type f -name 'ft5955_windows_candidate.pgm' -print 2>/dev/null" >&2
   exit 2
 fi
 for command in bwrap gcc python3 objdump timeout; do
