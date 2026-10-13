@@ -10,6 +10,9 @@ cd "$(dirname "$0")/.."
 declare -a enrollment_setup_flags=()
 input_kind=pgm
 windows_bir_mode=none
+completion_from_update=0
+probe_commit=0
+skip_status=0
 while (( $# > 0 )); do
   case "$1" in
     --windows-bir-direct)
@@ -25,7 +28,16 @@ while (( $# > 0 )); do
       enrollment_setup_flags+=(-DFT5955_OFFLINE_WINDOWS_BIR_SYNTHETIC)
       shift ;;
     --completion-from-update)
+      completion_from_update=1
       enrollment_setup_flags+=(-DFT5955_OFFLINE_COMPLETION_FROM_UPDATE)
+      shift ;;
+    --skip-enrollment-status)
+      skip_status=1
+      enrollment_setup_flags+=(-DFT5955_OFFLINE_SKIP_ENROLLMENT_STATUS)
+      shift ;;
+    --probe-commit-in-memory)
+      probe_commit=1
+      enrollment_setup_flags+=(-DFT5955_OFFLINE_PROBE_COMMIT)
       shift ;;
     --invert-pixels)
       enrollment_setup_flags+=(-DFT5955_OFFLINE_INVERT_INPUT_PIXELS)
@@ -43,11 +55,19 @@ while (( $# > 0 )); do
   esac
 done
 if (( $# < 2 || $# > 21 )); then
-  echo "Usage: bash tools/test_moh_isolated_pgm_enroll_batch.sh [--windows-bir-direct|--windows-bir-synthetic] [--invert-pixels] [--completion-from-update] [--with-enrollment-parameters] [--with-extended-status] [--with-sample-hint] vendor.zip sample1.pgm [...], or vendor.zip one_private.bir" >&2
+  echo "Usage: bash tools/test_moh_isolated_pgm_enroll_batch.sh [--windows-bir-direct|--windows-bir-synthetic] [--invert-pixels] [--completion-from-update] [--skip-enrollment-status] [--probe-commit-in-memory] [--with-enrollment-parameters] [--with-extended-status] [--with-sample-hint] vendor.zip sample1.pgm [...], or vendor.zip one_private.bir" >&2
   exit 2
 fi
 if [[ ! -f "$1" ]]; then
   echo "ERROR: Vendor driver archive not found: $1" >&2
+  exit 2
+fi
+if (( (skip_status || probe_commit) && ! completion_from_update )); then
+  echo "ERROR: --probe-commit-in-memory and --skip-enrollment-status require --completion-from-update." >&2
+  exit 2
+fi
+if [[ "$input_kind" == bir && "$probe_commit" == 1 ]]; then
+  echo "ERROR: cannot probe commit from a single Windows BIR capture." >&2
   exit 2
 fi
 if [[ "$input_kind" == bir ]]; then
@@ -138,7 +158,7 @@ for path in /lib /lib64 /bin /sbin; do
     mounts+=(--ro-bind "$path" "$path")
   fi
 done
-echo "Launching isolated MOH enrolment probe (15-second limit). No USB, no template commit."
+echo "Launching isolated MOH enrolment probe (15-second limit). No USB, no persistent template."
 echo "WARNING: experimental DLL execution; may abort or crash inside sandbox."
 set +e
 (
@@ -162,6 +182,6 @@ if [[ $status == 124 || $status == 137 ]]; then
 elif [[ $status != 0 ]]; then
   echo "Synthetic probe returned an unexpected error or crashed; normal builds remain guarded."
 else
-  echo "Multi-sample enrolment diagnostic returned (no template committed or saved)."
+  echo "Multi-sample enrolment diagnostic returned (no template persisted or saved)."
 fi
 exit "$status"
