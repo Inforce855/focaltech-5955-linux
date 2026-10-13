@@ -38,6 +38,13 @@ PY
 gcc -std=gnu11 -O0 -g -Wall -Wextra -Wno-unused-parameter \
   -DFT5955_ALLOW_DLL_EXECUTION_AFTER_AUDIT -DFT5955_ALLOW_UNVERIFIED_ATTACH \
   -DFT5955_OFFLINE_SENSOR_SIZE_SIM \
+  -DFT5955_OFFLINE_SKIP_ENROLLMENT_STATUS \
+  -DFT5955_OFFLINE_COMPLETION_FROM_UPDATE \
+  -DFT5955_OFFLINE_SET_ENROLLMENT_PARAMETERS \
+  -DFT5955_OFFLINE_PROBE_DUPLICATE \
+  -DFT5955_OFFLINE_MOCK_EMPTY_QUERY_BY_CONTENT \
+  -DFT5955_OFFLINE_PROBE_COMMIT \
+  -DFT5955_OFFLINE_INTERACTIVE_COMPLETE_WORKFLOW \
   -pthread -Iengine engine/ft_engine.c engine/ft5955_compat_time.c \
   engine/ft5955_compat_fls.c engine/ft5955_compat_locale.c \
   engine/ft5955_compat_datetime.c engine/ft5955_compat_locale_enum.c \
@@ -65,7 +72,7 @@ for path in /lib /lib64 /bin /sbin; do
     mounts+=(--ro-bind "$path" "$path")
   fi
 done
-echo "Launching isolated MOH interactive enrolment probe (20-minute session limit). No USB, no template commit."
+echo "Launching isolated MOH interactive enrolment probe (20-minute session limit). No USB in engine sandbox; temporary mock-storage commit only."
 echo "WARNING: experimental DLL execution; may abort or crash inside sandbox."
 set +e
 (
@@ -88,6 +95,6 @@ if [[ $status == 124 || $status == 137 ]]; then
 elif [[ $status != 0 ]]; then
   echo "Synthetic probe returned an unexpected error or crashed; normal builds remain guarded."
 else
-  echo "Interactive enrolment session ended (no template committed or saved)."
+  echo "Interactive enrolment session ended (temporary in-memory template wiped; nothing saved)."
 fi
 exit "$status"
