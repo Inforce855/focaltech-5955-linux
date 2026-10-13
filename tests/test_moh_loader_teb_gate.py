@@ -49,6 +49,15 @@ class GatedTebWiring(unittest.TestCase):
         self.assertNotIn("return 5678;", SOURCE)
         self.assertIn("engine/ft5955_compat_identity.c", BUILD)
 
+    def test_process_heap_is_tracked_not_a_dummy(self):
+        self.assertIn('#include "ft5955_compat_heap.h"', SOURCE)
+        for name in ("GetProcessHeap","HeapAlloc","HeapFree","HeapReAlloc",
+                     "HeapSize","HeapValidate","HeapQueryInformation"):
+            self.assertIn(f'reg("{name}", (void*)ft5955_{name})', SOURCE)
+        self.assertIn("engine/ft5955_compat_heap.c", BUILD)
+        self.assertNotIn("static u64   MS sh_HeapSize", SOURCE)
+        self.assertNotIn("static int   MS sh_HeapValidate", SOURCE)
+
     def test_export_resolver_is_bounded(self):
         self.assertIn('#include "ft5955_pe_exports.h"', SOURCE)
         self.assertIn("engine/ft5955_pe_exports.c", BUILD)
