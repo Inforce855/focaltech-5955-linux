@@ -44,6 +44,7 @@
 #include "ft5955_compat_slist.h"
 #include "ft5955_compat_registry.h"
 #include "ft5955_compat_callbacks.h"
+#include "ft5955_winbio_pipeline.h"
 #include "ft5955_compat_teb_layout.h"
 
 typedef uint8_t u8; typedef uint16_t u16; typedef uint32_t u32; typedef uint64_t u64;
@@ -537,7 +538,8 @@ static __attribute__((unused)) void* get_export(const char*want){
 }
 
 // ================= engine driving (mirrors the Go harness) =================
-static u8 pipeline[1024];
+/* WINBIO_PIPELINE is 0x50 bytes on Win64. Attach remains compile-time gated. */
+static ft5955_winbio_pipeline pipeline;
 static u8 birbuf[262144];
 
 static u8 small[262144];
@@ -744,14 +746,19 @@ int ft_engine_open(const char *dll_path){
   void *iface=0;
   if((u32)Query(&iface)!=0 || !iface) return -3;
   g_iface=iface;
-  *(u64*)(pipeline+0x08)=~0ULL;
+  memset(&pipeline,0,sizeof pipeline);
+  pipeline.engine_handle=(void *)(uintptr_t)UINT64_MAX;
   build_storage_vtable();
-  *(u64*)(pipeline+0x20)=(u64)g_sensor_vt;
-  *(u64*)(pipeline+0x28)=(u64)g_storage_vt;
+  pipeline.sensor_interface=g_sensor_vt;
+  pipeline.engine_interface=iface;
+  pipeline.storage_interface=g_storage_vt;
   u64 (MS *Attach)(void*)=*(void**)((u8*)iface+32+0*8);
-  if((u32)Attach(pipeline)!=0) return -4;
-  u64 ctx=*(u64*)(pipeline+0x38);
-  *(u32*)(ctx+0x24)=ENG_W; *(u32*)(ctx+0x28)=ENG_H;
+  if((u32)Attach(&pipeline)!=0) return -4;
+  /* The old FT9201-specific writes to context +0x24/+0x28 are removed.
+   * Their 5955 meaning is NOT established by the Attach disassembly.
+   * Context validation and method-specific sensor/storage callbacks remain
+   * prerequisites before this path may be enabled. */
+  if(!pipeline.engine_context) return -5;
   g_loaded=1;
   return 0;
 #endif /* FT5955_ALLOW_UNVERIFIED_ATTACH */
