@@ -94,6 +94,19 @@ class GatedTebWiring(unittest.TestCase):
         self.assertIn("engine/ft5955_compat_slist.c", BUILD)
         self.assertIn("-latomic", BUILD)
 
+    def test_private_advapi32_registry(self):
+        self.assertIn('#include "ft5955_compat_registry.h"', SOURCE)
+        for name in ("RegOpenKeyExA", "RegQueryValueExA",
+                     "RegCloseKey", "RegSetKeyValueA"):
+            self.assertIn(f'reg("{name}", (void*)ft5955_{name})', SOURCE)
+        self.assertIn("engine/ft5955_compat_registry.c", BUILD)
+        code=(ROOT / "engine" / "ft5955_compat_registry.c").read_text(encoding="utf-8")
+        self.assertNotIn("regedit", code.lower())
+        self.assertNotIn("fopen(", code)
+        self.assertNotIn("open(", code)
+        self.assertIn("pthread_mutex_lock", code)
+        self.assertIn("generation", code)
+
     def test_export_resolver_is_bounded(self):
         self.assertIn('#include "ft5955_pe_exports.h"', SOURCE)
         self.assertIn("engine/ft5955_pe_exports.c", BUILD)
