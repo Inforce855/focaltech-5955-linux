@@ -57,8 +57,6 @@ typedef struct { u8 Name[8]; u32 VSize, VAddr, RawSize, RawPtr; u32 pad[3]; u16 
 
 static u8 *g_file; static long g_filelen;
 static u32 f32(u64 o){ return *(u32*)(g_file+o); }
-static u64 f64(u64 o){ return *(u64*)(g_file+o); }
-static u16 f16(u64 o){ return *(u16*)(g_file+o); }
 
 // ---------- thread-private TEB / gs ----------
 /* Never share GS/TEB state across worker threads. Preparation is idempotent:
@@ -269,7 +267,6 @@ static int __attribute__((unused)) load_pe(void){
     free(g_file); g_file=NULL;
     return -4;
   }
-  u32 e=layout.nt_offset;
   g_imagebase=layout.image_base;
   u32 sizeofimage=layout.image_size;
   u32 entry=layout.entry_rva;
