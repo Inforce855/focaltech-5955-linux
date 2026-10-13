@@ -19,6 +19,10 @@ int FT5955_MS_ABI ft5955_QueryPerformanceFrequency(int64_t *frequency);
 int FT5955_MS_ABI ft5955_QueryPerformanceCounter(int64_t *counter);
 void FT5955_MS_ABI ft5955_Sleep(uint32_t milliseconds);
 void FT5955_MS_ABI ft5955_GetLocalTime(ft5955_systemtime *out);
+/* 100-ns units since 1601-01-01 UTC; FILETIME is two DWORDs in an 8-byte slot. */
+void FT5955_MS_ABI ft5955_GetSystemTimeAsFileTime(uint64_t *out);
+/* 32-bit millisecond uptime counter, wrapping after approximately 49.7 days. */
+uint32_t FT5955_MS_ABI ft5955_GetTickCount(void);
 void *FT5955_MS_ABI ft5955_GetCurrentThread(void);
 uint32_t FT5955_MS_ABI ft5955_GetConsoleOutputCP(void);
 #endif
