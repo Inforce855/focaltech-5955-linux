@@ -284,17 +284,21 @@ and safe reuse after Delete. **Import-name coverage stays 86/110**:
 the change improves five previously registered but ineffective shims.
 Neither Windows DLL entry points nor libfprint/PAM are executed or modified.
 
-## Current offline TEB audit
+## Current offline TEB audit and guarded loader integration
 
-Before further Win32 shims or any DLL execution, run the SHA-pinned
-static GS/FS scanner documented in [moh-teb-static-audit.md](moh-teb-static-audit.md).
-The scan reads the **private original MOH DLL** and reports which TEB
-memory offsets are referenced directly. It does not execute code or access
-fingerprint samples. Static disassembly is partial evidence: a pointer
-loaded through GS can be dereferenced indirectly without any more GS
-instructions. The bridge's synthetic TEB currently has process-global
-buffers and initializes GS **after** TLS callbacks, both known issues to
-assess before runtime bring-up.
+The SHA-pinned GS/FS scanner and instruction-context tool (documented in
+[moh-teb-static-audit.md](moh-teb-static-audit.md)) found indirect accesses
+to thread stack limits/base, PEB.NtGlobalFlag and process-parameter flags.
+The original pinned MOH DLL has **no PE TLS directory**; its imported
+Win32 TLS APIs may still be used.
+
+The still-blocked loader now uses per-thread TEB/PEB scaffolding with
+actual pthread stack bounds, prepares GS before `DllMain`, and rejects
+any unexpected PE TLS directory without calling vendor TLS callbacks.
+It no longer uses the old process-global dummy TEB and fake stack.
+The 5955 DLL has **not** been executed; Windows API semantics, stack
+probe behaviour, PEB values, PE file bounds and ABI are still unaudited.
+Static analysis and standalone tests cannot establish runtime safety.
 
 ## Next work on this branch
 
