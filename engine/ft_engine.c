@@ -20,6 +20,9 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <errno.h>
+#include "ft5955_pe_guard.h"
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/syscall.h>
@@ -234,28 +237,50 @@ static void __attribute__((unused)) register_shims(void){
 
 // ================= PE LOADER =================
 static int __attribute__((unused)) load_pe(void){
-  int fd=open(g_dllpath,O_RDONLY); if(fd<0){perror("open");return -1;}
-  g_filelen=lseek(fd,0,SEEK_END); lseek(fd,0,SEEK_SET);
-  g_file=malloc(g_filelen); read(fd,g_file,g_filelen); close(fd);
+  /* Reject directories, symlinks, huge and truncated files *before* reading
+   * even the DOS e_lfanew offset or copying a PE section. */
+  int fd=open(g_dllpath,O_RDONLY|O_CLOEXEC|O_NOFOLLOW);
+  if(fd<0){ perror("[5955] open MOH DLL"); return -1; }
+  struct stat statbuf;
+  if(fstat(fd,&statbuf)!=0 || !S_ISREG(statbuf.st_mode) ||
+     statbuf.st_size < 0x100 || statbuf.st_size > FT5955_PE_FILE_LIMIT){
+    fprintf(stderr,"[5955] BLOCKED: unsupported PE file type/size\n");
+    close(fd);
+    return -1;
+  }
+  g_filelen=(long)statbuf.st_size;
+  g_file=malloc((size_t)g_filelen);
+  if(!g_file){ close(fd); return -1; }
+  size_t total_read=0;
+  while(total_read<(size_t)g_filelen){
+    ssize_t got=read(fd,g_file+total_read,(size_t)g_filelen-total_read);
+    if(got<0 && errno==EINTR) continue;
+    if(got<=0){
+      fprintf(stderr,"[5955] BLOCKED: could not read complete PE file\n");
+      free(g_file); g_file=NULL; close(fd); return -1;
+    }
+    total_read+=(size_t)got;
+  }
+  close(fd);
 
-  u32 e=f32(0x3c);
-  g_imagebase=f64(e+24+24);
-  u32 sizeofimage=f32(e+24+56);
-  u32 entry=f32(e+24+16);
-  u16 nsec=f16(e+6);
-  u16 optsize=f16(e+20);
-  u64 sectbl=e+24+optsize;
-
-  u32 hdrsize=f32(e+24+60); // SizeOfHeaders
+  struct ft5955_pe_layout layout;
+  if(ft5955_pe_guard(g_file,(size_t)g_filelen,&layout)!=0){
+    fprintf(stderr,"[5955] BLOCKED: PE headers/sections invalid or unsupported\n");
+    free(g_file); g_file=NULL;
+    return -4;
+  }
+  u32 e=layout.nt_offset;
+  g_imagebase=layout.image_base;
+  u32 sizeofimage=layout.image_size;
+  u32 entry=layout.entry_rva;
+  u16 nsec=layout.section_count;
+  u64 sectbl=layout.section_table;
+  u32 hdrsize=layout.headers_size; // verified on-disk SizeOfHeaders
 
   /* The SHA-verified 5955 MOH DLL has no PE TLS directory. Never execute
    * the FT9201 loader's old callbacks, especially before installing GS.
    * Any different DLL with a TLS directory is unsupported and fails closed. */
-  u32 tlsrva=f32(e+24+112+8*9);
-  if(tlsrva){
-    fprintf(stderr,"[5955] BLOCKED: PE TLS directory/callbacks not audited\n");
-    return -4;
-  }
+  /* Guard rejected both TLS directory RVA and size before any copies. */
 
   /* Prepare the fully-resolved image in a scratch buffer (writable, NOT
    * executable), then map it back from an anonymous FILE (memfd) with per-section
