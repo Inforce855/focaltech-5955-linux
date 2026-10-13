@@ -9,6 +9,8 @@ param(
     [ValidateSet('Raw','Intermediate','Processed')]
     [string]$Mode='Raw',
     [switch]$SaveBIR,
+    [ValidateRange(5,120)]
+    [int]$TimeoutSeconds=25,
     [string]$OutputDir=(Join-Path $env:USERPROFILE 'Desktop\FocalTech-Windows-Reference')
 )
 $ErrorActionPreference='Stop'
@@ -20,12 +22,12 @@ $principal=New-Object Security.Principal.WindowsPrincipal($identity)
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     throw 'Open PowerShell using Run as administrator. Raw biometric capture requires administrator permissions.'
 }
-if (-not ('Focal5955.WinBioCapture' -as [type])) {
+if (-not ('Focal5955.WinBioCaptureV2' -as [type])) {
     Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
 namespace Focal5955 {
-    public static class WinBioCapture {
+    public static class WinBioCaptureV2 {
         // WINBIO_SESSION_HANDLE and WINBIO_UNIT_ID are ULONG, not pointers.
         // WINBIO_DB_DEFAULT is the special pseudo-pointer (GUID*)1.
         [DllImport("winbio.dll", CallingConvention=CallingConvention.Winapi, ExactSpelling=true)]
@@ -40,6 +42,39 @@ namespace Focal5955 {
         public static extern int WinBioCloseSession(uint session);
         [DllImport("winbio.dll", CallingConvention=CallingConvention.Winapi, ExactSpelling=true)]
         public static extern void WinBioFree(IntPtr sample);
+        [DllImport("winbio.dll", CallingConvention=CallingConvention.Winapi, ExactSpelling=true)]
+        public static extern int WinBioCancel(uint session);
+        private sealed class TimeoutState {
+            public uint Session;
+            public volatile bool Expired;
+            public int CancelResult = int.MinValue;
+            public System.Threading.ManualResetEvent Done = new System.Threading.ManualResetEvent(false);
+        }
+        // Capture stays on the foreground thread; a ThreadPool timer asks
+        // Windows to cancel it if the sensor never produces a sample.
+        public static int CaptureWithTimeout(uint session, byte purpose, byte flags,
+            int timeoutSeconds,
+            out uint unit, out IntPtr sample, out UIntPtr size, out uint reject,
+            out bool timedOut, out int cancelResult) {
+            var state = new TimeoutState { Session = session };
+            var timer = new System.Threading.Timer(o => {
+                var st = (TimeoutState)o;
+                st.Expired = true;
+                try { st.CancelResult = WinBioCancel(st.Session); }
+                finally { st.Done.Set(); }
+            }, state, checked(timeoutSeconds * 1000), System.Threading.Timeout.Infinite);
+            try {
+                int result = WinBioCaptureSample(session, purpose, flags,
+                    out unit, out sample, out size, out reject);
+                timedOut = state.Expired;
+                if (timedOut) state.Done.WaitOne(4000);
+                cancelResult = state.CancelResult;
+                return result;
+            } finally {
+                timer.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
+                timer.Dispose();
+            }
+        }
     }
 }
 '@
@@ -53,7 +88,7 @@ $modeFlag=@{Raw=0x20; Intermediate=0x40; Processed=0x80}[$Mode]
 # WINBIO_NO_PURPOSE_AVAILABLE for raw/intermediate; VERIFY for processed.
 $purpose=if ($Mode -eq 'Processed') {[byte]1} else {[byte]0}
 Write-Host 'Opening Windows Biometric Service (system pool, raw access)...'
-$hr=[Focal5955.WinBioCapture]::WinBioOpenSession(
+$hr=[Focal5955.WinBioCaptureV2]::WinBioOpenSession(
     [uint32]8, # WINBIO_TYPE_FINGERPRINT
     [uint32]1, # WINBIO_POOL_SYSTEM
     [uint32]1, # WINBIO_FLAG_DEFAULT | WINBIO_FLAG_RAW
@@ -66,12 +101,19 @@ if ($hr -ne 0) {
     return
 }
 try {
-    Write-Host ("Touch the reader once when ready. Requesting {0} sample..." -f $Mode)
-    $hr=[Focal5955.WinBioCapture]::WinBioCaptureSample(
-        $session,$purpose,[byte]$modeFlag,
-        [ref]$unit,[ref]$sample,[ref]$sampleSize,[ref]$reject
+    Write-Host ("Keep this PowerShell window focused. Lift your finger, then press the sensor again.")
+    Write-Host ("Requesting {0} sample; automatic cancellation after {1} seconds..." -f $Mode,$TimeoutSeconds)
+    $timedOut=$false
+    $cancelHr=[int32]0
+    $hr=[Focal5955.WinBioCaptureV2]::CaptureWithTimeout(
+        $session,$purpose,[byte]$modeFlag,$TimeoutSeconds,
+        [ref]$unit,[ref]$sample,[ref]$sampleSize,[ref]$reject,
+        [ref]$timedOut,[ref]$cancelHr
     )
     Write-Host ('WinBioCaptureSample HRESULT: 0x{0:X8}' -f [BitConverter]::ToUInt32([BitConverter]::GetBytes([int32]$hr),0))
+    if($timedOut){
+        Write-Host ('CAPTURE TIMED OUT after {0} seconds; WinBioCancel HRESULT: 0x{1:X8}' -f $TimeoutSeconds,[BitConverter]::ToUInt32([BitConverter]::GetBytes([int32]$cancelHr),0))
+    }
     Write-Host ("Sensor unit: {0}  Reject reason: {1}" -f $unit,$reject)
     if ($hr -ne 0) {
         switch ([BitConverter]::ToUInt32([BitConverter]::GetBytes([int32]$hr),0)) {
@@ -116,8 +158,8 @@ try {
     }
 } finally {
     if($sample -ne [IntPtr]::Zero) {
-        [Focal5955.WinBioCapture]::WinBioFree($sample)
+        [Focal5955.WinBioCaptureV2]::WinBioFree($sample)
     }
-    $closed=[Focal5955.WinBioCapture]::WinBioCloseSession($session)
-    Write-Host ('WinBioCloseSession HRESULT: 0x{0:X8}' -f [uint32]$closed)
+    $closed=[Focal5955.WinBioCaptureV2]::WinBioCloseSession($session)
+    Write-Host ('WinBioCloseSession HRESULT: 0x{0:X8}' -f [BitConverter]::ToUInt32([BitConverter]::GetBytes([int32]$closed),0))
 }
