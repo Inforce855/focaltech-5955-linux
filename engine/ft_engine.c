@@ -806,11 +806,13 @@ uint32_t ft_engine_accept(const uint8_t *img,int sw,int sh,uint8_t purpose){
   return (u32)Accept(&pipeline, birbuf, total, purpose, &rej);
 }
 
-void ft_engine_enroll_begin(void){
-  if(set_engine_gs_current()!=0) return;
+int ft_engine_enroll_begin(void){
+  if(set_engine_gs_current()!=0) return -1;
   g_have_record=0; g_rec_tsize=0;
   u64 (MS *Create)(void*)=*(void**)((u8*)g_iface+32+12*8);
-  Create(&pipeline);
+  u32 hr=(u32)Create(&pipeline);
+  fprintf(stderr,"[5955] ENROLL_DIAG create_hr=0x%08x\n",hr);
+  return hr==0?0:-2;
 }
 
 int ft_engine_enroll_update(void){
