@@ -806,6 +806,19 @@ uint32_t ft_engine_accept(const uint8_t *img,int sw,int sh,uint8_t purpose){
   return (u32)Accept(&pipeline, birbuf, total, purpose, &rej);
 }
 
+/* OFFLINE-ONLY: Compare the vendor's real Windows BIR, unchanged, with our
+ * synthetic BIR generated from identical vendor pixel bytes. Never expose
+ * this pass-through to the live Linux driver; isolate it in bubblewrap. */
+#if defined(FT5955_OFFLINE_WINDOWS_BIR_DIRECT)
+uint32_t ft_engine_accept_offline_windows_bir(const uint8_t *bir,size_t length,uint8_t purpose) {
+  if(set_engine_gs_current()!=0 || !g_iface || !bir ||
+     length<32u || length>65536u) return UINT32_MAX;
+  u32 rej=0;
+  u64 (MS *Accept)(void*,void*,u64,u64,void*)=*(void**)((u8*)g_iface+32+8*8);
+  return (u32)Accept(&pipeline,(void*)bir,(u64)length,(u64)purpose,&rej);
+}
+#endif
+
 int ft_engine_enroll_begin(void){
   if(set_engine_gs_current()!=0) return -1;
   g_have_record=0; g_rec_tsize=0;
