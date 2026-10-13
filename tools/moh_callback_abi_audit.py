@@ -2,8 +2,8 @@
 """Static audit of inherited sensor/storage callback-table assumptions.
 
 This deliberately does not execute Attach or initialise any USB device.
-It reports which vtable slots are currently synthetic and where the
-unverified FT9201 implementation returns success for unknown methods.
+It reports which vtable slots are synthetic and checks that unknown methods
+fail with E_NOTIMPL, rather than reporting false success.
 """
 from pathlib import Path
 import re
@@ -22,7 +22,7 @@ check("Storage QueryBySubject +0x78", 'g_storage_vt[0x78/8]' in source),
 check("Storage FirstRecord +0x90", 'g_storage_vt[0x90/8]' in source),
 check("Storage NextRecord +0x98", 'g_storage_vt[0x98/8]' in source),
 check("Storage GetCurrentRecord +0xa0", 'g_storage_vt[0xa0/8]' in source),
-check("Unverified default returns success", bool(re.search(r"st_default\([^\n]*return 0;",source))),
+check("Unknown callback returns E_NOTIMPL", "return UINT64_C(0x80004001)" in source),
 check("Unverified sensor callbacks use default", 'g_sensor_vt[i]=(u64)st_default' in source),
 ]
 print()
