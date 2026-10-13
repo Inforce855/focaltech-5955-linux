@@ -171,8 +171,109 @@ static void MS sh_RaiseException(u32 code,u32 fl,u32 n,void*a){ fprintf(stderr,"
 static void MS sh_TerminateProcess(void*h,u32 c){ fprintf(stderr,"[!] TerminateProcess(%u)\n",c); }
 static void MS sh_ExitProcess(u32 c){ fprintf(stderr,"[!] ExitProcess(%u)\n",c); }
 
+
+/* 5955 MOH import closure: deliberately failure-only placeholders.
+ * These satisfy import resolution ONLY. None emulate successful Windows I/O.
+ * DLL execution MUST remain disabled until every called API is implemented
+ * and ABI/side effects are audited. In particular, RtlUnwind must not return
+ * as though stack unwinding succeeded. No Linux FS, USB or event log access. */
+#define FT5955_UNSUPPORTED 120u /* ERROR_CALL_NOT_IMPLEMENTED */
+static int MS sh_SetEndOfFile(void *h) {
+  (void)h; ft5955_SetLastError(FT5955_UNSUPPORTED); return 0;
+}
+static int MS sh_ReadFile(void *h,void *buf,u32 n,u32 *read_count,void *overlapped) {
+  (void)h;(void)buf;(void)n;(void)overlapped;
+  if(read_count) *read_count=0;
+  ft5955_SetLastError(FT5955_UNSUPPORTED); return 0;
+}
+static int MS sh_ReadConsoleW(void *h,void *buf,u32 n,u32 *read_count,void *control) {
+  (void)h;(void)buf;(void)n;(void)control;
+  if(read_count) *read_count=0;
+  ft5955_SetLastError(FT5955_UNSUPPORTED); return 0;
+}
+static int MS sh_GetFileSizeEx(void *h,int64_t *size) {
+  (void)h;
+  if(size) *size=0;
+  ft5955_SetLastError(FT5955_UNSUPPORTED); return 0;
+}
+static int MS sh_GetFileAttributesExW(const u16 *name,u32 level,void *info) {
+  (void)name;(void)level;(void)info;
+  ft5955_SetLastError(FT5955_UNSUPPORTED); return 0;
+}
+static int MS sh_CreateDirectoryW(const u16 *name,void *sa) {
+  (void)name;(void)sa;
+  ft5955_SetLastError(FT5955_UNSUPPORTED); return 0;
+}
+static void * MS sh_FindFirstFileExW(const u16 *name,u32 info_level,void *data,
+                                    u32 search_op,void *filter,u32 flags) {
+  (void)name;(void)info_level;(void)data;(void)search_op;(void)filter;(void)flags;
+  ft5955_SetLastError(FT5955_UNSUPPORTED); return (void *)(intptr_t)-1;
+}
+static int MS sh_FindNextFileW(void *find,void *data) {
+  (void)find;(void)data;
+  ft5955_SetLastError(FT5955_UNSUPPORTED); return 0;
+}
+static int MS sh_SetConsoleCtrlHandler(void *handler,int add) {
+  (void)handler;(void)add;
+  ft5955_SetLastError(FT5955_UNSUPPORTED); return 0;
+}
+static void MS sh_RtlUnwind(void *target_frame,void *target_ip,
+                            void *record,void *retval) {
+  (void)target_frame;(void)target_ip;(void)record;(void)retval;
+  fputs("[5955] FATAL: unsupported RtlUnwind reached; aborting safely\\n",stderr);
+  abort();
+}
+static int MS sh_ReportEventA(void *source,u16 type,u16 category,u32 event_id,
+                               void *user_sid,u16 count,u32 data_size,
+                               const char *const *strings,const void *raw) {
+  (void)source;(void)type;(void)category;(void)event_id;(void)user_sid;
+  (void)count;(void)data_size;(void)strings;(void)raw;
+  ft5955_SetLastError(FT5955_UNSUPPORTED); return 0;
+}
+static void * MS sh_RegisterEventSourceA(const char *server,const char *source) {
+  (void)server;(void)source;
+  ft5955_SetLastError(FT5955_UNSUPPORTED); return 0;
+}
+static int MS sh_DeregisterEventSource(void *source) {
+  (void)source;
+  ft5955_SetLastError(FT5955_UNSUPPORTED); return 0;
+}
+static int MS sh_SetupDiDestroyDeviceInfoList(void *set) {
+  (void)set; ft5955_SetLastError(FT5955_UNSUPPORTED); return 0;
+}
+static int MS sh_SetupDiEnumDeviceInfo(void *set,u32 index,void *info) {
+  (void)set;(void)index;(void)info;
+  ft5955_SetLastError(FT5955_UNSUPPORTED); return 0;
+}
+static int MS sh_SetupDiGetDeviceInstanceIdA(void *set,void *info,char *id,
+                                             u32 length,u32 *required) {
+  (void)set;(void)info;(void)id;(void)length;
+  if(required) *required=0;
+  ft5955_SetLastError(FT5955_UNSUPPORTED); return 0;
+}
+static void * MS sh_SetupDiGetClassDevsA(const void *guid,const char *enumerator,
+                                         void *parent,u32 flags) {
+  (void)guid;(void)enumerator;(void)parent;(void)flags;
+  ft5955_SetLastError(FT5955_UNSUPPORTED); return (void *)(intptr_t)-1;
+}
+static int MS sh_SetupDiClassGuidsFromNameExA(const char *class_name,void *guids,
+                                              u32 count,u32 *required,
+                                              const char *machine,void *reserved) {
+  (void)class_name;(void)guids;(void)count;(void)machine;(void)reserved;
+  if(required) *required=0;
+  ft5955_SetLastError(FT5955_UNSUPPORTED); return 0;
+}
+
 static void __attribute__((unused)) register_shims(void){
 #define R(n) reg(#n, (void*)sh_##n)
+  /* Import closure only: these 18 functions are NOT runtime-compatible. */
+  R(SetEndOfFile);R(ReadFile);R(ReadConsoleW);R(GetFileSizeEx);
+  R(GetFileAttributesExW);R(CreateDirectoryW);
+  R(FindFirstFileExW);R(FindNextFileW);R(SetConsoleCtrlHandler);
+  R(RtlUnwind);R(ReportEventA);R(RegisterEventSourceA);R(DeregisterEventSource);
+  R(SetupDiDestroyDeviceInfoList);R(SetupDiEnumDeviceInfo);
+  R(SetupDiGetDeviceInstanceIdA);R(SetupDiGetClassDevsA);
+  R(SetupDiClassGuidsFromNameExA);
   reg("SetLastError", (void*)ft5955_SetLastError);
   reg("GetLastError", (void*)ft5955_GetLastError);
   reg("GetProcessHeap", (void*)ft5955_GetProcessHeap);
