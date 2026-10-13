@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 
 source=(Path(__file__).resolve().parents[1]/"engine"/"ft_engine.c").read_text()
+callbacks=(Path(__file__).resolve().parents[1]/"engine"/"ft5955_compat_callbacks.h").read_text()
 def check(label,expression):
     print(f"{'FOUND' if expression else 'MISSING'}  {label}")
     return bool(expression)
@@ -22,8 +23,8 @@ check("Storage QueryBySubject +0x78", 'g_storage_vt[0x78/8]' in source),
 check("Storage FirstRecord +0x90", 'g_storage_vt[0x90/8]' in source),
 check("Storage NextRecord +0x98", 'g_storage_vt[0x98/8]' in source),
 check("Storage GetCurrentRecord +0xa0", 'g_storage_vt[0xa0/8]' in source),
-check("Unknown callback returns E_NOTIMPL", "return UINT64_C(0x80004001)" in source),
-check("Unverified sensor callbacks use default", 'g_sensor_vt[i]=(u64)st_default' in source),
+check("Unknown callback returns E_NOTIMPL", "return FT5955_E_NOTIMPL" in callbacks),
+check("Unverified sensor callbacks use default", 'g_sensor_vt[i]=(u64)ft5955_unimplemented_callback' in source),
 ]
 print()
 print("STATUS: UNSAFE FOR ATTACH — unknown callbacks now fail closed,")
