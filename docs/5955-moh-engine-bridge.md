@@ -34,7 +34,7 @@ Read-only static comparison on the exact MOH DLL:
   QueryPerformanceFrequency, Sleep, GetLocalTime, GetCurrentThread and
   GetConsoleOutputCP. QueryPerformanceCounter also now uses the same real
   nanosecond monotonic clock as QueryPerformanceFrequency.
-- **Expected after this patch: 82/110 names covered, 28 still missing**.
+- **Expected after this patch: 83/110 names covered, 27 still missing**.
   Four FLS APIs now use a pthread-backed per-thread implementation with
   tested thread isolation, re-use and callback cleanup. This does not
   emulate multiple Windows fibers sharing one pthread; that behavior and
@@ -63,7 +63,7 @@ temporarily extracts that private DLL, verifies its SHA256, calls objdump on its
 import table, compares imports to registered loader shims and cleans up.
 You can alternatively supply the private MOH DLL path directly.
 
-Its expected current result is **82/110 covered, 28 missing** and exit status 1.
+Its expected current result is **83/110 covered, 27 missing** and exit status 1.
 That exit status indicates a *correctly enforced import gate*, not a test crash.
 No USB calls, enrolment, fingerprint images, templates or authentication changes.
 
@@ -90,6 +90,24 @@ locales fail closed. The isolated locale test is:
       engine/ft5955_compat_locale.c tests/test_moh_compat_locale.c \\
       -o /tmp/ft5955_compat_locale_test
     /tmp/ft5955_compat_locale_test
+
+GetLocaleInfoW now supports only a fixed subset of English/invariant
+strings (date/time formats, decimal and grouping separators, locale name,
+etc.). Unknown locale types or modifier flags fail instead of returning
+fabricated data. See Microsoft's GetLocaleInfoW contract for buffer sizing.
+Test this separately:
+
+    cc -std=c11 -O2 -Wall -Wextra -Werror -Iengine \\
+      engine/ft5955_compat_locale.c tests/test_moh_compat_locale_info.c \\
+      -o /tmp/ft5955_compat_locale_info_test
+    /tmp/ft5955_compat_locale_info_test
+
+**Important:** 83/110 means **registered API names**, not 83 APIs fully
+compatible with the real DLL. The inherited FT9201 shims contain mock
+Windows handles, no-op critical sections and other approximations whose
+semantics must be audited before any engine execution. Even the new locale
+and date-format shims implement only documented narrow subsets. Import-name
+coverage is a tracking metric, **not an execution readiness score**.
 
 GetDateFormatW and GetTimeFormatW now have deliberately conservative UK/US/
 invariant default-format support: custom date/time patterns and unknown locale
