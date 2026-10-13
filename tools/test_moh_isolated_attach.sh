@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: LGPL-2.1-or-later
-# EXPERIMENTAL: real vendor DllMain + WbioQueryEngineInterface in a disposable
+# EXPERIMENTAL: real vendor DllMain + WbioQueryEngineInterface + Attach in a disposable
 # bubblewrap mount/user/PID/network namespace. NO USB or biometrics. Attach may invoke incomplete shims.
 # API shims are incomplete. Run only after reviewing and accepting the risk.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 if [[ $# != 1 || ! -f "$1" ]]; then
-  echo "Usage: bash tools/test_moh_isolated_query.sh /path/to/7_Fingerprint-module.zip" >&2
+  echo "Usage: bash tools/test_moh_isolated_attach.sh /path/to/7_Fingerprint-module.zip" >&2
   exit 2
 fi
 for command in bwrap gcc python3 objdump timeout; do
@@ -48,7 +48,7 @@ gcc -std=gnu11 -O0 -g -Wall -Wextra -Wno-unused-parameter \
   engine/ft5955_compat_slist.c engine/ft5955_compat_registry.c \
   engine/ft5955_pe_guard.c engine/ft5955_pe_exports.c \
   tools/moh_engine_attach_smoke.c -lm -latomic -o "$root/attach"
-chmod 500 "$root/query"
+chmod 500 "$root/attach"
 # Build a minimal userspace view. All libraries come from host in readonly
 # mounts. No /home, real /dev, writable host path or network is accessible.
 mounts=(--ro-bind /usr /usr)
@@ -75,9 +75,9 @@ set +e
     --setenv HOME /tmp --setenv TMPDIR /tmp \
     "${mounts[@]}" \
     --proc /proc --dev /dev --tmpfs /tmp \
-    --ro-bind "$root/query" /tmp/attach \
+    --ro-bind "$root/attach" /tmp/attach \
     --ro-bind "$root/engine.dll" /tmp/engine.dll \
-    --chdir /tmp -- /tmp/query --attach-offline /tmp/engine.dll
+    --chdir /tmp -- /tmp/attach --attach-offline /tmp/engine.dll
 )
 status=$?
 set -e
