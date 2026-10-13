@@ -26,7 +26,7 @@ check("Unverified default returns success", bool(re.search(r"st_default\([^\n]*r
 check("Unverified sensor callbacks use default", 'g_sensor_vt[i]=(u64)st_default' in source),
 ]
 print()
-print("STATUS: UNSAFE FOR ATTACH — the default callback returns zero,")
+print("STATUS: UNSAFE FOR ATTACH — unknown callbacks now fail closed,")
 print("and sensor/storage interface headers are not initialised or audited.")
 print("Next implementation: typed fail-closed callbacks, validated interface")
 print("headers, and contract tests. This script does not assert ABI correctness.")
