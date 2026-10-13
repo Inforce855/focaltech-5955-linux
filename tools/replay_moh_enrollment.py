@@ -35,6 +35,8 @@ def summarize(log, files, completion_from_update=False, probe_commit=False, skip
     for n,m in enumerate(marks):
         end=marks[n+1].start() if n+1<len(marks) else len(log)
         section=log[m.start():end]
+        if verify_after_commit:
+            section=section.split("[5955] VERIFY_PROBE held_out=",1)[0]
         index=int(m.group(1))
         if not 1<=index<=len(files):
             print("Invalid per-sample marker; stopping.",file=sys.stderr)
