@@ -65,12 +65,12 @@ for path in /lib /lib64 /bin /sbin; do
     mounts+=(--ro-bind "$path" "$path")
   fi
 done
-echo "Launching isolated MOH interactive enrolment probe (five-minute session limit). No USB, no template commit."
+echo "Launching isolated MOH interactive enrolment probe (20-minute session limit). No USB, no template commit."
 echo "WARNING: experimental DLL execution; may abort or crash inside sandbox."
 set +e
 (
   ulimit -c 0
-  timeout --signal=KILL 300s bwrap \
+  timeout --signal=KILL 1200s bwrap \
     --unshare-all --die-with-parent --new-session \
     --clearenv --setenv PATH /usr/bin:/bin \
     --setenv HOME /tmp --setenv TMPDIR /tmp \
