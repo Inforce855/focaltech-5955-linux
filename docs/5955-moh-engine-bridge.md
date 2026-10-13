@@ -362,6 +362,37 @@ correctness require separate review. Passing this test is **not** authorisation
 to enable vendor DLL execution or to integrate with system
 fprintd/PAM. Registered import names remain **86/110, 24 missing**.
 
+## Existing-shim correctness: Windows thread and process IDs
+
+The FT9201 loader previously returned fixed numerical IDs
+`1234` (process) and `5678` (thread), even when called from
+different Linux threads. The new `GetCurrentProcessId` and
+`GetCurrentThreadId` shims use Linux's real process and thread
+identifiers, returned with the Windows x64 calling convention.
+The experimental per-pthread TEB fixture also stores those same
+64-bit integer values in `TEB.ClientId.UniqueProcess` (+0x40)
+and `TEB.ClientId.UniqueThread` (+0x48). They are synthetic
+numeric identities, **not Windows kernel handles**.
+
+The offline test checks three live pthreads against their own
+TEB data, with stable IDs within each thread and distinct IDs
+across threads. Neither the native kernel thread IDs nor their
+TEB fields are biometric information.
+
+    cc -std=c11 -O2 -Wall -Wextra -Werror -pthread -Iengine \\
+      engine/ft5955_compat_identity.c \\
+      engine/ft5955_compat_teb_layout.c \\
+      tests/test_moh_compat_identity.c -o /tmp/ft5955_identity_test
+    /tmp/ft5955_identity_test
+    python3 -m unittest discover -s tests -p 'test_moh_loader_teb_gate.py'
+    bash tools/build_moh_engine_smoke.sh
+
+The new shim replaces two **already registered** import names.
+Expected coverage remains **86/110, 24 missing**. TEB state
+beyond these fields, Windows handle semantics and cross-thread
+engine behaviour still require validation. Do not execute the
+vendor DLL.
+
 ## Next work on this branch
 
 1. Implement the missing Windows shims with actual expected semantics, not
