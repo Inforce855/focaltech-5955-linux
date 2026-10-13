@@ -24,6 +24,9 @@ while (( $# > 0 )); do
       windows_bir_mode=synthetic
       enrollment_setup_flags+=(-DFT5955_OFFLINE_WINDOWS_BIR_SYNTHETIC)
       shift ;;
+    --completion-from-update)
+      enrollment_setup_flags+=(-DFT5955_OFFLINE_COMPLETION_FROM_UPDATE)
+      shift ;;
     --invert-pixels)
       enrollment_setup_flags+=(-DFT5955_OFFLINE_INVERT_INPUT_PIXELS)
       shift ;;
@@ -40,7 +43,7 @@ while (( $# > 0 )); do
   esac
 done
 if (( $# < 2 || $# > 21 )); then
-  echo "Usage: bash tools/test_moh_isolated_pgm_enroll_batch.sh [--windows-bir-direct|--windows-bir-synthetic] [--invert-pixels] [--with-enrollment-parameters] [--with-extended-status] [--with-sample-hint] vendor.zip sample1.pgm [...], or vendor.zip one_private.bir" >&2
+  echo "Usage: bash tools/test_moh_isolated_pgm_enroll_batch.sh [--windows-bir-direct|--windows-bir-synthetic] [--invert-pixels] [--completion-from-update] [--with-enrollment-parameters] [--with-extended-status] [--with-sample-hint] vendor.zip sample1.pgm [...], or vendor.zip one_private.bir" >&2
   exit 2
 fi
 if [[ ! -f "$1" ]]; then
