@@ -7,12 +7,12 @@
  */
 #include "ft5955_compat_locale.h"
 
-static uint16_t id_en_us[] = {'0','0','0','0','0','4','0','9',0};
-static uint16_t id_en_gb[] = {'0','0','0','0','0','8','0','9',0};
-
 int FT5955_LOCALE_MS
 ft5955_EnumSystemLocalesW(ft5955_locale_enum_callback callback, uint32_t flags)
 {
+    /* Provide private mutable buffers to this invocation's callback. */
+    uint16_t id_en_us[] = {'0','0','0','0','0','4','0','9',0};
+    uint16_t id_en_gb[] = {'0','0','0','0','0','8','0','9',0};
     if (!callback)
         return 0;
     /* Windows: flags=0 means LCID_SUPPORTED. Alternate sorts and mixed
