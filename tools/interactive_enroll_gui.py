@@ -34,6 +34,7 @@ class EnrolGUI:
         self.complete=False
         self.touches=0
         self.added=0
+        self.rejected=0
         self.capture_running=False
         self.last_feedback="none"
         root.title("FocalTech 5955 — Fingerprint enrolment")
@@ -54,7 +55,7 @@ class EnrolGUI:
         self.diagnostic=tk.StringVar(value="Last engine result: awaiting first capture")
         ttk.Label(frame,textvariable=self.diagnostic,wraplength=480,justify="center",
                   font=("Sans",9)).pack(pady=(0,6))
-        self.progress=tk.StringVar(value="Touches: 0   •   Accepted: 0   •   Status: NOT COMPLETE")
+        self.progress=tk.StringVar(value="Touches: 0   •   Usable: 0   •   Rejected: 0   •   NOT COMPLETE")
         ttk.Label(frame,textvariable=self.progress).pack(pady=3)
         buttons=ttk.Frame(frame)
         buttons.pack(pady=15)
@@ -87,7 +88,7 @@ class EnrolGUI:
 
     def update_progress(self):
         state="COMPLETE (in memory)" if self.complete else "NOT COMPLETE"
-        self.progress.set(f"Touches: {self.touches}   •   Accepted: {self.added}   •   Status: {state}")
+        self.progress.set(f"Touches: {self.touches}   •   Usable: {self.added}   •   Rejected: {self.rejected}   •   {state}")
 
     def start(self):
         if self.active:return
@@ -95,6 +96,7 @@ class EnrolGUI:
         self.complete=False
         self.touches=0
         self.added=0
+        self.rejected=0
         self.last_feedback="none"
         self.diagnostic.set("Last engine result: awaiting first capture")
         self.capture_running=False
@@ -201,13 +203,15 @@ class EnrolGUI:
                     if code=="added":
                         self.added+=1
                         self.draw_target("added")
-                        self.status.set("Capture accepted. Lift and move finger slightly for new coverage.")
+                        self.status.set("Frame processed; engine still needs more data. Lift finger between touches.")
                     elif code=="reposition":
+                        self.rejected+=1
                         self.draw_target("reposition")
-                        self.status.set("Too similar / reposition requested. Lift and move slightly.")
+                        self.status.set("Capture rejected (poor image quality / insufficient usable coverage). Stop and investigate if repeated.")
                     elif code=="bad-capture":
+                        self.rejected+=1
                         self.draw_target("error")
-                        self.status.set("Capture rejected. Lift and try again.")
+                        self.status.set("Capture rejected by engine. Check reason in diagnostic line.")
                     elif code=="complete":
                         self.complete=True
                         self.draw_target("complete")
@@ -228,19 +232,22 @@ class EnrolGUI:
             elif kind=="diagnostic":
                 self.last_feedback=event[1]
                 # Diagnostics are non-biometric: HRESULTs and rejection codes only.
-                self.diagnostic.set("Last engine result: "+event[1])
+                detail=event[1]
+                if "update_reject=7" in detail or "status_reject=7" in detail:
+                    detail+=" (WINBIO_FP_POOR_QUALITY)"
+                self.diagnostic.set("Last engine result: "+detail)
             elif kind=="sensor":
                 if not self.complete:
                     self.status.set(event[1])
             elif kind=="session-end":
                 if not self.complete and not self.stop_event.is_set():
-                    self.status.set("NOT ENROLLED YET — capture batch finished. Continue for another eight touches.")
+                    self.status.set("NOT ENROLLED YET — capture batch ended. Repeating captures may not help; stop if progress stalls.")
             elif kind=="capture-finished":
                 self.capture_running=False
                 if self.active and not self.complete and not self.stop_event.is_set():
                     if self.engine and self.engine.poll() is None:
                         self.next_button.configure(state="normal")
-                        self.status.set("NOT ENROLLED YET — click Continue: next eight touches.")
+                        self.status.set("NOT ENROLLED YET — you may Continue, but investigate repeated quality rejections first.")
                     else:
                         self.status.set("Engine stopped. Click Start enrolment for a new session.")
                         self.stop()
