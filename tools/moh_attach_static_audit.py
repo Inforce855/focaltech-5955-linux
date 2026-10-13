@@ -1,35 +1,27 @@
 #!/usr/bin/env python3
-"""Read-only checklist for the gated 5955 WinBio Attach path.
-
-Static source audit only: never opens a DLL, USB device or biometric sample.
-"""
+"""Read-only audit of the compile-time gated WinBio Attach path."""
 from pathlib import Path
-import re
 import sys
 
-root=Path(__file__).resolve().parents[1]
-source=(root/"engine/ft_engine.c").read_text(encoding="utf-8")
-checks=[
- ("Engine interface version 6.0 observed", "Observed in the isolated run (not established statically)", None),
- ("Attach gate requires TWO opt-in defines",
-  "FT5955_ALLOW_UNVERIFIED_ATTACH" in source and
-  "FT5955_ALLOW_DLL_EXECUTION_AFTER_AUDIT" in source, "gate"),
- ("Legacy 1024-byte pipeline", bool(re.search(r"static\s+u8\s+pipeline\[1024\]",source)), "review"),
- ("Legacy storage vtable at pipeline+0x28", "pipeline+0x28" in source, "review"),
- ("Legacy sensor vtable at pipeline+0x20", "pipeline+0x20" in source, "review"),
- ("Legacy context at pipeline+0x38", "pipeline+0x38" in source, "review"),
- ("Unverified context writes +0x24 / +0x28", "ctx+0x24" in source and "ctx+0x28" in source,"review"),
- ("Legacy default callback returns success", bool(re.search(r"st_default\([^\n]*return 0;",source)), "review"),
- ("Legacy Attach invocation present", "Attach(pipeline)" in source, "review"),
+root = Path(__file__).resolve().parents[1]
+source = (root / "engine/ft_engine.c").read_text(encoding="utf-8")
+checks = [
+    ("Two compile-time execution gates retained",
+     "FT5955_ALLOW_UNVERIFIED_ATTACH" in source and
+     "FT5955_ALLOW_DLL_EXECUTION_AFTER_AUDIT" in source),
+    ("Typed WinBio pipeline declared",
+     "static ft5955_winbio_pipeline pipeline;" in source),
+    ("SensorInterface assigned", "pipeline.sensor_interface=g_sensor_vt;" in source),
+    ("EngineInterface assigned", "pipeline.engine_interface=iface;" in source),
+    ("StorageInterface assigned", "pipeline.storage_interface=g_storage_vt;" in source),
+    ("Unverified engine context writes removed",
+     "*(u32*)(ctx+0x24)" not in source and
+     "*(u32*)(ctx+0x28)" not in source),
+    ("Attach still uses pipeline address", "Attach(&pipeline)" in source),
 ]
-print("FocalTech 5955 WinBio Attach preflight — STATIC ONLY")
-print("No DLL execution, USB access, templates, or biometrics.")
-for label,result,kind in checks:
-    if kind is None: print(f"INFO  {label}: {result}")
-    else: print(f"{'REVIEW' if kind=='review' and result else 'OK' if result else 'MISSING'}  {label}")
-print("REQUIRED: validate WINBIO_PIPELINE field layout and lifetimes; replace")
-print("success-returning st_default with typed, fail-closed callbacks; verify")
-print("storage/sensor interface sizes, methods and engine-context ownership.")
-print("RESULT: Attach remains blocked. Interface pointer validation does not")
-print("establish pipeline or callback ABI compatibility.")
-sys.exit(0 if checks[1][1] else 1)
+print("FocalTech 5955 gated Attach source audit — STATIC ONLY")
+for label, passed in checks:
+    print(f"{'OK' if passed else 'FAIL'}  {label}")
+print("BLOCKED: Sensor/storage callback ABI and interface headers are not validated.")
+print("This audit does not execute the proprietary DLL or enable Attach.")
+sys.exit(0 if all(passed for _, passed in checks) else 1)
