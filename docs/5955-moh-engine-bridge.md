@@ -474,6 +474,50 @@ clock-failure case, not a complete Windows error-path emulation.
 These replace **two existing registered imports**: coverage remains
 **86/110 names, 24 missing**. The Windows DLL is still locked out.
 
+## Existing-shim correctness: fixed Windows x64 SYSTEM_INFO buffer overrun
+
+The inherited FT9201 `GetSystemInfo` handler called `memset(p,0,64)`.
+Microsoft's Windows **x64 SYSTEM_INFO structure is 48 bytes**, not 64.
+A caller allocating the correct 48-byte object could therefore have
+16 bytes of adjacent stack/heap memory overwritten.
+
+`engine/ft5955_compat_sysinfo.[ch]` now defines the exact 48-byte
+Win64 layout with compile-time size and field-offset assertions.
+`GetSystemInfo` writes exactly 48 bytes. It reports:
+
+- x64 architecture (9), processor type (8664) and CPU family/revision
+  from CPUID leaf 1, where available.
+- The native page size from `sysconf(_SC_PAGESIZE)`.
+- The number of online logical processors, capped to a synthetic Windows
+  processor group of at most 64, and a matching group-relative mask.
+- Windows' 64 KiB allocation granularity and a representative x64
+  userspace application address range.
+
+**Limitations:** the processor group/mask is synthetic and may not
+match Linux affinity or actual Windows CPU-group assignment; the
+address range does not guarantee a corresponding Linux mapping.
+The shim does not implement Windows `VirtualAlloc` or physical
+processor topology. This is a safe compatibility subset, not a complete
+OS model. It does not access USB/biometric data or load a PE image.
+
+The test places 16-byte sentinels immediately before and after the
+48-byte structure and validates host-derived fields and multiple calls
+without aborting on failure:
+
+    cc -std=c11 -O2 -Wall -Wextra -Werror -Iengine \\
+      engine/ft5955_compat_sysinfo.c tests/test_moh_compat_sysinfo.c \\
+      -o /tmp/ft5955_sysinfo_test
+    /tmp/ft5955_sysinfo_test
+    python3 -m unittest discover -s tests -p 'test_moh_loader_teb_gate.py'
+    bash tools/build_moh_engine_smoke.sh
+
+Windows API reference:
+https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/ns-sysinfoapi-system_info
+
+This replaces **one existing registered import**. Expected coverage
+remains **86/110, 24 missing**, and Windows DLL execution is still
+disabled.
+
 ## Next work on this branch
 
 1. Implement the missing Windows shims with actual expected semantics, not
