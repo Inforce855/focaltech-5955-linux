@@ -34,7 +34,7 @@ Read-only static comparison on the exact MOH DLL:
   QueryPerformanceFrequency, Sleep, GetLocalTime, GetCurrentThread and
   GetConsoleOutputCP. QueryPerformanceCounter also now uses the same real
   nanosecond monotonic clock as QueryPerformanceFrequency.
-- **Expected after this patch: 84/110 names covered, 26 still missing**.
+- **Expected after this patch: 85/110 names covered, 25 still missing**.
   Four FLS APIs now use a pthread-backed per-thread implementation with
   tested thread isolation, re-use and callback cleanup. This does not
   emulate multiple Windows fibers sharing one pthread; that behavior and
@@ -63,7 +63,7 @@ temporarily extracts that private DLL, verifies its SHA256, calls objdump on its
 import table, compares imports to registered loader shims and cleans up.
 You can alternatively supply the private MOH DLL path directly.
 
-Its expected current result is **84/110 covered, 26 missing** and exit status 1.
+Its expected current result is **85/110 covered, 25 missing** and exit status 1.
 That exit status indicates a *correctly enforced import gate*, not a test crash.
 No USB calls, enrolment, fingerprint images, templates or authentication changes.
 
@@ -91,6 +91,22 @@ locales fail closed. The isolated locale test is:
       -o /tmp/ft5955_compat_locale_test
     /tmp/ft5955_compat_locale_test
 
+CompareStringW now has a bounded *experimental* ASCII-only implementation
+with Windows-x64 ABI, Win32 return values (1/2/3, error 0), a 4096-code-unit
+cap, and support for en-GB/en-US/invariant + flags 0/NORM_IGNORECASE.
+**It is not equivalent to Windows NLS linguistic collation**: exact order and
+equivalence for punctuation, case, locale-specific characters and unhandled
+options cannot be inferred from ASCII comparisons alone. Unsupported
+characters/flags/locales fail closed, and the real MOH DLL must not be run
+until its CompareStringW use has been reviewed against Windows behavior.
+
+Synthetic, offline test:
+
+    cc -std=c11 -O2 -Wall -Wextra -Werror -Iengine \\
+      engine/ft5955_compat_compare.c engine/ft5955_compat_locale.c \\
+      tests/test_moh_compat_compare.c -o /tmp/ft5955_compat_compare_test
+    /tmp/ft5955_compat_compare_test
+
 EnumSystemLocalesW now emits only the Win32 locale identifier strings for
 en-US and en-GB (installed-only mode advertises the configured English
 locale), passing the callback with the Windows x64 ABI. A callback that
@@ -117,7 +133,7 @@ Test this separately:
       -o /tmp/ft5955_compat_locale_info_test
     /tmp/ft5955_compat_locale_info_test
 
-**Important:** 84/110 means **registered API names**, not 83 APIs fully
+**Important:** 85/110 means **registered API names**, not 83 APIs fully
 compatible with the real DLL. The inherited FT9201 shims contain mock
 Windows handles, no-op critical sections and other approximations whose
 semantics must be audited before any engine execution. Even the new locale
