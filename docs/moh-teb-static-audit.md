@@ -6,27 +6,33 @@ the fingerprint reader, images, templates, libfprint or PAM.
 
 ## Why this matters
 
-The imported FT9201 loader installs a synthetic TEB at the Linux x64 GS
-base, but the loader's `g_teb`, `g_tls_array` and `g_tls_block` are
-currently process-global objects, not per-thread state. The newer
-`GetLastError` and `TlsGetValue` *function* shims use per-thread
-storage, but any direct Windows x64 TEB access through `gs:` may still
-see stale/shared state.
+The inherited FT9201 loader originally used one process-global dummy
+TEB/PEB for every thread and invoked PE TLS callbacks before installing
+GS. Offline inspection of the pinned 5955 MOH DLL showed **no PE TLS
+directory**, and synthetic tests validated a per-thread TEB/PEB fixture.
 
-Other gaps in the current loader:
+The still-disabled loader now prepares that per-thread fixture and installs
+GS before DllMain; it **rejects any PE image with a TLS directory**, instead
+of invoking callbacks. This is a compatibility improvement, **not permission
+to execute the DLL**.
 
-- `g_teb+0x68` (TEB.LastErrorValue) is not synchronized with the new
-  per-thread `GetLastError` shim.
-- `g_teb+0x58` points to the inherited global CRT TLS array, not the
-  new Win32 `TlsAlloc` slot map.
-- The inherited loader runs PE TLS callbacks **before** it installs its
-  synthetic GS TEB, which may make initialization unsafe.
-- `arch_prctl(ARCH_SET_GS,...)` changes the calling thread only.
-  Thread creation and direct TEB access must be audited separately.
-- `g_teb+0x08` contains a dummy stack base. Its safety is unverified.
+Remaining issues:
 
-These are source-level concerns, not proof that the engine uses any of
-these paths during normal authentication.
+- TEB+0x68 (LastErrorValue) is not synchronized with the per-thread
+  `GetLastError` function shim.
+- TEB+0x58 is a synthetic CRT static-TLS pointer, distinct from the Win32
+  `TlsAlloc` index mapping. The pinned DLL has no static TLS directory,
+  but its CRT and potential direct TEB access remain unverified.
+- `arch_prctl(ARCH_SET_GS,...)` affects only the calling thread; all DLL
+  threads must be provisioned and safe thread creation remains unaudited.
+- The fixture uses actual pthread stack bounds, not Windows stack growth
+  or Windows guard-page semantics. The pinned DLL includes stack probes.
+- The PEB values observed in static code are partial placeholders, not a
+  full Windows environment.
+- The inherited PE file/section parser and many other registered Win32
+  shims still require boundary and semantic audits.
+
+None of these are proof of runtime reachability, correctness or safety.
 
 ## Safe first test on the actual original archive
 
@@ -106,8 +112,8 @@ The initial flag values (0 for NtGlobalFlag, 1 for normalized parameters)
 are experimental placeholders based on known Windows structure layouts,
 **not validated values for the target engine**. Linux stack bounds do not
 provide Windows stack expansion or guard-page semantics. Actual module
-execution, GS installation, TLS callbacks, process launch and USB all
-remain disabled.
+execution, vendor TLS callbacks, process launch and USB all
+remain disabled; the still-gated loader now prepares GS before DllMain.
 
 Run the synthetic three-thread test on Nobara:
 
@@ -124,18 +130,18 @@ concurrent threads; valid native stack bounds; TEB self-reference;
 shared PEB and parameters pointers; and the tested fixture field values.
 It never sets the GS register and does not execute or load a PE DLL.
 
-**Do not wire this prototype into engine execution yet.** Its stack
-bounds and the PEB data must be evaluated alongside Windows stack probes,
-PE TLS callback ordering and ABI expectations before any sandboxed
-`WbioQueryEngineInterface` call.
+The prototype is now **wired into the disabled loader path**, but has
+not been exercised with the MOH DLL. Its stack bounds, PEB data,
+unimplemented Win32 shims and Windows ABI still need independent review
+before any sandboxed `WbioQueryEngineInterface` call.
 
 ## Offline PE32+ TLS callback metadata check
 
-The old PE loader currently prepares the DLL's static TLS template and
-invokes its TLS callbacks **before** installing a synthetic x64 TEB in GS.
-We should not change the execution sequence blindly: first inspect the
-actual DLL's TLS directory to establish its template size, static TLS
-index and callback list.
+The **original FT9201** PE loader copied the static TLS template and ran
+TLS callbacks before installing the synthetic x64 TEB in GS.
+The pinned 5955 MOH engine's PE TLS preflight returned **no TLS directory**.
+The experimental loader now rejects any unexpected TLS directory; the
+callback runner has been removed from that path.
 
 The new `tools/moh_tls_preflight.py` reads these structures without
 loading or executing the DLL. It verifies the SHA256 of the original
@@ -161,11 +167,34 @@ NULL-terminated callback pointer array:
 
 https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#the-tls-section
 
-A callback count of zero does **not** imply the Windows CRT avoids
-TEB/PEB access, and a positive count does **not** prove a particular
-callback executes any of the TEB instructions we found. This is
-metadata triage, not reachability analysis. The compiled MOH executable
-and system fprintd/PAM integrations remain disabled.
+The **absence of a TLS directory** does **not** imply the Windows CRT
+avoids imported Win32 TLS, TEB or PEB access. Static metadata does not
+establish reachability. Windows DLL execution and fprintd/PAM integration
+remain disabled.
+
+## Experimental loader wiring — still blocked
+
+After the no-TLS result, `engine/ft_engine.c` now uses
+`ft5955_teb_prepare_current` and `ft5955_teb_view_current` in its
+still-locked PE initialisation path. It installs the caller's private GS
+TEB before the first vendor `DllMain` call. It rejects any PE TLS
+directory and cannot execute callbacks. Repeated entry on the same
+thread preserves its TEB/CRT TLS data; other threads require their own
+layout and GS installation.
+
+**Normal builds do not execute the Windows DLL.** The SHA-pinned import
+check still reports 86 of 110 names covered and 24 missing. The loader's
+PE bounds, process flags, thread/TEB restoration, Windows API shims and
+WinBio ABI must all be reviewed before any explicit execution unlock.
+
+Safe regression checks (no proprietary DLL execution):
+
+    python3 -m unittest discover -s tests -p 'test_moh_loader_teb_gate.py'
+    cc -std=c11 -O2 -Wall -Wextra -Werror -pthread -Iengine \\
+      engine/ft5955_compat_teb_layout.c tests/test_moh_compat_teb_layout.c \\
+      -o /tmp/ft5955_teb_layout_test
+    /tmp/ft5955_teb_layout_test
+    bash tools/build_moh_engine_smoke.sh
 
 ## What the report means
 
