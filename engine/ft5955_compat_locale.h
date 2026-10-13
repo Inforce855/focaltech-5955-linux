@@ -19,4 +19,18 @@
 #define FT5955_LCID_SUPPORTED 0x00000002u
 uint32_t FT5955_LOCALE_MS ft5955_GetUserDefaultLCID(void);
 int FT5955_LOCALE_MS ft5955_IsValidLocale(uint32_t lcid, uint32_t flags);
+/* Narrow Win32 LCTYPE support; unknown types and flags return failure. */
+#define FT5955_LTYPE_SLIST 0x000cu
+#define FT5955_LTYPE_SDECIMAL 0x000eu
+#define FT5955_LTYPE_STHOUSAND 0x000fu
+#define FT5955_LTYPE_SDATE 0x001du
+#define FT5955_LTYPE_STIME 0x001eu
+#define FT5955_LTYPE_SSHORTDATE 0x001fu
+#define FT5955_LTYPE_SLONGDATE 0x0020u
+#define FT5955_LTYPE_S1159 0x0028u
+#define FT5955_LTYPE_S2359 0x0029u
+#define FT5955_LTYPE_SNAME 0x005cu
+#define FT5955_LTYPE_STIMEFORMAT 0x1003u
+int FT5955_LOCALE_MS ft5955_GetLocaleInfoW(
+    uint32_t lcid, uint32_t type, uint16_t *output, int capacity);
 #endif
