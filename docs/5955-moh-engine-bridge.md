@@ -34,7 +34,11 @@ Read-only static comparison on the exact MOH DLL:
   QueryPerformanceFrequency, Sleep, GetLocalTime, GetCurrentThread and
   GetConsoleOutputCP. QueryPerformanceCounter also now uses the same real
   nanosecond monotonic clock as QueryPerformanceFrequency.
-- **Expected after this patch: 74/110 names covered, 36 still missing**.
+- **Expected after this patch: 78/110 names covered, 32 still missing**.
+  Four FLS APIs now use a pthread-backed per-thread implementation with
+  tested thread isolation, re-use and callback cleanup. This does not
+  emulate multiple Windows fibers sharing one pthread; that behavior and
+  DLL runtime expectations still need validation.
   Presence of a registered shim is not proof that its semantics satisfy this
   different engine.
 
@@ -59,7 +63,7 @@ temporarily extracts that private DLL, verifies its SHA256, calls objdump on its
 import table, compares imports to registered loader shims and cleans up.
 You can alternatively supply the private MOH DLL path directly.
 
-Its expected current result is **74/110 covered, 36 missing** and exit status 1.
+Its expected current result is **78/110 covered, 32 missing** and exit status 1.
 That exit status indicates a *correctly enforced import gate*, not a test crash.
 No USB calls, enrolment, fingerprint images, templates or authentication changes.
 
@@ -70,7 +74,15 @@ The narrow C time/thread compatibility tests also run without a DLL or USB:
       -o /tmp/ft5955_compat_time_test
     /tmp/ft5955_compat_time_test
 
-The compatibility C tests have passed in the isolated development environment;
+The four FLS shims also have an isolated C test:
+
+    cc -std=c11 -O2 -Wall -Wextra -Werror -pthread -Iengine \\
+      engine/ft5955_compat_fls.c tests/test_moh_compat_fls.c \\
+      -o /tmp/ft5955_compat_fls_test
+    /tmp/ft5955_compat_fls_test
+
+Both new compatibility C test binaries have passed in the isolated
+analysis environment;
 the complete PE loader smoke-test must still be built and checked on Nobara.
 
 An optional *build-only* command exists:
