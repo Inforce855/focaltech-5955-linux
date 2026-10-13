@@ -45,6 +45,7 @@
 #include "ft5955_compat_registry.h"
 #include "ft5955_compat_callbacks.h"
 #include "ft5955_winbio_pipeline.h"
+#include "ft5955_winbio_interface_probe.h"
 #include "ft5955_compat_teb_layout.h"
 
 typedef uint8_t u8; typedef uint16_t u16; typedef uint32_t u32; typedef uint64_t u64;
@@ -618,17 +619,26 @@ static u32 MS st_AddRecord(void*pipe,u8*rec,u8 sub){
   return 0;
 }
 
-static u64 g_storage_vt[0x100/8];
-static u64 g_sensor_vt[0x100/8];
-/* Not used until verified 5955 WinBio Attach is enabled. */
+/* Inert adapter tables: valid common header layout, but the actual
+ * adapter IDs, version negotiation and method signatures remain unverified.
+ * The Attach path remains compile-time disabled. */
+static ft5955_winbio_interface_probe g_storage_vt;
+static ft5955_winbio_interface_probe g_sensor_vt;
+#define FT5955_SLOT(offset) (((offset)-0x20u)/8u)
 static void __attribute__((unused)) build_storage_vtable(void){
-  for(int i=0;i<0x100/8;i++){ g_storage_vt[i]=(u64)ft5955_unimplemented_callback; g_sensor_vt[i]=(u64)ft5955_unimplemented_callback; }
-  g_storage_vt[0x68/8]=(u64)st_AddRecord;
-  g_storage_vt[0x78/8]=(u64)st_QueryBySubject;
-  g_storage_vt[0x90/8]=(u64)st_FirstRecord;
-  g_storage_vt[0x98/8]=(u64)st_NextRecord;
-  g_storage_vt[0xa0/8]=(u64)st_GetCurrentRecord;
+  ft5955_winbio_interface_probe_init(&g_storage_vt,FT5955_WINBIO_STORAGE_TYPE);
+  ft5955_winbio_interface_probe_init(&g_sensor_vt,FT5955_WINBIO_SENSOR_TYPE);
+  for(size_t i=0;i<FT5955_WINBIO_PROBE_SLOTS;i++){
+    g_storage_vt.slots[i]=(u64)ft5955_unimplemented_callback;
+    g_sensor_vt.slots[i]=(u64)ft5955_unimplemented_callback;
+  }
+  g_storage_vt.slots[FT5955_SLOT(0x68)]=(u64)st_AddRecord;
+  g_storage_vt.slots[FT5955_SLOT(0x78)]=(u64)st_QueryBySubject;
+  g_storage_vt.slots[FT5955_SLOT(0x90)]=(u64)st_FirstRecord;
+  g_storage_vt.slots[FT5955_SLOT(0x98)]=(u64)st_NextRecord;
+  g_storage_vt.slots[FT5955_SLOT(0xa0)]=(u64)st_GetCurrentRecord;
 }
+#undef FT5955_SLOT
 
 
 /* ==================== public API (ft_engine.h) ==================== */
@@ -749,9 +759,9 @@ int ft_engine_open(const char *dll_path){
   memset(&pipeline,0,sizeof pipeline);
   pipeline.engine_handle=(void *)(uintptr_t)UINT64_MAX;
   build_storage_vtable();
-  pipeline.sensor_interface=g_sensor_vt;
+  pipeline.sensor_interface=&g_sensor_vt;
   pipeline.engine_interface=iface;
-  pipeline.storage_interface=g_storage_vt;
+  pipeline.storage_interface=&g_storage_vt;
   u64 (MS *Attach)(void*)=*(void**)((u8*)iface+32+0*8);
   if((u32)Attach(&pipeline)!=0) return -4;
   /* The old FT9201-specific writes to context +0x24/+0x28 are removed.
