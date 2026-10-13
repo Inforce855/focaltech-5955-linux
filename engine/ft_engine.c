@@ -37,6 +37,7 @@
 #include "ft5955_compat_cs.h"
 #include "ft5955_compat_error.h"
 #include "ft5955_compat_tls.h"
+#include "ft5955_compat_identity.h"
 #include "ft5955_compat_teb_layout.h"
 
 typedef uint8_t u8; typedef uint16_t u16; typedef uint32_t u32; typedef uint64_t u64;
@@ -99,8 +100,6 @@ static void* MS sh_FlushSList(void*p){ return 0; }
 
 // process/thread/module
 static void* MS sh_GetCurrentProcess(void){ return (void*)-1; }
-static u32  MS sh_GetCurrentProcessId(void){ return 1234; }
-static u32  MS sh_GetCurrentThreadId(void){ return 5678; }
 static void* MS sh_GetModuleHandleW(void*n){ return (void*)g_image; }
 static void* MS sh_GetModuleHandleA(void*n){ return (void*)g_image; }
 static int  MS sh_GetModuleHandleExW(u32 f,void*n,void**h){ if(h)*h=(void*)g_image; return 1; }
@@ -204,7 +203,9 @@ static void __attribute__((unused)) register_shims(void){
   reg("FlsGetValue", (void*)ft5955_FlsGetValue);
   reg("FlsSetValue", (void*)ft5955_FlsSetValue);
   reg("FlsFree", (void*)ft5955_FlsFree);
-  R(GetCurrentProcess);R(GetCurrentProcessId);R(GetCurrentThreadId);
+  R(GetCurrentProcess);
+  reg("GetCurrentProcessId", (void*)ft5955_GetCurrentProcessId);
+  reg("GetCurrentThreadId", (void*)ft5955_GetCurrentThreadId);
   reg("GetCurrentThread", (void*)ft5955_GetCurrentThread);
   R(GetModuleHandleW);R(GetModuleHandleA);R(GetModuleHandleExW);R(GetModuleFileNameA);R(GetModuleFileNameW);
   R(LoadLibraryExW);R(FreeLibrary);R(GetProcAddress);
