@@ -9,6 +9,7 @@ gcc -std=gnu11 -O0 -g -Wall -Wextra -Wno-unused-parameter \
   engine/ft5955_compat_datetime.c engine/ft5955_compat_locale_enum.c \
   engine/ft5955_compat_compare.c engine/ft5955_compat_temp.c \
   engine/ft5955_compat_cs.c engine/ft5955_compat_error.c \
+  engine/ft5955_compat_tls.c \
   tools/moh_engine_interface_smoke.c \
   -lm -o native/build/ft5955_moh_smoke
 printf 'Built native/build/ft5955_moh_smoke (not executed).\n'
