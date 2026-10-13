@@ -16,11 +16,14 @@ while (( $# > 0 )); do
     --with-extended-status)
       enrollment_setup_flags+=(-DFT5955_OFFLINE_QUERY_EXTENDED_ENROLLMENT_STATUS)
       shift ;;
+    --with-sample-hint)
+      enrollment_setup_flags+=(-DFT5955_OFFLINE_QUERY_SAMPLE_HINT)
+      shift ;;
     *) break ;;
   esac
 done
 if (( $# < 3 || $# > 21 )); then
-  echo "Usage: bash tools/test_moh_isolated_pgm_enroll_batch.sh [--with-enrollment-parameters] [--with-extended-status] vendor.zip sample1.pgm sample2.pgm [...]" >&2
+  echo "Usage: bash tools/test_moh_isolated_pgm_enroll_batch.sh [--with-enrollment-parameters] [--with-extended-status] [--with-sample-hint] vendor.zip sample1.pgm sample2.pgm [...]" >&2
   exit 2
 fi
 if [[ ! -f "$1" ]]; then
