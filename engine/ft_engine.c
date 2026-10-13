@@ -31,6 +31,7 @@
 #include "ft5955_compat_compare.h"
 #include "ft5955_compat_temp.h"
 #include "ft5955_compat_cs.h"
+#include "ft5955_compat_error.h"
 
 typedef uint8_t u8; typedef uint16_t u16; typedef uint32_t u32; typedef uint64_t u64;
 #define MS __attribute__((ms_abi))
@@ -69,9 +70,6 @@ static void reg(const char*n, void*f){ if(nshims>=(int)(sizeof shims/sizeof*shim
 static void* find_shim(const char*n){ for(int i=0;i<nshims;i++) if(!strcmp(shims[i].name,n)) return shims[i].fn; return 0; }
 
 // ================= SHIMS (all MS ABI) =================
-static u32 g_lasterr=0;
-static void MS sh_SetLastError(u32 e){ g_lasterr=e; }
-static u32  MS sh_GetLastError(void){ return g_lasterr; }
 
 static void* MS sh_GetProcessHeap(void){ return (void*)0x100; }
 static void* MS sh_HeapAlloc(void*h,u32 flags,u64 size){ void*p=malloc(size?size:1); if(p&&(flags&8)) memset(p,0,size); return p; }
@@ -88,7 +86,7 @@ static void* MS sh_FlushSList(void*p){ return 0; }
 static u32 g_tls_next=1; static void* g_tls_vals[1088];
 static u32  MS sh_TlsAlloc(void){ return g_tls_next++; }
 static int  MS sh_TlsFree(u32 i){ return 1; }
-static void* MS sh_TlsGetValue(u32 i){ g_lasterr=0; return i<1088?g_tls_vals[i]:0; }
+static void* MS sh_TlsGetValue(u32 i){ ft5955_SetLastError(0); return i<1088?g_tls_vals[i]:0; }
 static int  MS sh_TlsSetValue(u32 i,void*v){ if(i<1088) g_tls_vals[i]=v; return 1; }
 
 // process/thread/module
@@ -115,7 +113,7 @@ static int  MS sh_WriteConsoleW(void*h,const u16*b,u32 n,u32*wr,void*r){ for(u32
 static void MS sh_OutputDebugStringA(const char*s){ fprintf(stderr,"%s",s?s:""); }
 static void MS sh_OutputDebugStringW(const u16*s){ if(s)for(;*s;s++) fputc(*s&0xff,stderr); }
 static int  MS sh_FlushFileBuffers(void*h){ return 1; }
-static void* MS sh_CreateFileW(void*n,u32 a,u32 s,void*sa,u32 c,u32 fl,void*t){ g_lasterr=2; return (void*)-1; } // config absent → graceful
+static void* MS sh_CreateFileW(void*n,u32 a,u32 s,void*sa,u32 c,u32 fl,void*t){ ft5955_SetLastError(2); return (void*)-1; } // config absent → graceful
 static int  MS sh_SetFilePointerEx(void*h,long long d,void*np,u32 m){ return 0; }
 static int  MS sh_CloseHandle(void*h){ return 1; }
 static void* MS sh_FindFirstFileExA(void*n,int i,void*d,int o,void*s,u32 f){ return (void*)-1; }
@@ -180,7 +178,9 @@ static void MS sh_ExitProcess(u32 c){ fprintf(stderr,"[!] ExitProcess(%u)\n",c);
 
 static void __attribute__((unused)) register_shims(void){
 #define R(n) reg(#n, (void*)sh_##n)
-  R(SetLastError);R(GetLastError);R(GetProcessHeap);R(HeapAlloc);R(HeapFree);R(HeapReAlloc);
+  reg("SetLastError", (void*)ft5955_SetLastError);
+  reg("GetLastError", (void*)ft5955_GetLastError);
+  R(GetProcessHeap);R(HeapAlloc);R(HeapFree);R(HeapReAlloc);
   R(HeapSize);R(HeapValidate);R(HeapQueryInformation);
   reg("InitializeCriticalSection", (void*)ft5955_InitializeCriticalSection);
   reg("InitializeCriticalSectionAndSpinCount", (void*)ft5955_InitializeCriticalSectionAndSpinCount);
