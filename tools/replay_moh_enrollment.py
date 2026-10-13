@@ -96,6 +96,8 @@ def main():
     ap.add_argument("archive",type=Path,help="local FocalTech driver ZIP")
     ap.add_argument("--captures-dir",type=Path,
                     default=ROOT/"local-data/enroll-captures")
+    ap.add_argument("--invert-input",action="store_true",
+                    help="offline test: invert PGM grayscale polarity IN MEMORY (255-value), without modifying files")
     ap.add_argument("--with-sample-hint",action="store_true",
                     help="ask vendor engine's read-only standard sample-count hint")
     ap.add_argument("--with-extended-status",action="store_true",
@@ -115,6 +117,7 @@ def main():
         if not stat.S_ISREG(st.st_mode):
             ap.error(f"Not a regular private PGM file: {path}")
     print(f"Replaying {len(files)} existing local PGM captures. No USB or new scans.")
+    print("Pixel polarity:", "INVERTED (255-pixel, in-memory only)" if args.invert_input else "ORIGINAL")
     if args.with_enrollment_parameters:
         print("EXPERIMENT: SetEnrollmentParameters enabled (unknown finger subtype).")
     if args.with_extended_status:
@@ -123,7 +126,7 @@ def main():
         print("EXPERIMENT: QuerySampleHint enabled (read-only DLL call).")
     try:
         proc=subprocess.run(
-            ["bash",str(BATCH),*(["--with-enrollment-parameters"] if args.with_enrollment_parameters else []),*(["--with-extended-status"] if args.with_extended_status else []),*(["--with-sample-hint"] if args.with_sample_hint else []),str(args.archive.resolve()),*map(str,files)],
+            ["bash",str(BATCH),*(["--invert-pixels"] if args.invert_input else []),*(["--with-enrollment-parameters"] if args.with_enrollment_parameters else []),*(["--with-extended-status"] if args.with_extended_status else []),*(["--with-sample-hint"] if args.with_sample_hint else []),str(args.archive.resolve()),*map(str,files)],
             cwd=ROOT,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
             text=True,timeout=120,check=False)
     except subprocess.TimeoutExpired:
