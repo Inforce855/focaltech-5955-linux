@@ -102,7 +102,11 @@ def main():
         return 1
     if proc.returncode:
         print(f"Isolated diagnostic failed (exit {proc.returncode}).",file=sys.stderr)
-        # Avoid printing uncontrolled binary/vendor logs.
+        # Print only non-biometric setup diagnostics, never uncontrolled DLL logs.
+        for name in ("create_hr","set_params_hr"):
+            result=re.search(r"ENROLL_DIAG "+name+r"=0x([0-9a-fA-F]{8})",proc.stderr)
+            if result:
+                print(f"{name}=0x{result.group(1)}",file=sys.stderr)
         return proc.returncode
     setup=re.search(r"ENROLL_DIAG set_params_hr=0x([0-9a-fA-F]{8}) subfactor=(\d+)",proc.stderr)
     if args.with_enrollment_parameters:
