@@ -148,8 +148,6 @@ static int  MS sh_GetStringTypeW(u32 t,const u16*s,int c,u16*out){ for(int i=0;i
 
 // misc / version / cpu
 static void MS sh_GetSystemInfo(void*p){ memset(p,0,64); u8*b=p; *(u32*)(b+0)=9; *(u32*)(b+4)=4096; }
-static void MS sh_GetSystemTimeAsFileTime(u64*ft){ static u64 t=0x01d0000000000000ULL; *ft=(t+=100000); }
-static u32  MS sh_GetTickCount(void){ static u32 t=1000; return (t+=5); }
 static int  MS sh_IsDebuggerPresent(void){ return 0; }
 static int  MS sh_IsProcessorFeaturePresent(u32 f){ return 1; }
 static void* MS sh_EncodePointer(void*p){ return p; }
@@ -221,7 +219,9 @@ static void __attribute__((unused)) register_shims(void){
   reg("EnumSystemLocalesW", (void*)ft5955_EnumSystemLocalesW);
   reg("GetDateFormatW", (void*)ft5955_GetDateFormatW);
   reg("GetTimeFormatW", (void*)ft5955_GetTimeFormatW);
-  R(GetSystemInfo);R(GetSystemTimeAsFileTime);R(GetTickCount);
+  R(GetSystemInfo);
+  reg("GetSystemTimeAsFileTime", (void*)ft5955_GetSystemTimeAsFileTime);
+  reg("GetTickCount", (void*)ft5955_GetTickCount);
   reg("QueryPerformanceCounter", (void*)ft5955_QueryPerformanceCounter);
   reg("QueryPerformanceFrequency", (void*)ft5955_QueryPerformanceFrequency);
   reg("Sleep", (void*)ft5955_Sleep);
