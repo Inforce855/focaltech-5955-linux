@@ -73,6 +73,62 @@ inspection. Keep private disassembly snippets out of the public repo; share
 only what is needed to decide TEB-field requirements. No vendor code is
 executed.
 
+## Focused MOH observations (13 October 2026)
+
+The user ran the pinned DLL context inspector against the actual MOH binary;
+all four synthetic parser tests passed. Inspection revealed:
+
+| Instruction | Verified static behaviour | Implication |
+| --- | --- | --- |
+| 0x18012e691 | `gs:0x30` -> `[TEB+0x08]` | Reads real StackBase, not dummy TEB buffer |
+| 0x18013566f, 0x1801356aa, 0x1801356f4 | `gs:0x30` -> StackLimit/StackBase | Stack bounds feed range checks ending in `int 0x29` |
+| 0x18018d750 | `gs:0x30` -> `[TEB+0x60]` -> `[PEB+0xbc]` | Reads PEB.NtGlobalFlag (exact bit use needs verification) |
+| 0x18018d76c | `gs:0x30` -> `[TEB+0x60]` -> `[PEB+0x20]` -> `[ProcessParameters+0x08]` | Reads RTL_USER_PROCESS_PARAMETERS.Flags |
+| 0x1801a5b6c | `gs:0x10` -> stack-page probing | Must supply real thread stack bounds, not arbitrary addresses |
+
+These are **static code paths**, not verified runtime reachability.
+The supplied instructions also show that the 5955 matcher does read TEB
+stack and PEB fields **indirectly**, even though the earlier scanner saw
+only direct GS:0x30 and GS:0x10 references.
+
+### Safe, isolated layout prototype
+
+`engine/ft5955_compat_teb_layout.[ch]` implements a **non-executing**
+per-pthread TEB layout prototype. It uses `pthread_getattr_np` and
+`pthread_attr_getstack` to obtain the calling thread's actual stack
+region and checks that a local stack variable falls within those bounds.
+Each pthread gets a private TEB, CRT TLS array and CRT TLS buffer. A
+process-wide synthetic PEB has `ProcessParameters` at +0x20 and
+`NtGlobalFlag` at +0xbc, and the referenced parameters block provides
+`Flags` at +0x08.
+
+The initial flag values (0 for NtGlobalFlag, 1 for normalized parameters)
+are experimental placeholders based on known Windows structure layouts,
+**not validated values for the target engine**. Linux stack bounds do not
+provide Windows stack expansion or guard-page semantics. Actual module
+execution, GS installation, TLS callbacks, process launch and USB all
+remain disabled.
+
+Run the synthetic three-thread test on Nobara:
+
+    cd ~/Projects/focaltech-5955-moh-test
+    git fetch origin
+    git switch --detach origin/feature/ft5955-moh-engine-bridge
+    cc -std=c11 -O2 -Wall -Wextra -Werror -pthread -Iengine \\
+      engine/ft5955_compat_teb_layout.c tests/test_moh_compat_teb_layout.c \\
+      -o /tmp/ft5955_teb_layout_test
+    /tmp/ft5955_teb_layout_test
+
+The test asserts distinct TEB and CRT TLS buffer addresses for three
+concurrent threads; valid native stack bounds; TEB self-reference;
+shared PEB and parameters pointers; and the tested fixture field values.
+It never sets the GS register and does not execute or load a PE DLL.
+
+**Do not wire this prototype into engine execution yet.** Its stack
+bounds and the PEB data must be evaluated alongside Windows stack probes,
+PE TLS callback ordering and ABI expectations before any sandboxed
+`WbioQueryEngineInterface` call.
+
 ## What the report means
 
 Examples of common x64 GS/TEB offsets:
