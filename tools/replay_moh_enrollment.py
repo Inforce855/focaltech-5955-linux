@@ -19,7 +19,7 @@ def matched(pattern, data, default="-"):
     m=re.search(pattern,data)
     return m.group(1) if m else default
 
-def summarize(log, files):
+def summarize(log, files, completion_from_update=False):
     marks=list(re.finditer(r"\[5955\] Enrolment sample (\d+)/(\d+):", log))
     if not marks:
         print("No per-sample enrolment records found. Probe may have failed.",file=sys.stderr)
@@ -61,8 +61,14 @@ def summarize(log, files):
         elif outcome=="2":rejected+=1
         print(f"{index:>4}    {quality:>4}   {area:>4}     {score:>5}       {up:<23} {st}")
     print("-"*87)
-    print(f"Processed: {len(marks)}  |  Incomplete/needs more: {accepted - int(complete)}"
-          f"  |  Rejected: {rejected}  |  Complete: {'YES' if complete else 'NO'}")
+    if completion_from_update:
+        print(f"Processed: {len(marks)}  |  Valid updates: {accepted}"
+              f"  |  Rejected: {rejected}  |  UpdateEnrollment=S_OK reached: {'YES' if complete else 'NO'}")
+        print("Windows-capture-workflow interpretation ONLY; GetEnrollmentStatus remains independent.")
+        print("Actual template commit and successful verification: NOT TESTED.")
+    else:
+        print(f"Processed: {len(marks)}  |  Incomplete/needs more: {accepted - int(complete)}"
+              f"  |  Rejected: {rejected}  |  Complete by GetEnrollmentStatus: {'YES' if complete else 'NO'}")
     if extended:
         print("\nExtended enrollment status (raw engine fields; zeroes may indicate unsupported reporting):")
         print("Capture  Call HRESULT  Template HRESULT  Progress   General Center Top Bottom Left Right")
@@ -83,8 +89,8 @@ def summarize(log, files):
         print(f"STATUS DISAGREEMENT at capture(s): {nums}")
         print("  UpdateEnrollment=S_OK (no more features required),")
         print("  but GetEnrollmentStatus=WINBIO_I_MORE_DATA (more data required).")
-        print("  This is not confirmed enrolment completion. Audit the")
-        print("  engine workflow, its setup calls and the WinBio pipeline.")
+        print("  The callbacks disagree. No template was committed or verified.")
+        print("  Check the Windows capture workflow and engine lifecycle.")
     print("A zero internal match score is not proof of a failed identity verification.")
     if found_match:print("At least one nonzero internal match score was observed.")
     else:print("No nonzero internal match score was observed in this run.")
@@ -96,6 +102,8 @@ def main():
     ap.add_argument("archive",type=Path,help="local FocalTech driver ZIP")
     ap.add_argument("--captures-dir",type=Path,
                     default=ROOT/"local-data/enroll-captures")
+    ap.add_argument("--completion-from-update",action="store_true",
+                    help="opt-in Windows capture workflow interpretation; stop at UpdateEnrollment S_OK, retain status as diagnostic")
     ap.add_argument("--invert-input",action="store_true",
                     help="offline test: invert PGM grayscale polarity IN MEMORY (255-value), without modifying files")
     ap.add_argument("--with-sample-hint",action="store_true",
@@ -118,6 +126,9 @@ def main():
             ap.error(f"Not a regular private PGM file: {path}")
     print(f"Replaying {len(files)} existing local PGM captures. No USB or new scans.")
     print("Pixel polarity:", "INVERTED (255-pixel, in-memory only)" if args.invert_input else "ORIGINAL")
+    if args.completion_from_update:
+        print("EXPERIMENT: Use UpdateEnrollment to decide when capture collection is ready.")
+        print("GetEnrollmentStatus is still queried for diagnostics; no commit performed.")
     if args.with_enrollment_parameters:
         print("EXPERIMENT: SetEnrollmentParameters enabled (unknown finger subtype).")
     if args.with_extended_status:
@@ -126,7 +137,7 @@ def main():
         print("EXPERIMENT: QuerySampleHint enabled (read-only DLL call).")
     try:
         proc=subprocess.run(
-            ["bash",str(BATCH),*(["--invert-pixels"] if args.invert_input else []),*(["--with-enrollment-parameters"] if args.with_enrollment_parameters else []),*(["--with-extended-status"] if args.with_extended_status else []),*(["--with-sample-hint"] if args.with_sample_hint else []),str(args.archive.resolve()),*map(str,files)],
+            ["bash",str(BATCH),*(["--invert-pixels"] if args.invert_input else []),*(["--completion-from-update"] if args.completion_from_update else []),*(["--with-enrollment-parameters"] if args.with_enrollment_parameters else []),*(["--with-extended-status"] if args.with_extended_status else []),*(["--with-sample-hint"] if args.with_sample_hint else []),str(args.archive.resolve()),*map(str,files)],
             cwd=ROOT,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
             text=True,timeout=120,check=False)
     except subprocess.TimeoutExpired:
@@ -149,7 +160,7 @@ def main():
     setup=re.search(r"ENROLL_DIAG set_params_hr=0x([0-9a-fA-F]{8}) subfactor=(\d+)",proc.stderr)
     if args.with_enrollment_parameters:
         print("SetEnrollmentParameters result:",(f"0x{setup.group(1)}; subfactor={setup.group(2)}" if setup else "NOT CONFIRMED"))
-    ok=summarize(proc.stderr,files)
+    ok=summarize(proc.stderr,files,completion_from_update=args.completion_from_update)
     return 0 if ok else 1
 
 if __name__=="__main__":
