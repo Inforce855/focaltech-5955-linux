@@ -28,7 +28,7 @@ int main(int argc,char **argv) {
   ft_engine_enroll_begin();
   puts("READY");
   uint8_t image[W*H];
-  for(int i=1;i<=32;i++) {
+  for(int i=1;i<=96;i++) {
     int n=get_frame(image);
     if(n==0) { puts("DONE stopped"); return 0; }
     if(n<0) { puts("ERROR incomplete-frame"); return 3; }
