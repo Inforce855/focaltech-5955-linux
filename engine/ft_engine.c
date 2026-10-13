@@ -43,6 +43,7 @@
 #include "ft5955_compat_env.h"
 #include "ft5955_compat_slist.h"
 #include "ft5955_compat_registry.h"
+#include "ft5955_compat_callbacks.h"
 #include "ft5955_compat_teb_layout.h"
 
 typedef uint8_t u8; typedef uint16_t u16; typedef uint32_t u32; typedef uint64_t u64;
@@ -582,10 +583,7 @@ static int g_have_record = 0;
 /* Unknown sensor/storage methods MUST NOT report S_OK. This generic
  * placeholder is a fail-closed tripwire, not a substitute for an audited
  * method-specific callback signature or a complete WinBio interface. */
-static u64 MS st_default(void*a,void*b,void*c,void*d,void*e,void*f){
-  (void)a;(void)b;(void)c;(void)d;(void)e;(void)f;
-  return UINT64_C(0x80004001); /* E_NOTIMPL */
-}
+
 
 static u32 MS st_QueryBySubject(void*pipe,void*identity,u8 sub){
   fprintf(stderr,"[storage] QueryBySubject(sub=%u) -> %s\n", sub,
@@ -622,7 +620,7 @@ static u64 g_storage_vt[0x100/8];
 static u64 g_sensor_vt[0x100/8];
 /* Not used until verified 5955 WinBio Attach is enabled. */
 static void __attribute__((unused)) build_storage_vtable(void){
-  for(int i=0;i<0x100/8;i++){ g_storage_vt[i]=(u64)st_default; g_sensor_vt[i]=(u64)st_default; }
+  for(int i=0;i<0x100/8;i++){ g_storage_vt[i]=(u64)ft5955_unimplemented_callback; g_sensor_vt[i]=(u64)ft5955_unimplemented_callback; }
   g_storage_vt[0x68/8]=(u64)st_AddRecord;
   g_storage_vt[0x78/8]=(u64)st_QueryBySubject;
   g_storage_vt[0x90/8]=(u64)st_FirstRecord;
