@@ -182,7 +182,7 @@ static void MS sh_RaiseException(u32 code,u32 fl,u32 n,void*a){ fprintf(stderr,"
 static void MS sh_TerminateProcess(void*h,u32 c){ fprintf(stderr,"[!] TerminateProcess(%u)\n",c); }
 static void MS sh_ExitProcess(u32 c){ fprintf(stderr,"[!] ExitProcess(%u)\n",c); }
 
-static void register_shims(void){
+static void __attribute__((unused)) register_shims(void){
 #define R(n) reg(#n, (void*)sh_##n)
   R(SetLastError);R(GetLastError);R(GetProcessHeap);R(HeapAlloc);R(HeapFree);R(HeapReAlloc);
   R(HeapSize);R(HeapValidate);R(HeapQueryInformation);
@@ -226,7 +226,7 @@ static void register_shims(void){
 }
 
 // ================= PE LOADER =================
-static int load_pe(void){
+static int __attribute__((unused)) load_pe(void){
   int fd=open(g_dllpath,O_RDONLY); if(fd<0){perror("open");return -1;}
   g_filelen=lseek(fd,0,SEEK_END); lseek(fd,0,SEEK_SET);
   g_file=malloc(g_filelen); read(fd,g_file,g_filelen); close(fd);
@@ -353,7 +353,7 @@ static int load_pe(void){
 }
 
 // find an export by name
-static void* get_export(const char*want){
+static void* __attribute__((unused)) get_export(const char*want){
   u32 e=f32(0x3c);
   u32 exprva=f32(e+24+112+8*0);
   u32 nnames=*(u32*)(g_image+exprva+24);
