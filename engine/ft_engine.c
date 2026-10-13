@@ -650,7 +650,51 @@ int ft_engine_smoke_interface(const char *dll_path){
   u64 (MS *Query)(void**)=q;
   void *iface=0;
   if((u32)Query(&iface)!=0 || !iface) return -3;
-  fprintf(stderr,"[5955] WbioQueryEngineInterface returned a non-null interface\n");
+  fprintf(stderr,"[5955] WbioQueryEngineInterface returned a non-null interface\\n");
+  /* Read-only interface reconnaissance. Never invoke a vtable slot.
+   * The returned pointer must lie inside this guarded PE image and have
+   * enough room for the bounded 0x20-byte header and 24 pointer slots. */
+  {
+    const uintptr_t base=(uintptr_t)g_image;
+    const uintptr_t addr=(uintptr_t)iface;
+    const size_t inspect_bytes=0x20u+24u*sizeof(uint64_t);
+    if (!base || addr<base || addr-base>g_layout.image_size ||
+        inspect_bytes>g_layout.image_size-(addr-base)) {
+      fprintf(stderr,"[5955] BLOCKED: interface outside guarded PE image\\n");
+      return -4;
+    }
+    const unsigned char *bytes=(const unsigned char *)iface;
+    uint32_t declared_size=0, interface_type=0;
+    uint16_t major=0,minor=0;
+    memcpy(&declared_size,bytes,4);
+    memcpy(&major,bytes+4,2);
+    memcpy(&minor,bytes+6,2);
+    memcpy(&interface_type,bytes+8,4);
+    fprintf(stderr,"[5955] interface offset=%#lx; header: Size=%u Version=%u.%u Type=%u\\n",
+            (unsigned long)(addr-base),declared_size,major,minor,interface_type);
+    if(declared_size<0x20u || declared_size>4096u ||
+       declared_size>g_layout.image_size-(addr-base)) {
+      fprintf(stderr,"[5955] BLOCKED: implausible interface Size\\n");
+      return -5;
+    }
+    const unsigned slots=(declared_size-0x20u)/8u<24u
+                       ? (declared_size-0x20u)/8u : 24u;
+    for(unsigned i=0;i<slots;i++){
+      uint64_t fn=0;
+      memcpy(&fn,bytes+0x20u+8u*i,8);
+      const char *where="OUTSIDE_IMAGE";
+      if(fn>=base && fn-base<g_layout.image_size)
+        where="IMAGE_ADDRESS (section/executable status not yet validated)";
+      else if(!fn) where="NULL";
+      /* No raw addresses: report image-relative offsets for reproducibility. */
+      if(fn>=base && fn-base<g_layout.image_size)
+        fprintf(stderr,"[5955] interface slot[%02u] +%#x: image+%#lx %s\\n",
+                i,0x20u+8u*i,(unsigned long)(fn-base),where);
+      else
+        fprintf(stderr,"[5955] interface slot[%02u] +%#x: %s\\n",
+                i,0x20u+8u*i,where);
+    }
+  }
   return 0;
 #endif /* FT5955_ALLOW_DLL_EXECUTION_AFTER_AUDIT */
 }
