@@ -38,6 +38,7 @@
 #include "ft5955_compat_error.h"
 #include "ft5955_compat_tls.h"
 #include "ft5955_compat_identity.h"
+#include "ft5955_compat_heap.h"
 #include "ft5955_compat_teb_layout.h"
 
 typedef uint8_t u8; typedef uint16_t u16; typedef uint32_t u32; typedef uint64_t u64;
@@ -85,14 +86,6 @@ static void reg(const char*n, void*f){ if(nshims>=(int)(sizeof shims/sizeof*shim
 static void* find_shim(const char*n){ for(int i=0;i<nshims;i++) if(!strcmp(shims[i].name,n)) return shims[i].fn; return 0; }
 
 // ================= SHIMS (all MS ABI) =================
-
-static void* MS sh_GetProcessHeap(void){ return (void*)0x100; }
-static void* MS sh_HeapAlloc(void*h,u32 flags,u64 size){ void*p=malloc(size?size:1); if(p&&(flags&8)) memset(p,0,size); return p; }
-static int   MS sh_HeapFree(void*h,u32 f,void*p){ free(p); return 1; }
-static void* MS sh_HeapReAlloc(void*h,u32 f,void*p,u64 s){ return realloc(p,s); }
-static u64   MS sh_HeapSize(void*h,u32 f,void*p){ return 0; }
-static int   MS sh_HeapValidate(void*h,u32 f,void*p){ return 1; }
-static int   MS sh_HeapQueryInformation(void*h,int c,void*b,u64 l,u64*r){ return 0; }
 
 static void MS sh_InitSList(void*p){ memset(p,0,16); }
 static void* MS sh_FlushSList(void*p){ return 0; }
@@ -187,8 +180,13 @@ static void __attribute__((unused)) register_shims(void){
 #define R(n) reg(#n, (void*)sh_##n)
   reg("SetLastError", (void*)ft5955_SetLastError);
   reg("GetLastError", (void*)ft5955_GetLastError);
-  R(GetProcessHeap);R(HeapAlloc);R(HeapFree);R(HeapReAlloc);
-  R(HeapSize);R(HeapValidate);R(HeapQueryInformation);
+  reg("GetProcessHeap", (void*)ft5955_GetProcessHeap);
+  reg("HeapAlloc", (void*)ft5955_HeapAlloc);
+  reg("HeapFree", (void*)ft5955_HeapFree);
+  reg("HeapReAlloc", (void*)ft5955_HeapReAlloc);
+  reg("HeapSize", (void*)ft5955_HeapSize);
+  reg("HeapValidate", (void*)ft5955_HeapValidate);
+  reg("HeapQueryInformation", (void*)ft5955_HeapQueryInformation);
   reg("InitializeCriticalSection", (void*)ft5955_InitializeCriticalSection);
   reg("InitializeCriticalSectionAndSpinCount", (void*)ft5955_InitializeCriticalSectionAndSpinCount);
   reg("EnterCriticalSection", (void*)ft5955_EnterCriticalSection);
