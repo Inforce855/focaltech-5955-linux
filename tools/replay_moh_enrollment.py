@@ -30,6 +30,7 @@ def summarize(log, files):
     rejected=0
     complete=False
     found_match=False
+    inconsistent=[]
     for n,m in enumerate(marks):
         end=marks[n+1].start() if n+1<len(marks) else len(log)
         section=log[m.start():end]
@@ -46,6 +47,8 @@ def summarize(log, files):
         status=re.search(r"ENROLL_DIAG status_hr=0x([0-9a-fA-F]{8}) status_reject=(\d+)",section)
         up=(f"0x{update.group(1)} / {update.group(2)}" if update else "-")
         st=(f"0x{status.group(1)} / {status.group(2)}" if status else "-")
+        if update and status and update.group(1).lower()=="00000000" and status.group(1).lower()=="00090001":
+            inconsistent.append(index)
         outcome=matched(r"\[5955\] UpdateEnrollment sample \d+: (-?\d+)",section)
         if outcome=="0":complete=True;accepted+=1
         elif outcome=="1":accepted+=1
@@ -54,6 +57,13 @@ def summarize(log, files):
     print("-"*87)
     print(f"Processed: {len(marks)}  |  Incomplete/needs more: {accepted - int(complete)}"
           f"  |  Rejected: {rejected}  |  Complete: {'YES' if complete else 'NO'}")
+    if inconsistent:
+        nums=", ".join(map(str,inconsistent))
+        print(f"STATUS DISAGREEMENT at capture(s): {nums}")
+        print("  UpdateEnrollment=S_OK (no more features required),")
+        print("  but GetEnrollmentStatus=WINBIO_I_MORE_DATA (more data required).")
+        print("  This is not confirmed enrolment completion. Audit the")
+        print("  engine workflow, its setup calls and the WinBio pipeline.")
     print("A zero internal match score is not proof of a failed identity verification.")
     if found_match:print("At least one nonzero internal match score was observed.")
     else:print("No nonzero internal match score was observed in this run.")
