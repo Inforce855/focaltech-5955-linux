@@ -16,7 +16,11 @@
 extern void ft_engine_log_sample_hint(void);
 #endif
 #if defined(FT5955_OFFLINE_PROBE_COMMIT)
-extern void ft_engine_probe_commit_offline(void);
+extern int ft_engine_probe_commit_offline(void);
+#endif
+#if defined(FT5955_OFFLINE_VERIFY_AFTER_COMMIT)
+extern void ft_engine_probe_verify_current_offline(int index);
+extern void ft_engine_probe_wipe_offline(void);
 #endif
 #if defined(FT5955_OFFLINE_PROBE_DUPLICATE)
 extern int ft_engine_probe_duplicate_offline(void);
@@ -146,6 +150,10 @@ int main(int argc,char **argv)
     }
     fprintf(stderr,"[5955] CreateEnrollment initiated; %d distinct-capture files supplied.\\n",argc-3);
     int result=1;
+#if defined(FT5955_OFFLINE_VERIFY_AFTER_COMMIT)
+    int next_verify=argc;
+    int commit_ok=0;
+#endif
     for(int i=3;i<argc;i++){
         unsigned w=0,h=0;
         uint32_t hr=UINT32_MAX;
@@ -200,13 +208,23 @@ int main(int argc,char **argv)
             int preflight=ft_engine_probe_duplicate_offline();
             if(preflight==0){
                 fprintf(stderr,"[5955] Attempting experimental CommitEnrollment into mock storage ONLY.\\n");
-                ft_engine_probe_commit_offline();
+    #if defined(FT5955_OFFLINE_VERIFY_AFTER_COMMIT)
+            commit_ok=ft_engine_probe_commit_offline();
+            next_verify=i+1;
+#else
+            ft_engine_probe_commit_offline();
+#endif
             } else {
                 fprintf(stderr,"[5955] COMMIT_PROBE skipped=duplicate-preflight-blocked.\\n");
             }
 #else
             fprintf(stderr,"[5955] Attempting experimental CommitEnrollment into mock storage ONLY.\\n");
+#if defined(FT5955_OFFLINE_VERIFY_AFTER_COMMIT)
+            commit_ok=ft_engine_probe_commit_offline();
+            next_verify=i+1;
+#else
             ft_engine_probe_commit_offline();
+#endif
 #endif
 #else
             fprintf(stderr,"[5955] No CommitEnrollment performed.\\n");
@@ -215,6 +233,33 @@ int main(int argc,char **argv)
             break;
         }
     }
+#if defined(FT5955_OFFLINE_VERIFY_AFTER_COMMIT)
+    if(commit_ok && next_verify<argc){
+        fprintf(stderr,"[5955] VERIFY_PROBE held_out=%d; no new scans or saved templates.\n",
+                argc-next_verify);
+        for(int i=next_verify;i<argc;i++){
+            unsigned vw=0,vh=0;
+            uint8_t *vpx=read_pgm(argv[i],&vw,&vh);
+            if(!vpx){
+                ft_engine_probe_wipe_offline();
+                return 2;
+            }
+#if defined(FT5955_OFFLINE_INVERT_INPUT_PIXELS)
+            for(size_t j=0;j<(size_t)vw*vh;j++) vpx[j]=(uint8_t)(255u-vpx[j]);
+#endif
+            uint32_t vhr=ft_engine_accept(vpx,(int)vw,(int)vh,1);
+            memset(vpx,0,(size_t)vw*vh);
+            free(vpx);
+            fprintf(stderr,"[5955] VERIFY_PROBE sample=%d accept_hr=0x%08x\n",
+                    i-2,vhr);
+            if(vhr==0) ft_engine_probe_verify_current_offline(i-2);
+        }
+    } else {
+        fprintf(stderr,"[5955] VERIFY_PROBE skipped=%s\n",
+                commit_ok?"no-held-out-captures":"commit-not-ready");
+    }
+    ft_engine_probe_wipe_offline();
+#endif
     if(result!=0) fprintf(stderr,"[5955] Additional DISTINCT captures required to complete enrolment.\\n");
 #if defined(FT5955_OFFLINE_PROBE_COMMIT)
     fprintf(stderr,"[5955] In-memory commit probe finished; no template persisted, printed or saved.\\n");
