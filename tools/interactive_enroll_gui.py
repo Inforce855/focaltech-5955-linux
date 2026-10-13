@@ -34,6 +34,7 @@ class EnrolGUI:
         self.complete=False
         self.touches=0
         self.added=0
+        self.last_feedback="none"
         root.title("FocalTech 5955 — Fingerprint enrolment")
         root.geometry("530x650")
         root.resizable(False,False)
@@ -49,7 +50,7 @@ class EnrolGUI:
         self.status=tk.StringVar(value="Ready to start. No fingerprint template will be saved.")
         ttk.Label(frame,textvariable=self.status,wraplength=460,justify="center",
                   font=("Sans",11)).pack(pady=10)
-        self.progress=tk.StringVar(value="Touches: 0   •   Accepted: 0")
+        self.progress=tk.StringVar(value="Touches: 0   •   Accepted: 0   •   Status: NOT COMPLETE")
         ttk.Label(frame,textvariable=self.progress).pack(pady=3)
         buttons=ttk.Frame(frame)
         buttons.pack(pady=15)
@@ -80,18 +81,24 @@ class EnrolGUI:
         c.create_oval(113,146,147,180,fill=colour,outline="")
         c.create_text(130,319,text="SENSOR TARGET",fill=colour,font=("Sans",10,"bold"))
 
+    def update_progress(self):
+        state="COMPLETE (in memory)" if self.complete else "NOT COMPLETE"
+        self.progress.set(f"Touches: {self.touches}   •   Accepted: {self.added}   •   Status: {state}")
+
     def start(self):
         if self.active:return
         self.active=True
         self.complete=False
         self.touches=0
         self.added=0
+        self.last_feedback="none"
         self.stop_event.clear()
         self.engine_ready.clear()
         self.start_button.configure(state="disabled")
         self.stop_button.configure(state="normal")
         self.next_button.configure(state="disabled")
         self.draw_target("ready")
+        self.update_progress()
         self.status.set("Initialising isolated FocalTech engine...")
         threading.Thread(target=self.start_engine,daemon=True).start()
 
@@ -108,7 +115,7 @@ class EnrolGUI:
                 elif line.startswith("TOUCH ") or line.startswith("DONE ") or line.startswith("ERROR "):
                     self.events.put(("engine",line))
             if not self.stop_event.is_set() and not self.complete:
-                self.events.put(("error","Engine process ended. Check preflight and sandbox requirements."))
+                self.events.put(("error","Engine process ended before enrolment completed. Check preflight and sandbox requirements."))
         except Exception as exc:
             self.events.put(("error",f"Engine start failed: {exc}"))
 
@@ -160,7 +167,7 @@ class EnrolGUI:
                 self.next_touches()
             elif kind=="capture":
                 self.touches+=1
-                self.progress.set(f"Touches: {self.touches}   •   Accepted: {self.added}")
+                self.update_progress()
             elif kind=="engine":
                 parts=event[1].split()
                 if parts[0]=="TOUCH" and len(parts)>=3:
@@ -188,7 +195,7 @@ class EnrolGUI:
                         self.status.set("Enrolment complete in memory. No template saved.")
                         self.stop()
                     elif not self.stop_event.is_set():
-                        self.status.set("Engine session ended: "+parts[-1])
+                        self.status.set("NOT ENROLLED — engine session ended: "+parts[-1])
                         self.stop()
                 else:
                     self.events.put(("error",event[1]))
@@ -198,11 +205,11 @@ class EnrolGUI:
             elif kind=="session-end":
                 if not self.complete and not self.stop_event.is_set():
                     self.next_button.configure(state="normal")
-                    self.status.set("Eight-touch session ended. Continue for more captures.")
+                    self.status.set("NOT ENROLLED YET — engine needs more useful captures. Use Continue for another eight touches, or Stop.")
             elif kind=="error":
                 if not self.complete:
                     self.draw_target("error")
-                    self.status.set(event[1])
+                    self.status.set("NOT ENROLLED — "+event[1])
                     self.stop()
         self.root.after(100,self.drain)
 
@@ -215,6 +222,7 @@ class EnrolGUI:
             try:self.engine.stdin.close()
             except (OSError,ValueError):pass
         self.active=False
+        self.update_progress()
         self.start_button.configure(state="normal")
         self.next_button.configure(state="disabled")
         self.stop_button.configure(state="disabled")
