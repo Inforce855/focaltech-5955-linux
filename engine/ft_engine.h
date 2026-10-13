@@ -22,7 +22,7 @@ void ft_engine_geometry (int *w, int *h);
 uint32_t ft_engine_accept (const uint8_t *img, int sw, int sh, uint8_t purpose);
 
 /* Enrollment: begin, then per accepted frame call update, then commit. */
-void ft_engine_enroll_begin (void);
+int  ft_engine_enroll_begin (void);
 /* Fold the last accepted frame into the enroll template.
  * Returns: 0 = complete, 1 = need more samples, 2 = frame rejected. */
 int  ft_engine_enroll_update (void);
