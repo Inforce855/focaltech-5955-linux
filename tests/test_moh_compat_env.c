@@ -41,16 +41,16 @@ static size_t next_string(const uint16_t *p)
     while (p[n] && n<5000) n++;
     return n;
 }
+static const uint16_t worker_keys[4][8] = {
+    {'W','O','R','K','E','R','1',0},
+    {'W','O','R','K','E','R','2',0},
+    {'W','O','R','K','E','R','3',0},
+    {'W','O','R','K','E','R','4',0}
+};
 static void *worker(void *arg)
 {
-    static const uint16_t *keys[4] = {
-        (const uint16_t[]){'W','O','R','K','E','R','1',0},
-        (const uint16_t[]){'W','O','R','K','E','R','2',0},
-        (const uint16_t[]){'W','O','R','K','E','R','3',0},
-        (const uint16_t[]){'W','O','R','K','E','R','4',0}
-    };
     const size_t idx=(size_t)(uintptr_t)arg;
-    CHECK(ft5955_SetEnvironmentVariableW(keys[idx],host_value));
+    CHECK(ft5955_SetEnvironmentVariableW(worker_keys[idx],host_value));
     uint16_t *snapshot=ft5955_GetEnvironmentStringsW();
     CHECK(snapshot!=NULL);
     if (snapshot) CHECK(ft5955_FreeEnvironmentStringsW(snapshot));
