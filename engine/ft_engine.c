@@ -23,6 +23,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include "ft5955_pe_guard.h"
+#include "ft5955_pe_exports.h"
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/syscall.h>
@@ -45,6 +46,7 @@ typedef uint8_t u8; typedef uint16_t u16; typedef uint32_t u32; typedef uint64_t
 static u8 *g_image;          // mapped image base
 static u64 g_imagebase;      // preferred base 0x180000000
 static const char *g_dllpath;
+static struct ft5955_pe_layout g_layout;
 
 // ---------- tiny PE structures (only fields we use) ----------
 #pragma pack(push,1)
@@ -273,6 +275,7 @@ static int __attribute__((unused)) load_pe(void){
   u16 nsec=layout.section_count;
   u64 sectbl=layout.section_table;
   u32 hdrsize=layout.headers_size; // verified on-disk SizeOfHeaders
+  g_layout=layout;
 
   /* The SHA-verified 5955 MOH DLL has no PE TLS directory. Never execute
    * the FT9201 loader's old callbacks, especially before installing GS.
@@ -405,22 +408,24 @@ static int __attribute__((unused)) load_pe(void){
   return r?0:-2;
 }
 
-// find an export by name
+// Resolve an export by name only through a bounded PE export directory.
+// Never call a forwarded export or pointer outside an executable section.
 static __attribute__((unused)) void* get_export(const char*want){
-  u32 e=f32(0x3c);
-  u32 exprva=f32(e+24+112+8*0);
-  u32 nnames=*(u32*)(g_image+exprva+24);
-  u32 fns=*(u32*)(g_image+exprva+28);
-  u32 names=*(u32*)(g_image+exprva+32);
-  u32 ords=*(u32*)(g_image+exprva+36);
-  for(u32 i=0;i<nnames;i++){
-    u32 nrva=*(u32*)(g_image+names+i*4);
-    if(!strcmp((char*)(g_image+nrva),want)){
-      u16 ord=*(u16*)(g_image+ords+i*2);
-      u32 frva=*(u32*)(g_image+fns+ord*4);
-      return g_image+frva;
-    }
+  if(!g_image || !g_file || !g_layout.image_size) return 0;
+  const u64 direntry=(u64)g_layout.nt_offset+24+112;
+  const u32 exprva=f32(direntry);
+  const u32 expsize=f32(direntry+4);
+  u32 function_rva=0;
+  if(ft5955_pe_find_export(g_image,g_layout.image_size,exprva,expsize,
+                           want,&function_rva)!=0) return 0;
+  for(u32 i=0;i<g_layout.section_count;i++){
+    const u64 at=g_layout.section_table+(u64)i*40u;
+    const u32 size=f32(at+8),rva=f32(at+12),raw=f32(at+16),flags=f32(at+36);
+    const u32 span=size>raw?size:raw;
+    if(function_rva>=rva && (u64)function_rva-rva<span &&
+       (flags&0x20000000u)) return g_image+function_rva;
   }
+  fprintf(stderr,"[5955] BLOCKED: PE export outside executable section\n");
   return 0;
 }
 
