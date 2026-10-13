@@ -475,7 +475,7 @@ static int g_loaded __attribute__((unused)) = 0;
 int ft_engine_smoke_interface(const char *dll_path){
 #ifndef FT5955_ALLOW_DLL_EXECUTION_AFTER_AUDIT
   (void)dll_path;
-  fprintf(stderr,"[5955] BLOCKED: runtime shim and MOH engine ABI audit not yet complete\\n");
+  fprintf(stderr,"[5955] BLOCKED: runtime shim and MOH engine ABI audit not yet complete\n");
   return -100;
 #else
   g_dllpath=dll_path;
