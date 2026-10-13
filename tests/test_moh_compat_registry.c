@@ -79,6 +79,10 @@ int main(void)
              &type,actual,NULL)==INVALID_PARAMETER);
         CHECK(ft5955_RegSetKeyValueA(handle,NULL,"Write",
              FT5955_REG_DWORD,&type,sizeof type)==ACCESS_DENIED);
+        void *elevated=(void *)(uintptr_t)0xaaa;
+        CHECK(ft5955_RegOpenKeyExA(handle,NULL,0,
+              FT5955_KEY_SET_VALUE,&elevated)==ACCESS_DENIED);
+        CHECK(elevated==(void *)(uintptr_t)0xaaa);
         CHECK(ft5955_RegCloseKey(handle)==SUCCESS);
         CHECK(ft5955_RegCloseKey(handle)==INVALID_HANDLE);
         CHECK(ft5955_RegQueryValueExA(handle,"Name",NULL,
