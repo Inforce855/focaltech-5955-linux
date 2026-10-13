@@ -45,6 +45,9 @@
 #include "ft5955_compat_registry.h"
 #include "ft5955_compat_callbacks.h"
 #include "ft5955_winbio_pipeline.h"
+#ifdef FT5955_OFFLINE_SENSOR_SIZE_SIM
+#include "ft5955_offline_sensor_size.h"
+#endif
 #include "ft5955_winbio_interface_probe.h"
 #include "ft5955_compat_teb_layout.h"
 
@@ -132,7 +135,20 @@ static int  MS sh_ResetEvent(void*h){ return 1; }
 static u32  MS sh_WaitForSingleObject(void*h,u32 ms){ return 0; /*WAIT_OBJECT_0*/ }
 static u32  MS sh_WaitForSingleObjectEx(void*h,u32 ms,int a){ return 0; }
 static void* MS sh_CreateThread(void*sa,u64 st,void*fn,void*arg,u32 fl,u32*id){ if(id)*id=4321; return (void*)0x3000; }
-static int  MS sh_DeviceIoControl(void*h,u32 c,void*ib,u32 il,void*ob,u32 ol,u32*ret,void*ov){ return 0; }
+static int MS sh_DeviceIoControl(void*h,u32 c,void*ib,u32 il,void*ob,u32 ol,u32*ret,void*ov){
+  (void)h;(void)ib;(void)il;(void)ov;
+#ifdef FT5955_OFFLINE_SENSOR_SIZE_SIM
+  if(c==FT5955_IOCTL_BIOMETRIC_SENSOR_SIZE) {
+    int success=ft5955_sim_sensor_ioctl(c,ob,ol,ret);
+    fprintf(stderr,"[5955] SYNTHETIC sensor-size IOCTL: %ux%u; status=%d\\n",
+            (unsigned)FT5955_SIM_WIDTH,(unsigned)FT5955_SIM_HEIGHT,success);
+    return success;
+  }
+#endif
+  if(ret)*ret=0;
+  ft5955_SetLastError(1); /* ERROR_INVALID_FUNCTION; unsupported IOCTL */
+  return 0;
+}
 
 // locale / codepage (ucrt init)
 static u32  MS sh_GetACP(void){ return 1252; }
