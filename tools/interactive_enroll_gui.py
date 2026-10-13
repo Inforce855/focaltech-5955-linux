@@ -134,7 +134,7 @@ class EnrolGUI:
             for line in iter(self.engine.stderr.readline,b""):
                 msg=line.decode("utf-8","replace")
                 for part in msg.split("[5955] ENROLL_DIAG "):
-                    if part.startswith(("update_hr=","status_hr=")):
+                    if part.startswith(("create_hr=","update_hr=","status_hr=")):
                         self.events.put(("diagnostic",part.splitlines()[0].strip()))
         except (OSError,ValueError):
             pass
@@ -204,7 +204,7 @@ class EnrolGUI:
                         self.added+=1
                         self.draw_target("added")
                         self.status.set("Frame processed; engine still needs more data. Lift finger between touches.")
-                    elif code=="reposition":
+                    elif code in ("reposition","rejected"):
                         self.rejected+=1
                         self.draw_target("reposition")
                         self.status.set("Capture rejected (poor image quality / insufficient usable coverage). Stop and investigate if repeated.")
