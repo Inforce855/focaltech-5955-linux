@@ -353,7 +353,7 @@ static int __attribute__((unused)) load_pe(void){
 }
 
 // find an export by name
-static void* __attribute__((unused)) get_export(const char*want){
+static __attribute__((unused)) void* get_export(const char*want){
   u32 e=f32(0x3c);
   u32 exprva=f32(e+24+112+8*0);
   u32 nnames=*(u32*)(g_image+exprva+24);
