@@ -39,6 +39,7 @@
 #include "ft5955_compat_tls.h"
 #include "ft5955_compat_identity.h"
 #include "ft5955_compat_heap.h"
+#include "ft5955_compat_sysinfo.h"
 #include "ft5955_compat_teb_layout.h"
 
 typedef uint8_t u8; typedef uint16_t u16; typedef uint32_t u32; typedef uint64_t u64;
@@ -147,7 +148,6 @@ static int  MS sh_LCMapStringW(u32 l,u32 f,const u16*s,int sc,u16*d,int dc){ if(
 static int  MS sh_GetStringTypeW(u32 t,const u16*s,int c,u16*out){ for(int i=0;i<c;i++) out[i]=0; return 1; }
 
 // misc / version / cpu
-static void MS sh_GetSystemInfo(void*p){ memset(p,0,64); u8*b=p; *(u32*)(b+0)=9; *(u32*)(b+4)=4096; }
 static int  MS sh_IsDebuggerPresent(void){ return 0; }
 static int  MS sh_IsProcessorFeaturePresent(u32 f){ return 1; }
 static void* MS sh_EncodePointer(void*p){ return p; }
@@ -219,7 +219,7 @@ static void __attribute__((unused)) register_shims(void){
   reg("EnumSystemLocalesW", (void*)ft5955_EnumSystemLocalesW);
   reg("GetDateFormatW", (void*)ft5955_GetDateFormatW);
   reg("GetTimeFormatW", (void*)ft5955_GetTimeFormatW);
-  R(GetSystemInfo);
+  reg("GetSystemInfo", (void*)ft5955_GetSystemInfo);
   reg("GetSystemTimeAsFileTime", (void*)ft5955_GetSystemTimeAsFileTime);
   reg("GetTickCount", (void*)ft5955_GetTickCount);
   reg("QueryPerformanceCounter", (void*)ft5955_QueryPerformanceCounter);
