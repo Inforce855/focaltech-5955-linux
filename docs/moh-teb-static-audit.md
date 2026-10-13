@@ -129,6 +129,44 @@ bounds and the PEB data must be evaluated alongside Windows stack probes,
 PE TLS callback ordering and ABI expectations before any sandboxed
 `WbioQueryEngineInterface` call.
 
+## Offline PE32+ TLS callback metadata check
+
+The old PE loader currently prepares the DLL's static TLS template and
+invokes its TLS callbacks **before** installing a synthetic x64 TEB in GS.
+We should not change the execution sequence blindly: first inspect the
+actual DLL's TLS directory to establish its template size, static TLS
+index and callback list.
+
+The new `tools/moh_tls_preflight.py` reads these structures without
+loading or executing the DLL. It verifies the SHA256 of the original
+private MOH DLL, bounds-checks the PE32+ headers, data directories,
+sections and callback pointer array, and displays callback **addresses
+only**, not executable disassembly. The original archive is extracted
+into a private, automatically deleted temporary directory.
+
+    cd ~/Projects/focaltech-5955-moh-test
+    git fetch origin
+    git switch --detach origin/feature/ft5955-moh-engine-bridge
+    python3 -m unittest discover -s tests -p 'test_moh_tls_preflight.py'
+    python3 tools/moh_tls_preflight.py '/home/tim/Downloads/7_Fingerprint-module.zip'
+
+The synthetic tests build minimal PE32+ fixtures including two callbacks,
+an empty callback table, absent TLS, truncated PE data, invalid
+index/callback addresses and a nonterminated callback list. They do
+**not** use or print real biometric samples or vendor DLL bytes.
+
+Per Microsoft's PE format specification, the TLS directory stores
+VAs (not RVAs) for raw template bounds, index pointer and the
+NULL-terminated callback pointer array:
+
+https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#the-tls-section
+
+A callback count of zero does **not** imply the Windows CRT avoids
+TEB/PEB access, and a positive count does **not** prove a particular
+callback executes any of the TEB instructions we found. This is
+metadata triage, not reachability analysis. The compiled MOH executable
+and system fprintd/PAM integrations remain disabled.
+
 ## What the report means
 
 Examples of common x64 GS/TEB offsets:
