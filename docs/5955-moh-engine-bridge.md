@@ -241,9 +241,9 @@ The test was compiled and executed in the development sandbox; the full
 loader build must also be checked on Nobara. As with the critical-section
 bridge, this implements the **imported API behaviour**, not full
 Windows TEB emulation: code that reads `NtCurrentTeb()->LastErrorValue`
-directly would still need compatible per-thread TEB state. The inherited
-`TlsAlloc`/`TlsGetValue` array is likewise not yet a true per-thread TLS
-implementation. **Do not enable Windows DLL execution yet.**
+directly would still need compatible per-thread TEB state. The imported Win32 TLS calls now use per-thread storage (see the section
+above), but the synthetic Windows TEB and CRT TLS layout still require
+verification. **Do not enable Windows DLL execution yet.**
 
 ## Existing-shim correctness audit: Win32 CRITICAL_SECTION
 
