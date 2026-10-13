@@ -298,23 +298,59 @@ static int __attribute__((unused)) load_pe(void){
     memcpy(img+vaddr, g_file+rawptr, rawsize);
   }
 
-  /* resolve kernel32 imports into the IAT within the scratch buffer */
-  u32 imprva=f32(e+24+112+8*1);
+  /* Resolve imports ONLY within the guarded scratch-image boundaries.
+   * Every import descriptor, thunk and hint/name must fit the PE image.
+   * Malformed unterminated tables fail before memfd/mmap/DllMain. */
+  u32 imprva=layout.import_rva;
   int unresolved_imports=0;
-  for(u64 d=imprva;;d+=20){
+  int descriptors_terminated=0;
+  for(u64 d=imprva; d+20 <= (u64)imprva+layout.import_size; d+=20){
     u32 orig=*(u32*)(img+d), namer=*(u32*)(img+d+12), fthunk=*(u32*)(img+d+16);
-    if(namer==0) break;
-    u64 rt=orig?orig:fthunk;
-    for(int j=0;;j++){
-      u64 ent=*(u64*)(img+rt+j*8);
-      if(!ent) break;
-      u64 *slot=(u64*)(img+fthunk+j*8);
-      if(ent>>63){ fprintf(stderr,"[loader] UNSUPPORTED ordinal import\n"); unresolved_imports++; continue; }
-      const char*fn=(char*)(img+(ent&0x7fffffff)+2);
-      void*sh=find_shim(fn);
-      if(!sh){ fprintf(stderr,"[loader] MISSING shim: %s\n",fn); unresolved_imports++; continue; }
-      *slot=(u64)sh;
+    if(namer==0){ descriptors_terminated=1; break; }
+    if(namer>=sizeofimage || !memchr(img+namer,0,sizeofimage-namer)){
+      fprintf(stderr,"[loader] BLOCKED: invalid import-library string\n");
+      unresolved_imports++; break;
     }
+    u64 rt=orig?orig:fthunk;
+    if(rt>=sizeofimage || fthunk>=sizeofimage){
+      fprintf(stderr,"[loader] BLOCKED: import thunk outside PE image\n");
+      unresolved_imports++; break;
+    }
+    int thunks_terminated=0;
+    for(u64 j=0; j < sizeofimage/8u; j++){
+      u64 readat=rt+j*8u, writeat=(u64)fthunk+j*8u;
+      if(readat+8u>sizeofimage || writeat+8u>sizeofimage){
+        fprintf(stderr,"[loader] BLOCKED: import thunk exceeds PE image\n");
+        unresolved_imports++; break;
+      }
+      u64 ent=*(u64*)(img+readat);
+      if(!ent){ thunks_terminated=1; break; }
+      if(ent>>63){
+        fprintf(stderr,"[loader] UNSUPPORTED ordinal import\n");
+        unresolved_imports++; continue;
+      }
+      u32 name_rva=(u32)ent;
+      if((u64)name_rva+2u>=sizeofimage ||
+         !memchr(img+name_rva+2u,0,sizeofimage-name_rva-2u)){
+        fprintf(stderr,"[loader] BLOCKED: invalid import-function name\n");
+        unresolved_imports++; break;
+      }
+      const char*fn=(char*)(img+name_rva+2u);
+      void*sh=find_shim(fn);
+      if(!sh){
+        fprintf(stderr,"[loader] MISSING shim: %s\n",fn);
+        unresolved_imports++; continue;
+      }
+      *(u64*)(img+writeat)=(u64)sh;
+    }
+    if(!thunks_terminated){
+      unresolved_imports++;
+      break;
+    }
+  }
+  if(!descriptors_terminated){
+    fprintf(stderr,"[loader] BLOCKED: invalid/unterminated import descriptors\n");
+    unresolved_imports++;
   }
 
   /* Never execute DLL TLS callbacks or DllMain with unresolved imports. */
