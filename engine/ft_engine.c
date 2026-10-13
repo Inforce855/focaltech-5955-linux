@@ -32,6 +32,7 @@
 #include "ft5955_compat_temp.h"
 #include "ft5955_compat_cs.h"
 #include "ft5955_compat_error.h"
+#include "ft5955_compat_tls.h"
 
 typedef uint8_t u8; typedef uint16_t u16; typedef uint32_t u32; typedef uint64_t u64;
 #define MS __attribute__((ms_abi))
@@ -82,12 +83,6 @@ static int   MS sh_HeapQueryInformation(void*h,int c,void*b,u64 l,u64*r){ return
 static void MS sh_InitSList(void*p){ memset(p,0,16); }
 static void* MS sh_FlushSList(void*p){ return 0; }
 
-// TLS
-static u32 g_tls_next=1; static void* g_tls_vals[1088];
-static u32  MS sh_TlsAlloc(void){ return g_tls_next++; }
-static int  MS sh_TlsFree(u32 i){ return 1; }
-static void* MS sh_TlsGetValue(u32 i){ ft5955_SetLastError(0); return i<1088?g_tls_vals[i]:0; }
-static int  MS sh_TlsSetValue(u32 i,void*v){ if(i<1088) g_tls_vals[i]=v; return 1; }
 
 // process/thread/module
 static void* MS sh_GetCurrentProcess(void){ return (void*)-1; }
@@ -188,7 +183,10 @@ static void __attribute__((unused)) register_shims(void){
   reg("LeaveCriticalSection", (void*)ft5955_LeaveCriticalSection);
   reg("DeleteCriticalSection", (void*)ft5955_DeleteCriticalSection);
   reg("InitializeSListHead",sh_InitSList);reg("InterlockedFlushSList",sh_FlushSList);
-  R(TlsAlloc);R(TlsFree);R(TlsGetValue);R(TlsSetValue);
+  reg("TlsAlloc", (void*)ft5955_TlsAlloc);
+  reg("TlsFree", (void*)ft5955_TlsFree);
+  reg("TlsGetValue", (void*)ft5955_TlsGetValue);
+  reg("TlsSetValue", (void*)ft5955_TlsSetValue);
   reg("FlsAlloc", (void*)ft5955_FlsAlloc);
   reg("FlsGetValue", (void*)ft5955_FlsGetValue);
   reg("FlsSetValue", (void*)ft5955_FlsSetValue);
