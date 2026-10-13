@@ -598,6 +598,9 @@ static u8  g_rec_identity[76];
 static u8  g_rec_template[1<<20];   // enrollment template can be ~200KB (up to 18 sub-tpls)
 static u64 g_rec_tsize = 0;
 static int g_have_record = 0;
+#if defined(FT5955_OFFLINE_PROBE_COMMIT)
+static unsigned g_storage_add_calls = 0;
+#endif
 
 /* Unknown sensor/storage methods MUST NOT report S_OK. This generic
  * placeholder is a fail-closed tripwire, not a substitute for an audited
@@ -627,6 +630,9 @@ static u32 MS st_GetCurrentRecord(void*pipe,u8*rec){
   return 0;
 }
 static u32 MS st_AddRecord(void*pipe,u8*rec,u8 sub){
+#if defined(FT5955_OFFLINE_PROBE_COMMIT)
+  g_storage_add_calls++;
+#endif
   u64 tp=*(u64*)(rec+0x20), ts=*(u64*)(rec+0x28);
   u64 idp=*(u64*)(rec+0x00);
   fprintf(stderr,"[storage] AddRecord(sub=%u) template=%#lx size=%lu\n",sub,(unsigned long)tp,(unsigned long)ts);
@@ -967,6 +973,31 @@ void ft_engine_log_extended_enrollment_status(void) {
 
 static void fill_identity(u8 *id){ memset(id,0,76); *(u32*)id=3; for(int i=0;i<16;i++) id[8+i]=0xA0+i; }
 
+/* Optional WinBioEnrollCommit preflight: CheckForDuplicate is normally
+ * invoked by the framework before EngineAdapterCommitEnrollment. Run only
+ * after UpdateEnrollment S_OK, and only inside the disposable sandbox.
+ * Microsoft API: (Pipeline, Identity*, SubFactor*, Duplicate*).
+ * No template/identity values are printed or persisted. */
+#if defined(FT5955_OFFLINE_PROBE_DUPLICATE)
+int ft_engine_probe_duplicate_offline(void){
+  if(set_engine_gs_current()!=0 || !g_iface) return -1;
+  u8 identity[76]={0};
+  u8 subfactor=0, duplicate=0;
+  u64 (MS *Check)(void*,void*,void*,void*)=
+      *(void**)((u8*)g_iface+32+16*8);
+  if(!Check) {
+    fprintf(stderr,"[5955] DUPLICATE_PROBE call=UNAVAILABLE\n");
+    return -2;
+  }
+  u32 hr=(u32)Check(&pipeline,identity,&subfactor,&duplicate);
+  fprintf(stderr,"[5955] DUPLICATE_PROBE hr=0x%08x duplicate=%u\n",
+          hr,(unsigned)(duplicate!=0));
+  memset(identity,0,sizeof identity);
+  if(hr!=0 || duplicate!=0) return -3;
+  return 0;
+}
+#endif
+
 /* Isolated research probe. Commit the current enrollment exclusively into
  * the sandbox's mock storage adapter, and report only HRESULT + presence of
  * a bounded non-empty template. No file is opened or biometric bytes exported.
@@ -980,14 +1011,15 @@ void ft_engine_probe_commit_offline(void){
   }
   u8 id[76]; fill_identity(id);
   g_have_record=0; g_rec_tsize=0;
+  g_storage_add_calls=0;
   u64 (MS *Commit)(void*,const void*,u8,const u8*,size_t)=
       *(void**)((u8*)g_iface+32+17*8);
   u32 hr=(u32)Commit(&pipeline,id,1,NULL,0);
   unsigned received=(unsigned)(g_have_record!=0);
   unsigned bounded=(unsigned)(received && g_rec_tsize>0 &&
                               g_rec_tsize<=sizeof g_rec_template);
-  fprintf(stderr,"[5955] COMMIT_PROBE hr=0x%08x record_seen=%u bounded_template=%u\n",
-          hr,received,bounded);
+  fprintf(stderr,"[5955] COMMIT_PROBE hr=0x%08x record_seen=%u bounded_template=%u add_calls=%u\n",
+          hr,received,bounded,g_storage_add_calls);
   memset(id,0,sizeof id);
   memset(g_rec_identity,0,sizeof g_rec_identity);
   memset(g_rec_template,0,sizeof g_rec_template);
