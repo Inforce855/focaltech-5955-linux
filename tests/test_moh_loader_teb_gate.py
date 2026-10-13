@@ -41,6 +41,14 @@ class GatedTebWiring(unittest.TestCase):
         self.assertLess(LOADER.index("invalid import-function name"),
                         LOADER.index("int mfd=memfd_create("))
 
+    def test_thread_identifiers_are_not_shared_constants(self):
+        self.assertIn('#include "ft5955_compat_identity.h"', SOURCE)
+        self.assertIn('reg("GetCurrentProcessId", (void*)ft5955_GetCurrentProcessId)', SOURCE)
+        self.assertIn('reg("GetCurrentThreadId", (void*)ft5955_GetCurrentThreadId)', SOURCE)
+        self.assertNotIn("return 1234;", SOURCE)
+        self.assertNotIn("return 5678;", SOURCE)
+        self.assertIn("engine/ft5955_compat_identity.c", BUILD)
+
     def test_export_resolver_is_bounded(self):
         self.assertIn('#include "ft5955_pe_exports.h"', SOURCE)
         self.assertIn("engine/ft5955_pe_exports.c", BUILD)
