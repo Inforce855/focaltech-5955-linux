@@ -244,8 +244,14 @@ int main(int argc,char **argv)
                 ft_engine_probe_wipe_offline();
                 return 2;
             }
-#if defined(FT5955_OFFLINE_INVERT_INPUT_PIXELS)
+#if defined(FT5955_OFFLINE_VERIFY_ORIGINAL_POLARITY)
+            /* Negative control: enroll 1-12 with inverted pixels, but
+             * deliberately feed held-out 13-16 in native Linux polarity.
+             * Do NOT modify enrollment input or on-disk PGM files. */
+            fprintf(stderr,"[5955] VERIFY_PROBE sample=%d pixel_polarity=original\n",i-2);
+#elif defined(FT5955_OFFLINE_INVERT_INPUT_PIXELS)
             for(size_t j=0;j<(size_t)vw*vh;j++) vpx[j]=(uint8_t)(255u-vpx[j]);
+            fprintf(stderr,"[5955] VERIFY_PROBE sample=%d pixel_polarity=inverted\n",i-2);
 #endif
             uint32_t vhr=ft_engine_accept(vpx,(int)vw,(int)vh,1);
             memset(vpx,0,(size_t)vw*vh);
