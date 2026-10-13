@@ -25,7 +25,7 @@ def unpack(data: bytes, offset: int, fmt: str):
     size = struct.calcsize(fmt)
     if offset < 0 or offset + size > len(data):
         raise ValueError("PE field extends outside the input file")
-    return struct.unpack_from(fmt, data, offset)[0] if fmt.count("Q") + fmt.count("I") + fmt.count("H") == 1 else struct.unpack_from(fmt, data, offset)
+    return struct.unpack_from(fmt, data, offset)[0]
 
 
 def u16(data, offset):
@@ -71,11 +71,12 @@ class PeImage:
         self.sections = []
         for i in range(num_sections):
             at = sections_at + i * 40
-            self.sections.append((
-                u32(data, at + 12),  # virtual RVA
-                u32(data, at + 16),  # raw size
-                u32(data, at + 20),  # raw offset
-            ))
+            vaddr = u32(data, at + 12)
+            rawsize = u32(data, at + 16)
+            rawptr = u32(data, at + 20)
+            if rawsize and (rawptr > len(data) or rawsize > len(data) - rawptr):
+                raise ValueError("PE section raw data extends beyond the file")
+            self.sections.append((vaddr, rawsize, rawptr))
 
     def offset(self, rva: int, length: int = 1) -> int:
         if length < 0 or rva < 0 or rva + length > self.size_image:
