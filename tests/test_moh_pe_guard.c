@@ -71,7 +71,7 @@ static void rejected_line(const uint8_t *p, size_t len, int case_line)
 int main(void)
 {
     uint8_t p[LEN];
-    struct ft5955_pe_layout d;
+    struct ft5955_pe_layout d = {0};
     fixture(p);
     CHECK(ft5955_pe_guard(p, LEN, &d) == 0);
     CHECK(d.image_size == 0x4000 && d.headers_size == 0x400);
