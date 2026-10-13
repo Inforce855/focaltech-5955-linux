@@ -52,10 +52,18 @@ chmod 500 "$root/query"
 # Build a minimal userspace view. All libraries come from host in readonly
 # mounts. No /home, real /dev, writable host path or network is accessible.
 mounts=(--ro-bind /usr /usr)
-[[ ! -d /lib ]] || mounts+=(--ro-bind /lib /lib)
-[[ ! -d /lib64 ]] || mounts+=(--ro-bind /lib64 /lib64)
-[[ ! -d /bin ]] || mounts+=(--ro-bind /bin /bin)
-[[ ! -d /sbin ]] || mounts+=(--ro-bind /sbin /sbin)
+for path in /lib /lib64 /bin /sbin; do
+  if [[ -L "$path" ]]; then
+    target="$(readlink "$path")"
+    if [[ "$target" == /* ]]; then
+      echo "Absolute system symlink $path -> $target unsupported by probe" >&2
+      exit 2
+    fi
+    mounts+=(--symlink "$target" "$path")
+  elif [[ -d "$path" ]]; then
+    mounts+=(--ro-bind "$path" "$path")
+  fi
+done
 echo "Launching isolated MOH DllMain/query probe (15-second limit)."
 echo "WARNING: experimental DLL execution; may abort or crash inside sandbox."
 set +e
