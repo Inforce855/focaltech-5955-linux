@@ -26,7 +26,7 @@ def main():
     os.chmod(directory,0o700)
     existing = []
     for file in directory.glob("enroll_capture_*.raw"):
-        match = re.fullmatch(r"enroll_capture_(\\d+)\\.raw", file.name)
+        match = re.fullmatch(r"enroll_capture_(\d+)\.raw", file.name)
         if match:
             existing.append(int(match.group(1)))
     next_number = max(existing, default=0) + 1
