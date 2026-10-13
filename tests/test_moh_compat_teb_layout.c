@@ -51,6 +51,10 @@ static void check_current(int index)
     uint8_t template_byte = (uint8_t)(index + 1);
     assert(ft5955_teb_set_crt_tls_template(&template_byte, 1) == 0);
     assert(*(const uint8_t *)slots[0] == template_byte);
+    /* A second entry on the same pthread cannot erase static TLS state. */
+    assert(ft5955_teb_prepare_current() == 0);
+    assert(ft5955_teb_view_current() == teb);
+    assert(*(const uint8_t *)slots[0] == template_byte);
     assert(ft5955_teb_set_crt_tls_template(NULL, 1) == -1);
     assert(ft5955_teb_set_crt_tls_template(NULL, FT5955_CRT_TLS_BYTES + 1) == -1);
     teb_addresses[index] = teb;
