@@ -51,7 +51,7 @@ static void fixture(uint8_t *file)
 static unsigned failures;
 #define CHECK(expr) do { \
     if (!(expr)) { \
-        fprintf(stderr, "PE guard test failed on line %d: %s\\n", __LINE__, #expr); \
+        fprintf(stderr, "PE guard test failed on line %d: %s\n", __LINE__, #expr); \
         ++failures; \
     } \
 } while (0)
@@ -62,7 +62,7 @@ static void rejected_line(const uint8_t *p, size_t len, int case_line)
     memset(&d, 0xa5, sizeof d);
     int result = ft5955_pe_guard(p, len, &d);
     if (result != -1) {
-        fprintf(stderr, "PE guard unexpectedly accepted malformed input from line %d (result=%d)\\n",
+        fprintf(stderr, "PE guard unexpectedly accepted malformed input from line %d (result=%d)\n",
                 case_line, result);
         ++failures;
     }
@@ -108,7 +108,7 @@ int main(void)
     fixture(p); wr32(p, S1+8, UINT32_MAX); rejected(p, LEN);
     fixture(p); wr32(p, S2+16, 0x100); rejected(p, LEN); /* import not raw-backed */
     if (failures) {
-        fprintf(stderr, "5955 PE guard: %u synthetic case(s) failed\\n", failures);
+        fprintf(stderr, "5955 PE guard: %u synthetic case(s) failed\n", failures);
         return 1;
     }
     puts("5955 conservative PE header/section guard: synthetic tests OK");
