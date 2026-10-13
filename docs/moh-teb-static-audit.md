@@ -46,6 +46,33 @@ Do **not** publish the original proprietary DLL, disassembled machine
 code, real fingerprint images or templates. The short, address-only
 summary is sufficient for our next decision.
 
+## Follow-up: focused instruction windows around the eight GS accesses
+
+The actual pinned DLL yielded **eight direct GS segment references**:
+
+- Seven at `GS:0x30` (TEB.Self, commonly obtaining the TEB pointer).
+- One at `GS:0x10` (NT_TIB.StackLimit).
+- No direct `GS:0x68` or `GS:0x58` references were observed.
+
+That does not rule out indirect TEB reads through a pointer returned by
+`GS:0x30`. The next private, read-only test shows a few instructions before
+and after each reference; the snippets can be inspected for expressions
+such as `[rax+0x68]` or `[rcx+0x58]`. **Those expressions do not prove TEB
+access on their own**: register provenance and overwrites must be traced.
+
+    cd ~/Projects/focaltech-5955-moh-test
+    git fetch origin
+    git switch --detach origin/feature/ft5955-moh-engine-bridge
+    python3 -m unittest discover -s tests -p 'test_moh_teb_context.py'
+    python3 tools/moh_teb_context.py '/home/tim/Downloads/7_Fingerprint-module.zip'
+
+The new tool re-verifies the DLL SHA256 and streams `objdump` output.
+It does not write the instructions to disk; it prints up to 16 short local
+contexts (default: 3 preceding + 9 following instructions) for static
+inspection. Keep private disassembly snippets out of the public repo; share
+only what is needed to decide TEB-field requirements. No vendor code is
+executed.
+
 ## What the report means
 
 Examples of common x64 GS/TEB offsets:
