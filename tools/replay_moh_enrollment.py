@@ -64,7 +64,7 @@ def summarize(log, files):
     print(f"Processed: {len(marks)}  |  Incomplete/needs more: {accepted - int(complete)}"
           f"  |  Rejected: {rejected}  |  Complete: {'YES' if complete else 'NO'}")
     if extended:
-        print("\nExtended enrollment status (engine-reported; counters are requirements, not accepted touches):")
+        print("\nExtended enrollment status (raw engine fields; zeroes may indicate unsupported reporting):")
         print("Capture  Call HRESULT  Template HRESULT  Progress   General Center Top Bottom Left Right")
         for index,hr,meta,counts in extended:
             template=("0x"+meta.group(1)) if meta else "-"
@@ -73,6 +73,11 @@ def summarize(log, files):
             print(f"{index:>6}   0x{hr}     {template:<13} {progress:>5}     {values}")
         if not any(meta is not None for _,_,meta,_ in extended):
             print("Extended status was not supplied; do not infer any area coverage.")
+        elif all(meta is not None and meta.group(3)=="0" and counts is not None
+                 and all(v=="0" for v in counts.groups()) for _,_,meta,counts in extended):
+            print("WARNING: Percentage and regional fields are ALL ZERO throughout.")
+            print("These do not establish 0% actual progress or zero required samples.")
+            print("Treat extended coverage/progress as UNAVAILABLE until validated.")
     if inconsistent:
         nums=", ".join(map(str,inconsistent))
         print(f"STATUS DISAGREEMENT at capture(s): {nums}")
@@ -91,6 +96,8 @@ def main():
     ap.add_argument("archive",type=Path,help="local FocalTech driver ZIP")
     ap.add_argument("--captures-dir",type=Path,
                     default=ROOT/"local-data/enroll-captures")
+    ap.add_argument("--with-sample-hint",action="store_true",
+                    help="ask vendor engine's read-only standard sample-count hint")
     ap.add_argument("--with-extended-status",action="store_true",
                     help="opt-in offline query of WinBio extended enrollment status (ABI experimental)")
     ap.add_argument("--with-enrollment-parameters",action="store_true",
@@ -112,9 +119,11 @@ def main():
         print("EXPERIMENT: SetEnrollmentParameters enabled (unknown finger subtype).")
     if args.with_extended_status:
         print("EXPERIMENT: QueryExtendedEnrollmentStatus enabled; isolated vendor DLL call.")
+    if args.with_sample_hint:
+        print("EXPERIMENT: QuerySampleHint enabled (read-only DLL call).")
     try:
         proc=subprocess.run(
-            ["bash",str(BATCH),*(["--with-enrollment-parameters"] if args.with_enrollment_parameters else []),*(["--with-extended-status"] if args.with_extended_status else []),str(args.archive.resolve()),*map(str,files)],
+            ["bash",str(BATCH),*(["--with-enrollment-parameters"] if args.with_enrollment_parameters else []),*(["--with-extended-status"] if args.with_extended_status else []),*(["--with-sample-hint"] if args.with_sample_hint else []),str(args.archive.resolve()),*map(str,files)],
             cwd=ROOT,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
             text=True,timeout=120,check=False)
     except subprocess.TimeoutExpired:
@@ -128,6 +137,12 @@ def main():
             if result:
                 print(f"{name}=0x{result.group(1)}",file=sys.stderr)
         return proc.returncode
+    if args.with_sample_hint:
+        hint=re.search(r"ENROLL_HINT query_hr=0x([0-9a-fA-F]{8}) samples=(\d+|unavailable)",proc.stderr)
+        if hint:
+            print("QuerySampleHint result:",f"0x{hint.group(1)}; required samples={hint.group(2)}")
+        else:
+            print("QuerySampleHint result: NOT CONFIRMED")
     setup=re.search(r"ENROLL_DIAG set_params_hr=0x([0-9a-fA-F]{8}) subfactor=(\d+)",proc.stderr)
     if args.with_enrollment_parameters:
         print("SetEnrollmentParameters result:",(f"0x{setup.group(1)}; subfactor={setup.group(2)}" if setup else "NOT CONFIRMED"))
