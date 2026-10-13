@@ -9,6 +9,7 @@ param(
     [ValidateSet('Raw','Intermediate','Processed')]
     [string]$Mode='Raw',
     [switch]$SaveBIR,
+    [switch]$CheckFocusOnly,
     [ValidateRange(5,120)]
     [int]$TimeoutSeconds=25,
     [string]$OutputDir=(Join-Path $env:USERPROFILE 'Desktop\FocalTech-Windows-Reference')
@@ -22,12 +23,12 @@ $principal=New-Object Security.Principal.WindowsPrincipal($identity)
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     throw 'Open PowerShell using Run as administrator. Raw biometric capture requires administrator permissions.'
 }
-if (-not ('Focal5955.WinBioCaptureV2' -as [type])) {
+if (-not ('Focal5955.WinBioCaptureV3' -as [type])) {
     Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
 namespace Focal5955 {
-    public static class WinBioCaptureV2 {
+    public static class WinBioCaptureV3 {
         // WINBIO_SESSION_HANDLE and WINBIO_UNIT_ID are ULONG, not pointers.
         // WINBIO_DB_DEFAULT is the special pseudo-pointer (GUID*)1.
         [DllImport("winbio.dll", CallingConvention=CallingConvention.Winapi, ExactSpelling=true)]
@@ -44,6 +45,29 @@ namespace Focal5955 {
         public static extern void WinBioFree(IntPtr sample);
         [DllImport("winbio.dll", CallingConvention=CallingConvention.Winapi, ExactSpelling=true)]
         public static extern int WinBioCancel(uint session);
+        [DllImport("kernel32.dll", ExactSpelling=true)]
+        private static extern IntPtr GetConsoleWindow();
+        [DllImport("user32.dll", ExactSpelling=true)]
+        private static extern IntPtr GetForegroundWindow();
+        [DllImport("user32.dll", ExactSpelling=true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+        public static string EnsureConsoleFocus(out bool focusOk) {
+            IntPtr console = GetConsoleWindow();
+            if (console == IntPtr.Zero) {
+                focusOk=false;
+                return "No console window found. Run in a classic, interactive PowerShell window.";
+            }
+            IntPtr foreground = GetForegroundWindow();
+            if (foreground != console) {
+                SetForegroundWindow(console);
+                System.Threading.Thread.Sleep(150);
+            }
+            focusOk = GetForegroundWindow() == console;
+            return focusOk
+                ? "Console window is foreground (focus check PASS)."
+                : "Console is NOT foreground (focus check FAIL). Click its title bar and rerun; do not use a detached terminal.";
+        }
         private sealed class TimeoutState {
             public uint Session;
             public volatile bool Expired;
@@ -87,11 +111,22 @@ $sampleSize=[UIntPtr]::Zero
 $modeFlag=@{Raw=0x20; Intermediate=0x40; Processed=0x80}[$Mode]
 # WINBIO_NO_PURPOSE_AVAILABLE for raw/intermediate; VERIFY for processed.
 $purpose=if ($Mode -eq 'Processed') {[byte]1} else {[byte]0}
+$focused=$false
+$focusMessage=[Focal5955.WinBioCaptureV3]::EnsureConsoleFocus([ref]$focused)
+Write-Host $focusMessage
+if($CheckFocusOnly) {
+    Write-Host 'Focus-only mode. No sensor capture was requested.'
+    return
+}
+if(-not $focused) {
+    Write-Warning 'Skipping capture: the console has no foreground focus.'
+    return
+}
 Write-Host 'Opening Windows Biometric Service (system pool, raw access)...'
-$hr=[Focal5955.WinBioCaptureV2]::WinBioOpenSession(
+$hr=[Focal5955.WinBioCaptureV3]::WinBioOpenSession(
     [uint32]8, # WINBIO_TYPE_FINGERPRINT
     [uint32]1, # WINBIO_POOL_SYSTEM
-    [uint32]1, # WINBIO_FLAG_DEFAULT | WINBIO_FLAG_RAW
+    [uint32]1, # WINBIO_FLAG_RAW=0x01; WINBIO_FLAG_DEFAULT=0x00
     [IntPtr]::Zero, [UIntPtr]::Zero, [IntPtr]::new(1),
     [ref]$session
 )
@@ -105,7 +140,7 @@ try {
     Write-Host ("Requesting {0} sample; automatic cancellation after {1} seconds..." -f $Mode,$TimeoutSeconds)
     $timedOut=$false
     $cancelHr=[int32]0
-    $hr=[Focal5955.WinBioCaptureV2]::CaptureWithTimeout(
+    $hr=[Focal5955.WinBioCaptureV3]::CaptureWithTimeout(
         $session,$purpose,[byte]$modeFlag,$TimeoutSeconds,
         [ref]$unit,[ref]$sample,[ref]$sampleSize,[ref]$reject,
         [ref]$timedOut,[ref]$cancelHr
@@ -158,8 +193,8 @@ try {
     }
 } finally {
     if($sample -ne [IntPtr]::Zero) {
-        [Focal5955.WinBioCaptureV2]::WinBioFree($sample)
+        [Focal5955.WinBioCaptureV3]::WinBioFree($sample)
     }
-    $closed=[Focal5955.WinBioCaptureV2]::WinBioCloseSession($session)
+    $closed=[Focal5955.WinBioCaptureV3]::WinBioCloseSession($session)
     Write-Host ('WinBioCloseSession HRESULT: 0x{0:X8}' -f [BitConverter]::ToUInt32([BitConverter]::GetBytes([int32]$closed),0))
 }
