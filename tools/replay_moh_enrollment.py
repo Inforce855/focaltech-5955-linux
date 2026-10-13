@@ -19,7 +19,7 @@ def matched(pattern, data, default="-"):
     m=re.search(pattern,data)
     return m.group(1) if m else default
 
-def summarize(log, files, completion_from_update=False, probe_commit=False, skip_status=False, with_duplicate_check=False):
+def summarize(log, files, completion_from_update=False, probe_commit=False, skip_status=False, with_duplicate_check=False, mock_empty_content_query=False):
     marks=list(re.finditer(r"\[5955\] Enrolment sample (\d+)/(\d+):", log))
     if not marks:
         print("No per-sample enrolment records found. Probe may have failed.",file=sys.stderr)
@@ -103,8 +103,14 @@ def summarize(log, files, completion_from_update=False, probe_commit=False, skip
             if duplicate:
                 print("DUPLICATE PRECHECK:",f"HRESULT=0x{duplicate.group(1)};",
                       f"duplicate found={'YES' if duplicate.group(2)=='1' else 'NO'}")
+                if duplicate.group(1).lower() != "00000000":
+                    print("Duplicate flag is not meaningful when precheck fails.")
             else:
                 print("DUPLICATE PRECHECK: not confirmed")
+            if mock_empty_content_query:
+                count=re.search(r"DUPLICATE_PROBE mock_content_queries=(\d+)",log)
+                print("MOCK EMPTY-STORAGE QueryByContent callbacks:",
+                      count.group(1) if count else "not confirmed")
         probe=re.search(r"COMMIT_PROBE hr=0x([0-9a-fA-F]{8}) record_seen=(\d+) bounded_template=(\d+)(?: add_calls=(\d+))?",log)
         if probe:
             print("OFFLINE COMMIT PROBE:",f"HRESULT=0x{probe.group(1)};",
@@ -131,6 +137,8 @@ def main():
                     help="opt-in Windows capture workflow interpretation; stop at UpdateEnrollment S_OK, retain status as diagnostic")
     ap.add_argument("--probe-commit-in-memory",action="store_true",
                     help="after UpdateEnrollment S_OK, call engine CommitEnrollment only inside disposable sandbox/mock storage; never write templates")
+    ap.add_argument("--mock-empty-content-query",action="store_true",
+                    help="opt-in sandbox-only empty-DB QueryByContent mock; requires duplicate preflight")
     ap.add_argument("--with-duplicate-check",action="store_true",
                     help="before in-memory CommitEnrollment, invoke documented CheckForDuplicate preflight (opt-in)")
     ap.add_argument("--skip-enrollment-status",action="store_true",
@@ -151,6 +159,8 @@ def main():
         ap.error("--probe-commit-in-memory/--skip-enrollment-status require --completion-from-update")
     if args.with_duplicate_check and not args.probe_commit_in_memory:
         ap.error("--with-duplicate-check requires --probe-commit-in-memory")
+    if args.mock_empty_content_query and not args.with_duplicate_check:
+        ap.error("--mock-empty-content-query requires --with-duplicate-check")
     if not args.archive.is_file():ap.error("Driver archive not found")
     if not args.captures_dir.is_dir():ap.error("Private capture directory not found")
     files=sorted(args.captures_dir.glob("enroll_capture_*.pgm"))[:args.limit]
@@ -165,6 +175,8 @@ def main():
         print("EXPERIMENT: Attempt CommitEnrollment into mock in-memory storage, then wipe it.")
     if args.with_duplicate_check:
         print("EXPERIMENT: Call CheckForDuplicate before CommitEnrollment, matching the Windows commit sequence.")
+    if args.mock_empty_content_query:
+        print("EXPERIMENT: Empty mock database QueryByContent returns NO_RESULTS instead of E_NOTIMPL.")
     if args.skip_enrollment_status:
         print("EXPERIMENT: Do not call GetEnrollmentStatus; match Windows capture callback sequence.")
     if args.completion_from_update:
@@ -181,7 +193,7 @@ def main():
         print("EXPERIMENT: QuerySampleHint enabled (read-only DLL call).")
     try:
         proc=subprocess.run(
-            ["bash",str(BATCH),*(["--invert-pixels"] if args.invert_input else []),*(["--completion-from-update"] if args.completion_from_update else []),*(["--skip-enrollment-status"] if args.skip_enrollment_status else []),*(["--probe-commit-in-memory"] if args.probe_commit_in_memory else []),*(["--with-duplicate-check"] if args.with_duplicate_check else []),*(["--with-enrollment-parameters"] if args.with_enrollment_parameters else []),*(["--with-extended-status"] if args.with_extended_status else []),*(["--with-sample-hint"] if args.with_sample_hint else []),str(args.archive.resolve()),*map(str,files)],
+            ["bash",str(BATCH),*(["--invert-pixels"] if args.invert_input else []),*(["--completion-from-update"] if args.completion_from_update else []),*(["--skip-enrollment-status"] if args.skip_enrollment_status else []),*(["--probe-commit-in-memory"] if args.probe_commit_in_memory else []),*(["--with-duplicate-check"] if args.with_duplicate_check else []),*(["--mock-empty-content-query"] if args.mock_empty_content_query else []),*(["--with-enrollment-parameters"] if args.with_enrollment_parameters else []),*(["--with-extended-status"] if args.with_extended_status else []),*(["--with-sample-hint"] if args.with_sample_hint else []),str(args.archive.resolve()),*map(str,files)],
             cwd=ROOT,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
             text=True,timeout=120,check=False)
     except subprocess.TimeoutExpired:
@@ -204,7 +216,7 @@ def main():
     setup=re.search(r"ENROLL_DIAG set_params_hr=0x([0-9a-fA-F]{8}) subfactor=(\d+)",proc.stderr)
     if args.with_enrollment_parameters:
         print("SetEnrollmentParameters result:",(f"0x{setup.group(1)}; subfactor={setup.group(2)}" if setup else "NOT CONFIRMED"))
-    ok=summarize(proc.stderr,files,completion_from_update=args.completion_from_update,probe_commit=args.probe_commit_in_memory,skip_status=args.skip_enrollment_status,with_duplicate_check=args.with_duplicate_check)
+    ok=summarize(proc.stderr,files,completion_from_update=args.completion_from_update,probe_commit=args.probe_commit_in_memory,skip_status=args.skip_enrollment_status,with_duplicate_check=args.with_duplicate_check,mock_empty_content_query=args.mock_empty_content_query)
     return 0 if ok else 1
 
 if __name__=="__main__":
