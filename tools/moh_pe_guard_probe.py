@@ -34,6 +34,7 @@ def main():
                 "cc", "-std=c11", "-O2", "-Wall", "-Wextra", "-Werror",
                 "-I", str(root / "engine"),
                 str(root / "engine" / "ft5955_pe_guard.c"),
+                str(root / "engine" / "ft5955_pe_exports.c"),
                 str(root / "tools" / "moh_pe_guard_check.c"),
                 "-o", str(exe),
             ], check=True)
