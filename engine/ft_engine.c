@@ -650,7 +650,7 @@ int ft_engine_smoke_interface(const char *dll_path){
   u64 (MS *Query)(void**)=q;
   void *iface=0;
   if((u32)Query(&iface)!=0 || !iface) return -3;
-  fprintf(stderr,"[5955] WbioQueryEngineInterface returned a non-null interface\\n");
+  fprintf(stderr,"[5955] WbioQueryEngineInterface returned a non-null interface\n");
   /* Read-only interface reconnaissance. Never invoke a vtable slot.
    * The returned pointer must lie inside this guarded PE image and have
    * enough room for the bounded 0x20-byte header and 24 pointer slots. */
@@ -664,14 +664,20 @@ int ft_engine_smoke_interface(const char *dll_path){
       return -4;
     }
     const unsigned char *bytes=(const unsigned char *)iface;
-    uint32_t declared_size=0, interface_type=0;
+    /* WINBIO_ENGINE_INTERFACE, Windows x64:
+     * Version = two USHORTs at +0; Type = ULONG at +4;
+     * Size = SIZE_T at +8; AdapterId GUID at +0x10;
+     * function pointers begin at +0x20. */
+    uint64_t declared_size=0;
+    uint32_t interface_type=0;
     uint16_t major=0,minor=0;
-    memcpy(&declared_size,bytes,4);
-    memcpy(&major,bytes+4,2);
-    memcpy(&minor,bytes+6,2);
-    memcpy(&interface_type,bytes+8,4);
-    fprintf(stderr,"[5955] interface offset=%#lx; header: Size=%u Version=%u.%u Type=%u\\n",
-            (unsigned long)(addr-base),declared_size,major,minor,interface_type);
+    memcpy(&major,bytes,2);
+    memcpy(&minor,bytes+2,2);
+    memcpy(&interface_type,bytes+4,4);
+    memcpy(&declared_size,bytes+8,8);
+    fprintf(stderr,"[5955] interface offset=%#lx; header: Size=%llu Version=%u.%u Type=%u\\n",
+            (unsigned long)(addr-base),(unsigned long long)declared_size,
+            major,minor,interface_type);
     if(declared_size<0x20u || declared_size>4096u ||
        declared_size>g_layout.image_size-(addr-base)) {
       fprintf(stderr,"[5955] BLOCKED: implausible interface Size\\n");
