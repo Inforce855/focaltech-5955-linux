@@ -34,7 +34,7 @@ Read-only static comparison on the exact MOH DLL:
   QueryPerformanceFrequency, Sleep, GetLocalTime, GetCurrentThread and
   GetConsoleOutputCP. QueryPerformanceCounter also now uses the same real
   nanosecond monotonic clock as QueryPerformanceFrequency.
-- **Expected after this patch: 86/110 names covered, 24 still missing**.
+- **Expected after this patch: 87/110 names covered, 23 still missing**.
   Four FLS APIs now use a pthread-backed per-thread implementation with
   tested thread isolation, re-use and callback cleanup. This does not
   emulate multiple Windows fibers sharing one pthread; that behavior and
@@ -63,7 +63,7 @@ temporarily extracts that private DLL, verifies its SHA256, calls objdump on its
 import table, compares imports to registered loader shims and cleans up.
 You can alternatively supply the private MOH DLL path directly.
 
-Its expected current result is **86/110 covered, 24 missing** and exit status 1.
+Its expected current result is **87/110 covered, 23 missing** and exit status 1.
 That exit status indicates a *correctly enforced import gate*, not a test crash.
 No USB calls, enrolment, fingerprint images, templates or authentication changes.
 
@@ -151,7 +151,7 @@ Test this separately:
       -o /tmp/ft5955_compat_locale_info_test
     /tmp/ft5955_compat_locale_info_test
 
-**Important:** 86/110 means **registered API names**, not 83 APIs fully
+**Important:** 87/110 means **registered API names**, not 83 APIs fully
 compatible with the real DLL. The inherited FT9201 shims contain mock
 Windows handles, no-op critical sections and other approximations whose
 semantics must be audited before any engine execution. Even the new locale
@@ -517,6 +517,51 @@ https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/ns-sysinfoapi-sys
 This replaces **one existing registered import**. Expected coverage
 remains **86/110, 24 missing**, and Windows DLL execution is still
 disabled.
+
+## New import: virtual Windows environment, no Linux environment changes
+
+A Windows `SetEnvironmentVariableW` shim now writes only to a bounded,
+in-process **virtual Windows environment**. It never calls
+`setenv`, `putenv`, changes Linux `environ`, or writes host files.
+`GetEnvironmentStringsW` and `FreeEnvironmentStringsW` replace the
+inherited FT9201 empty, static buffer and no-op free:
+
+- Each `GetEnvironmentStringsW` call returns a separate, UTF-16,
+  double-NUL-terminated snapshot, sorted case-insensitively by ASCII
+  name; the caller must release it through `FreeEnvironmentStringsW`.
+- Mutations do not alter previous snapshots; unknown and double-freed
+  snapshot pointers are rejected without invoking `free` on them.
+- `SetEnvironmentVariableW` updates names case-insensitively, permits
+  empty values and deletes a name only when the value pointer is NULL.
+- A pthread mutex serialises updates and snapshots across threads.
+  Inputs are limited to 64 variables, 127-character names and 4,096-
+  character values, with printable ASCII UTF-16 only. Unsupported
+  Unicode, Windows drive-current-directory pseudo-variables and
+  unbounded process environments are intentionally rejected.
+- The environment initially starts **empty**, and neither the synthetic
+  PEB's `ProcessParameters.Environment` pointer nor an imported
+  `GetEnvironmentVariableW` shim is implemented yet. A real Windows
+  engine may need these; name coverage is not execution readiness.
+
+Synthetic test (no Windows DLL, USB, biometric samples or host updates):
+
+    cc -std=c11 -O2 -Wall -Wextra -Werror -pthread -Iengine \\
+      engine/ft5955_compat_env.c engine/ft5955_compat_error.c \\
+      tests/test_moh_compat_env.c -o /tmp/ft5955_env_test
+    /tmp/ft5955_env_test
+    python3 -m unittest discover -s tests -p 'test_moh_loader_teb_gate.py'
+    bash tools/build_moh_engine_smoke.sh
+    python3 tools/moh_engine_preflight.py '/home/tim/Downloads/7_Fingerprint-module.zip'
+
+The tests cover snapshots, update/deletion, ASCII case-insensitive
+names, invalid arguments, Linux `getenv` isolation and four concurrent
+writer threads. Imported name coverage is **expected** to improve to
+**87/110 (23 missing)**, pending the user's real-DLL static preflight.
+Nothing changes the DLL-execution gates.
+
+Windows API references:
+https://learn.microsoft.com/en-us/windows/win32/api/processenv/nf-processenv-setenvironmentvariablew
+https://learn.microsoft.com/en-us/windows/win32/api/processenv/nf-processenv-getenvironmentstringsw
 
 ## Next work on this branch
 
