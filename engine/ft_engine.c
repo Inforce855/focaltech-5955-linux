@@ -660,7 +660,7 @@ int ft_engine_smoke_interface(const char *dll_path){
     const size_t inspect_bytes=0x20u+41u*sizeof(uint64_t);
     if (!base || addr<base || addr-base>g_layout.image_size ||
         inspect_bytes>g_layout.image_size-(addr-base)) {
-      fprintf(stderr,"[5955] BLOCKED: interface outside guarded PE image\\n");
+      fprintf(stderr,"[5955] BLOCKED: interface outside guarded PE image\n");
       return -4;
     }
     const unsigned char *bytes=(const unsigned char *)iface;
@@ -675,16 +675,16 @@ int ft_engine_smoke_interface(const char *dll_path){
     memcpy(&minor,bytes+2,2);
     memcpy(&interface_type,bytes+4,4);
     memcpy(&declared_size,bytes+8,8);
-    fprintf(stderr,"[5955] interface offset=%#lx; header: Size=%llu Version=%u.%u Type=%u\\n",
+    fprintf(stderr,"[5955] interface offset=%#lx; header: Size=%llu Version=%u.%u Type=%u\n",
             (unsigned long)(addr-base),(unsigned long long)declared_size,
             major,minor,interface_type);
     if(declared_size<0x20u || declared_size>4096u ||
        declared_size>g_layout.image_size-(addr-base)) {
-      fprintf(stderr,"[5955] BLOCKED: implausible interface Size\\n");
+      fprintf(stderr,"[5955] BLOCKED: implausible interface Size\n");
       return -5;
     }
     if(declared_size != inspect_bytes) {
-      fprintf(stderr,"[5955] BLOCKED: unexpected interface size; expected %zu bytes\\n",inspect_bytes);
+      fprintf(stderr,"[5955] BLOCKED: unexpected interface size; expected %zu bytes\n",inspect_bytes);
       return -6;
     }
     unsigned good=0;
@@ -705,16 +705,16 @@ int ft_engine_smoke_interface(const char *dll_path){
       }
       if(executable) {
         good++;
-        fprintf(stderr,"[5955] interface slot[%02u] +%#x: image+%#lx EXECUTABLE\\n",
+        fprintf(stderr,"[5955] interface slot[%02u] +%#x: image+%#lx EXECUTABLE\n",
                 i,0x20u+8u*i,(unsigned long)(fn-base));
       } else {
-        fprintf(stderr,"[5955] interface slot[%02u] +%#x: INVALID/NOT_EXECUTABLE\\n",
+        fprintf(stderr,"[5955] interface slot[%02u] +%#x: INVALID/NOT_EXECUTABLE\n",
                 i,0x20u+8u*i);
       }
     }
-    fprintf(stderr,"[5955] executable interface pointers: %u/41\\n",good);
+    fprintf(stderr,"[5955] executable interface pointers: %u/41\n",good);
     if(good!=41u) {
-      fprintf(stderr,"[5955] BLOCKED: unverified interface pointers\\n");
+      fprintf(stderr,"[5955] BLOCKED: unverified interface pointers\n");
       return -7;
     }
   }
