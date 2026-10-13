@@ -88,9 +88,11 @@ if (( (skip_status || probe_commit) && ! completion_from_update )); then
   echo "ERROR: --probe-commit-in-memory and --skip-enrollment-status require --completion-from-update." >&2
   exit 2
 fi
-if (( verify_original_polarity && (!verify_after_commit || !invert_pixels || input_kind != "pgm") )); then
-  echo "ERROR: --verify-original-polarity requires --verify-after-commit --invert-pixels with PGM samples." >&2
-  exit 2
+if (( verify_original_polarity )); then
+  if (( !verify_after_commit || !invert_pixels )) || [[ "$input_kind" != pgm ]]; then
+    echo "ERROR: --verify-original-polarity requires --verify-after-commit --invert-pixels with PGM samples." >&2
+    exit 2
+  fi
 fi
 if (( verify_after_commit && (!probe_commit || !duplicate_check || !mock_content_query || !skip_status || !completion_from_update) )); then
   echo "ERROR: --verify-after-commit requires --probe-commit-in-memory --with-duplicate-check --mock-empty-content-query --skip-enrollment-status --completion-from-update." >&2
