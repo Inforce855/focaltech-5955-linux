@@ -40,6 +40,13 @@ class GatedTebWiring(unittest.TestCase):
         self.assertLess(LOADER.index("invalid import-function name"),
                         LOADER.index("int mfd=memfd_create("))
 
+    def test_export_resolver_is_bounded(self):
+        self.assertIn('#include "ft5955_pe_exports.h"', SOURCE)
+        self.assertIn("engine/ft5955_pe_exports.c", BUILD)
+        self.assertIn("ft5955_pe_find_export(g_image,g_layout.image_size", SOURCE)
+        self.assertIn("BLOCKED: PE export outside executable section", SOURCE)
+        self.assertNotIn("u32 nnames=*(u32*)(g_image+exprva+24)", SOURCE)
+
     def test_import_gate_and_thread_setup_before_dllmain(self):
         self.assertLess(LOADER.index("if(unresolved_imports)"),
                         LOADER.index("if(set_engine_gs_current()!=0)"))
