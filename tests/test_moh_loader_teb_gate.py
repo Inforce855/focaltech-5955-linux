@@ -58,6 +58,15 @@ class GatedTebWiring(unittest.TestCase):
         self.assertNotIn("static u64   MS sh_HeapSize", SOURCE)
         self.assertNotIn("static int   MS sh_HeapValidate", SOURCE)
 
+    def test_time_shims_use_real_clocks(self):
+        self.assertIn('reg("GetSystemTimeAsFileTime", (void*)ft5955_GetSystemTimeAsFileTime)', SOURCE)
+        self.assertIn('reg("GetTickCount", (void*)ft5955_GetTickCount)', SOURCE)
+        self.assertNotIn("static u64 t=0x01d0000000000000ULL", SOURCE)
+        self.assertNotIn("return (t+=5)", SOURCE)
+        time_source = (ROOT / "engine" / "ft5955_compat_time.c").read_text(encoding="utf-8")
+        self.assertIn("CLOCK_REALTIME", time_source)
+        self.assertIn("CLOCK_BOOTTIME", time_source)
+
     def test_export_resolver_is_bounded(self):
         self.assertIn('#include "ft5955_pe_exports.h"', SOURCE)
         self.assertIn("engine/ft5955_pe_exports.c", BUILD)
