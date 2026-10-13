@@ -27,6 +27,7 @@
 #include "ft5955_compat_time.h"
 #include "ft5955_compat_fls.h"
 #include "ft5955_compat_locale.h"
+#include "ft5955_compat_datetime.h"
 
 typedef uint8_t u8; typedef uint16_t u16; typedef uint32_t u32; typedef uint64_t u64;
 #define MS __attribute__((ms_abi))
@@ -203,6 +204,8 @@ static void register_shims(void){
   R(GetACP);R(GetOEMCP);R(GetCPInfo);R(IsValidCodePage);R(MultiByteToWideChar);R(WideCharToMultiByte);R(LCMapStringW);R(GetStringTypeW);
   reg("GetUserDefaultLCID", (void*)ft5955_GetUserDefaultLCID);
   reg("IsValidLocale", (void*)ft5955_IsValidLocale);
+  reg("GetDateFormatW", (void*)ft5955_GetDateFormatW);
+  reg("GetTimeFormatW", (void*)ft5955_GetTimeFormatW);
   R(GetSystemInfo);R(GetSystemTimeAsFileTime);R(GetTickCount);
   reg("QueryPerformanceCounter", (void*)ft5955_QueryPerformanceCounter);
   reg("QueryPerformanceFrequency", (void*)ft5955_QueryPerformanceFrequency);
