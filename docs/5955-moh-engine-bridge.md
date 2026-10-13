@@ -34,7 +34,7 @@ Read-only static comparison on the exact MOH DLL:
   QueryPerformanceFrequency, Sleep, GetLocalTime, GetCurrentThread and
   GetConsoleOutputCP. QueryPerformanceCounter also now uses the same real
   nanosecond monotonic clock as QueryPerformanceFrequency.
-- **Expected after this patch: 88/110 names covered, 22 still missing**.
+- **Expected after this patch: 92/110 names covered, 18 still missing**.
   Four FLS APIs now use a pthread-backed per-thread implementation with
   tested thread isolation, re-use and callback cleanup. This does not
   emulate multiple Windows fibers sharing one pthread; that behavior and
@@ -63,7 +63,7 @@ temporarily extracts that private DLL, verifies its SHA256, calls objdump on its
 import table, compares imports to registered loader shims and cleans up.
 You can alternatively supply the private MOH DLL path directly.
 
-Its expected current result is **88/110 covered, 22 missing** and exit status 1.
+Its expected current result is **92/110 covered, 18 missing** and exit status 1.
 That exit status indicates a *correctly enforced import gate*, not a test crash.
 No USB calls, enrolment, fingerprint images, templates or authentication changes.
 
@@ -151,7 +151,7 @@ Test this separately:
       -o /tmp/ft5955_compat_locale_info_test
     /tmp/ft5955_compat_locale_info_test
 
-**Important:** 88/110 means **registered API names**, not 83 APIs fully
+**Important:** 92/110 means **registered API names**, not 83 APIs fully
 compatible with the real DLL. The inherited FT9201 shims contain mock
 Windows handles, no-op critical sections and other approximations whose
 semantics must be audited before any engine execution. Even the new locale
@@ -611,6 +611,57 @@ Microsoft Win32 references:
 https://learn.microsoft.com/en-us/windows/win32/api/interlockedapi/nf-interlockedapi-interlockedpushentryslist
 https://learn.microsoft.com/en-us/windows/win32/api/interlockedapi/nf-interlockedapi-initializeslisthead
 https://learn.microsoft.com/en-us/windows/win32/sync/interlocked-singly-linked-lists
+
+## Four new ADVAPI32 imports: private ANSI registry
+
+The verified MOH DLL imports `RegOpenKeyExA`, `RegQueryValueExA`,
+`RegCloseKey` and `RegSetKeyValueA`. The guarded loader now registers a
+small **in-memory-only** implementation of all four in
+`engine/ft5955_compat_registry.[ch]`. This does **not** access actual
+Windows registry hives, Nobara configuration files, or user settings.
+
+- Predefined HKCU/HKLM (and other basic non-performance predefined roots)
+  are recognised as synthetic registry roots. Initially there are no keys
+  or values. `RegOpenKeyExA` never creates a missing key;
+  `RegSetKeyValueA` creates an in-memory key and required path prefixes.
+- Newly opened keys use generation-tagged, opaque 64-bit handles. Closing
+  invalidates the handle; unknown or previously closed handles return
+  `ERROR_INVALID_HANDLE` rather than being dereferenced or freed.
+- Keys and value names compare case-insensitively for printable ASCII.
+  `RegSetKeyValueA` supports bounded `REG_SZ`, `REG_BINARY` and
+  `REG_DWORD` values; UTF-8/Windows ANSI code page conversion, full
+  registry types, ACLs, WOW64 views, dynamic notifications and remote
+  registry connections are **not** implemented.
+- `RegQueryValueExA` returns the size/type for a value, and reports
+  `ERROR_MORE_DATA` with the required byte length for short buffers.
+  Handles opened with insufficient rights return `ERROR_ACCESS_DENIED`.
+- Memory-only storage is limited to 128 keys, 256 values (4,096 bytes
+  each), 128 open handles and 255-byte normalised paths. One pthread
+  mutex serialises all operations. It is not persistent.
+
+Synthetic regression test: missing keys, nested key creation, case-
+insensitive readback, binary-size contract, short buffers, access rights,
+closed handles, invalid arguments and four concurrent reader/writers.
+
+    cc -std=c11 -O2 -Wall -Wextra -Werror -pthread -Iengine \\
+      engine/ft5955_compat_registry.c tests/test_moh_compat_registry.c \\
+      -o /tmp/ft5955_registry_test
+    /tmp/ft5955_registry_test
+    python3 -m unittest discover -s tests -p 'test_moh_loader_teb_gate.py'
+    bash tools/build_moh_engine_smoke.sh
+    python3 tools/moh_engine_preflight.py '/home/tim/Downloads/7_Fingerprint-module.zip'
+
+This adds four formerly unresolved names; **expected coverage: 92/110,
+18 missing**, pending Nobara confirmation. It does not establish matching
+engine readiness: the actual Windows registry's FocalTech installation
+settings, if required by the DLL, will need separate examination and
+careful synthetic equivalents. DLL execution and libfprint/PAM remain
+unchanged and blocked.
+
+References:
+https://learn.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regopenkeyexa
+https://learn.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regqueryvalueexa
+https://learn.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regsetkeyvaluea
 
 ## Next work on this branch
 
