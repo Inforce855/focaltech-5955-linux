@@ -181,6 +181,45 @@ An optional *build-only* command exists:
 This builds native/build/ft5955_moh_smoke but never loads a proprietary DLL.
 **Do not execute the smoke binary yet on the live workstation.**
 
+## Existing-shim correctness audit: Win32 CRITICAL_SECTION
+
+The borrowed FT9201 loader's **five critical-section entries were no-ops**.
+That is unsafe for a potentially multithreaded matcher: imports appear
+'covered' even though actual mutual exclusion is absent.
+
+A new x86-64 Windows-ABI wrapper in
+`engine/ft5955_compat_cs.c` backs these calls with **recursive pthread
+mutexes** keyed by the CRITICAL_SECTION address:
+
+- InitializeCriticalSection
+- InitializeCriticalSectionAndSpinCount
+- EnterCriticalSection
+- LeaveCriticalSection
+- DeleteCriticalSection
+
+The wrappers preserve recursion, prevent simultaneous access, allow
+Delete/reinitialise and pin active users across concurrent Delete.
+Invalid API use aborts in the isolated experiment instead of silently
+ignoring locking. This is **not yet ABI-complete**: it does not reproduce
+the in-memory Windows CRITICAL_SECTION fields, so direct reads of
+`LockCount`, `OwningThread` or `DebugInfo` by the MOH engine must be
+ruled out before enabling execution. Deleting a lock while held by the
+calling thread is invalid and can deadlock. Do not use in production
+until these limitations are resolved.
+
+Test the C implementation without a DLL or USB:
+
+    cc -std=gnu11 -O2 -Wall -Wextra -Werror -pthread -Iengine \\
+      engine/ft5955_compat_cs.c tests/test_moh_compat_cs.c \\
+      -o /tmp/ft5955_cs_test
+    /tmp/ft5955_cs_test
+
+This tests recursive acquisition, 4 concurrent threads performing
+120,000 guarded increments, absence of overlapping critical sections,
+and safe reuse after Delete. **Import-name coverage stays 86/110**:
+the change improves five previously registered but ineffective shims.
+Neither Windows DLL entry points nor libfprint/PAM are executed or modified.
+
 ## Next work on this branch
 
 1. Implement the missing Windows shims with actual expected semantics, not
