@@ -7,6 +7,7 @@ through private anonymous pipes only; no image files are saved.
 """
 from __future__ import annotations
 import argparse
+import math
 import os
 from pathlib import Path
 import queue
@@ -73,18 +74,42 @@ class EnrolGUI:
         root.after(100,self.drain)
 
     def draw_target(self,state):
+        """Draw an illustrative fingerprint ridge pattern, never biometric data."""
         c=self.canvas
         c.delete("all")
         palette={"idle":"#7c8997","ready":"#277db5","added":"#169b64",
-                 "reposition":"#d09027","complete":"#169b64","error":"#c0392b"}
+                 "reposition":"#d09027","rejected":"#d09027",
+                 "complete":"#169b64","error":"#c0392b"}
         colour=palette.get(state,palette["idle"])
-        c.create_oval(59,17,201,298,outline=colour,width=5)
-        for i in range(11):
-            inset=i*6
-            c.create_arc(72+inset,32+inset,188-inset,278-inset,
-                         start=20,extent=320,style="arc",outline=colour,width=2)
-        c.create_oval(113,146,147,180,fill=colour,outline="")
-        c.create_text(130,319,text="SENSOR TARGET",fill=colour,font=("Sans",10,"bold"))
+        # Open-ended, asymmetrical fingerprint ridges. These are not
+        # concentric ovals, nor a map of the user's actual fingerprint.
+        for ring in range(11):
+            radius=73-ring*4.5
+            crest=26+ring*7.3
+            arch_height=76-ring*2.6
+            left_bottom=252-ring*3.1
+            right_bottom=238-ring*2.7
+            points=[130-radius,left_bottom,130-radius,crest+arch_height]
+            for j in range(101):
+                theta=math.pi*(1-j/100)
+                x=130+radius*math.cos(theta)+2.8*math.sin(2*theta+ring*.17)
+                y=crest+arch_height*(1-math.sin(theta))
+                points.extend((x,y))
+            points.extend((130+radius,crest+arch_height,130+radius,right_bottom))
+            c.create_line(*points,fill=colour,width=2,smooth=True,
+                          splinesteps=5,capstyle=tk.ROUND)
+        # Core ridge flow: curved, separate tracks; no artificial centre dot.
+        for ring in range(5):
+            points=[]
+            for j in range(90):
+                t=j/89
+                x=116+7*ring+9*math.sin(1.5*math.pi*t+ring*.20)
+                y=152+90*t-4*ring
+                points.extend((x,y))
+            c.create_line(*points,fill=colour,width=2,smooth=True,
+                          capstyle=tk.ROUND)
+        c.create_text(130,307,text="FINGERPRINT TARGET",fill=colour,
+                      font=("Sans",10,"bold"))
 
     def update_progress(self):
         state="COMPLETE (in memory)" if self.complete else "NOT COMPLETE"
