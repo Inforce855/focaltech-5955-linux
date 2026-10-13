@@ -2,6 +2,7 @@
  * Correctly typed, narrow Win32 shims for MOH matching-engine research.
  * Does not access USB, biometric data, filesystem or Windows DLL.
  */
+#define _GNU_SOURCE
 #define _POSIX_C_SOURCE 200809L
 #include "ft5955_compat_time.h"
 #include <errno.h>
@@ -54,6 +55,42 @@ ft5955_GetLocalTime(ft5955_systemtime *out)
     out->minute = (uint16_t)local.tm_min;
     out->second = (uint16_t)local.tm_sec;
     out->milliseconds = (uint16_t)(now.tv_nsec / 1000000L);
+}
+
+/* Windows FILETIME: 100-nanosecond UTC intervals since 1601-01-01.
+ * Unix epoch begins 11,644,473,600 seconds after the Windows epoch.
+ * One 64-bit store is ABI-compatible with two 32-bit FILETIME DWORDs
+ * on the supported little-endian x86-64 platform.
+ */
+void FT5955_MS_ABI
+ft5955_GetSystemTimeAsFileTime(uint64_t *out)
+{
+    struct timespec now;
+    if (!out)
+        return;
+    if (clock_gettime(CLOCK_REALTIME, &now) != 0 || now.tv_sec < 0) {
+        *out = 0;
+        return;
+    }
+    const uint64_t epoch_offset = UINT64_C(116444736000000000);
+    const uint64_t time_100ns = (uint64_t)now.tv_sec * UINT64_C(10000000)
+                              + (uint64_t)now.tv_nsec / 100u;
+    *out = epoch_offset + time_100ns;
+}
+
+/* CLOCK_BOOTTIME continues across system suspend, matching Windows' uptime
+ * counter more closely than a process-relative or manually incremented
+ * value. Truncation to uint32_t deliberately wraps every ~49.7 days.
+ */
+uint32_t FT5955_MS_ABI
+ft5955_GetTickCount(void)
+{
+    struct timespec now;
+    if (clock_gettime(CLOCK_BOOTTIME, &now) != 0)
+        return 0;
+    const uint64_t ms = (uint64_t)now.tv_sec * UINT64_C(1000)
+                      + (uint64_t)now.tv_nsec / 1000000u;
+    return (uint32_t)ms;
 }
 
 void *FT5955_MS_ABI
