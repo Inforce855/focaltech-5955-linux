@@ -59,7 +59,7 @@ int ft5955_pe_guard(const uint8_t *file, size_t filelen,
     const uint64_t imagebase = rd64(file + opt + 24);
     if (!image_size || image_size > FT5955_PE_IMAGE_LIMIT ||
         !headers || headers > filelen || headers > image_size ||
-        (headers & 0xfffu) || (image_size & 0xfffu) ||
+        (image_size & 0xfffu) ||
         !image_range(image_size, entry, 1) ||
         imagebase < 0x10000u)
         return -1;
@@ -78,6 +78,13 @@ int ft5955_pe_guard(const uint8_t *file, size_t filelen,
         sect + (size_t)count * 40 > headers)
         return -1;
 
+    /* PE SizeOfHeaders follows FILE alignment (often 0x400), while the
+     * inherited mmap code rounds its header region up to 4 KiB. */
+    if (headers > UINT32_MAX - 0xfffu ||
+        ((headers + 0xfffu) & ~0xfffu) > image_size)
+        return -1;
+    const uint32_t mapped_headers = (headers + 0xfffu) & ~0xfffu;
+
     uint32_t starts[MAX_SECTIONS], ends[MAX_SECTIONS];
     int entry_exec = 0, import_file_backed = 0;
     for (unsigned i = 0; i < count; ++i) {
@@ -88,7 +95,7 @@ int ft5955_pe_guard(const uint8_t *file, size_t filelen,
         const uint32_t raw_ptr = rd32(file + at + 20);
         const uint32_t chars = rd32(file + at + 36);
         const uint32_t span = virt_size > raw_size ? virt_size : raw_size;
-        if ((vaddr & 0xfffu) || vaddr < headers ||
+        if ((vaddr & 0xfffu) || vaddr < mapped_headers ||
             !image_range(image_size, vaddr, span) ||
             (raw_size && !within(filelen, raw_ptr, raw_size)) ||
             ((chars & 0x20000000u) && (chars & 0x80000000u)))
