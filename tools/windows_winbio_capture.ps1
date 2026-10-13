@@ -159,7 +159,7 @@ try {
         }
         return
     }
-    $length=[ulong]$sampleSize.ToUInt64()
+    $length=[UInt64]$sampleSize.ToUInt64()
     if ($sample -eq [IntPtr]::Zero -or $length -lt 32 -or $length -gt 1048576) {
         throw "Unexpected biometric record size: $length (expected 32..1048576 bytes). Not reading sample."
     }
@@ -170,7 +170,7 @@ try {
         $size=[uint32][Runtime.InteropServices.Marshal]::ReadInt32($sample,$i*8)
         $offset=[uint32][Runtime.InteropServices.Marshal]::ReadInt32($sample,$i*8+4)
         Write-Host ("  {0,-9} offset={1,6} size={2,6}" -f $labels[$i],$offset,$size)
-        if($size -ne 0 -and ($offset -lt 32 -or ([ulong]$offset+[ulong]$size) -gt $length)) {
+        if($size -ne 0 -and ($offset -lt 32 -or ([UInt64]$offset+[UInt64]$size) -gt $length)) {
             $valid=$false
         }
     }
@@ -181,7 +181,7 @@ try {
         }
         $out=Join-Path $OutputDir ("Focal5955-{0}-{1}.bir" -f $Mode, (Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
         if(Test-Path -LiteralPath $out){throw 'Output already exists. Refusing to overwrite.'}
-        $data=New-Object byte[] ([int]$length)
+        $data=[byte[]]::new([int]$length)
         [Runtime.InteropServices.Marshal]::Copy($sample,$data,0,[int]$length)
         $fs=[System.IO.File]::Open($out,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
         try {$fs.Write($data,0,$data.Length)} finally {$fs.Dispose()}
