@@ -579,7 +579,13 @@ static u8  g_rec_template[1<<20];   // enrollment template can be ~200KB (up to 
 static u64 g_rec_tsize = 0;
 static int g_have_record = 0;
 
-static u64 MS st_default(void*a,void*b,void*c,void*d,void*e,void*f){ return 0; }
+/* Unknown sensor/storage methods MUST NOT report S_OK. This generic
+ * placeholder is a fail-closed tripwire, not a substitute for an audited
+ * method-specific callback signature or a complete WinBio interface. */
+static u64 MS st_default(void*a,void*b,void*c,void*d,void*e,void*f){
+  (void)a;(void)b;(void)c;(void)d;(void)e;(void)f;
+  return UINT64_C(0x80004001); /* E_NOTIMPL */
+}
 
 static u32 MS st_QueryBySubject(void*pipe,void*identity,u8 sub){
   fprintf(stderr,"[storage] QueryBySubject(sub=%u) -> %s\n", sub,
