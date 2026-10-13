@@ -33,4 +33,9 @@ int FT5955_LOCALE_MS ft5955_IsValidLocale(uint32_t lcid, uint32_t flags);
 #define FT5955_LTYPE_STIMEFORMAT 0x1003u
 int FT5955_LOCALE_MS ft5955_GetLocaleInfoW(
     uint32_t lcid, uint32_t type, uint16_t *output, int capacity);
+/* Experimental partial EnumSystemLocalesW: only English LCIDs exposed by this shim.
+ * The supported list is intentionally not a complete Windows locale catalogue. */
+typedef int (FT5955_LOCALE_MS *ft5955_locale_enum_callback)(uint16_t *locale_id);
+int FT5955_LOCALE_MS ft5955_EnumSystemLocalesW(
+    ft5955_locale_enum_callback callback, uint32_t flags);
 #endif
