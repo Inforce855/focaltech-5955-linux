@@ -100,6 +100,14 @@ int main(int argc,char **argv)
         if(!pixels) return 2;
         fprintf(stderr,"[5955] Enrolment sample %d/%d: %ux%u P5 image.\\n",i-2,argc-3,w,h);
         if(w!=64 || h!=80) fprintf(stderr,"[5955] WARNING: image will be cropped/scaled to 64x80.\\n");
+#if defined(FT5955_OFFLINE_INVERT_INPUT_PIXELS)
+        /* Only the sandbox's private in-memory buffer is modified.
+         * No conversion is written to disk; original PGM files stay intact. */
+        for(size_t j=0;j<(size_t)w*h;j++) pixels[j]=(uint8_t)(255u-pixels[j]);
+        fprintf(stderr,"[5955] OFFLINE_INPUT_POLARITY inverted\n");
+#else
+        fprintf(stderr,"[5955] OFFLINE_INPUT_POLARITY original\n");
+#endif
         uint32_t hr=ft_engine_accept(pixels,(int)w,(int)h,4);
         memset(pixels,0,(size_t)w*h);
         free(pixels);
