@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""Experimental 5955 interactive enrolment GUI; never commits a template.
+"""Experimental 5955 interactive enrolment GUI.
 
-The Windows engine runs in a USB-free bubblewrap sandbox. A separate,
-existing audited sudo helper reads fresh touches. Grayscale frames travel
-through private anonymous pipes only; no image files are saved.
+The vendor engine runs in a USB-free bubblewrap sandbox and uses the
+offline-validated enrollment, duplicate-check and mock-storage commit
+sequence. A bounded sudo helper reads fresh touches. Grayscale frames travel
+through private anonymous pipes only and are inverted in memory to match
+the higher-quality Windows-like polarity. The temporary biometric template
+is committed ONLY to mock sandbox storage, then wiped; no image files,
+persistent templates, PAM or operating-system biometric database changes.
 """
 from __future__ import annotations
 import argparse
@@ -38,7 +42,7 @@ class EnrolGUI:
         self.rejected=0
         self.capture_running=False
         self.last_feedback="none"
-        root.title("FocalTech 5955 — Fingerprint enrolment")
+        root.title("FocalTech 5955 — live experimental enrolment")
         root.geometry("530x650")
         root.resizable(False,False)
         root.protocol("WM_DELETE_WINDOW",self.close)
@@ -46,11 +50,13 @@ class EnrolGUI:
         frame.pack(fill="both",expand=True)
         ttk.Label(frame,text="Fingerprint enrolment",font=("Sans",17,"bold")).pack()
         ttk.Label(frame,text="Place your finger on the sensor. Lift fully between touches.",
-                  wraplength=460,justify="center").pack(pady=(6,8))
+                  wraplength=460,justify="center").pack(pady=(6,4))
+        ttk.Label(frame,text="12 usable touches required • Windows-like inverted polarity • no fingerprint saved",
+                  wraplength=460,justify="center").pack(pady=(0,8))
         self.canvas=tk.Canvas(frame,width=260,height=330,highlightthickness=0)
         self.canvas.pack()
         self.draw_target("idle")
-        self.status=tk.StringVar(value="Ready to start. No fingerprint template will be saved.")
+        self.status=tk.StringVar(value="Ready to start. Live enrolment is experimental; no fingerprint will be saved.")
         ttk.Label(frame,textvariable=self.status,wraplength=460,justify="center",
                   font=("Sans",11)).pack(pady=10)
         self.diagnostic=tk.StringVar(value="Last engine result: awaiting first capture")
@@ -68,7 +74,7 @@ class EnrolGUI:
                                     command=self.next_touches,state="disabled")
         self.next_button.pack()
         ttk.Label(frame,text="The target is illustrative, not an anatomical coverage map.\n"
-                  "Guidance is based on returned enrolment status, not guessed edges.",
+                  "A completed session does not enrol Linux login or create a persistent template.",
                   justify="center",wraplength=450).pack(pady=15)
         self.active=False
         root.after(100,self.drain)
@@ -112,7 +118,7 @@ class EnrolGUI:
                       font=("Sans",10,"bold"))
 
     def update_progress(self):
-        state="COMPLETE (in memory)" if self.complete else "NOT COMPLETE"
+        state="COMPLETE (temporary; not saved)" if self.complete else "NOT COMPLETE"
         self.progress.set(f"Touches: {self.touches}   •   Usable: {self.added}   •   Rejected: {self.rejected}   •   {state}")
 
     def start(self):
@@ -189,6 +195,10 @@ class EnrolGUI:
                 if kind==b"F":
                     frame=to_8bit(decode_samples(contents,"little"))
                     if len(frame)!=5120:raise ValueError("Invalid converted fingerprint dimensions")
+                    # Match offline-proven high-quality polarity; never save
+                    # or alter the physical capture. This is the same 255-p
+                    # in-memory operation used by replay_moh_enrollment.py.
+                    frame=bytes(255-value for value in frame)
                     if not self.engine or self.engine.poll() is not None:
                         raise RuntimeError("Engine no longer running")
                     self.engine.stdin.write(frame)
@@ -238,16 +248,17 @@ class EnrolGUI:
                         self.draw_target("error")
                         self.status.set("Capture rejected by engine. Check reason in diagnostic line.")
                     elif code=="complete":
+                        self.added+=1
                         self.complete=True
                         self.draw_target("complete")
-                        self.status.set("Enrolment complete in engine memory. No template committed.")
+                        self.status.set("12-touch enrolment completed and template created in sandbox memory, then wiped. Nothing saved.")
                         self.stop()
                     self.update_progress()
                 elif parts[0]=="DONE":
                     if parts[-1]=="complete":
                         self.complete=True
                         self.draw_target("complete")
-                        self.status.set("Enrolment complete in memory. No template saved.")
+                        self.status.set("Enrolment and temporary in-memory commit complete. Template wiped; nothing saved.")
                         self.stop()
                     elif not self.stop_event.is_set():
                         self.status.set("NOT ENROLLED — engine session ended: "+parts[-1])
