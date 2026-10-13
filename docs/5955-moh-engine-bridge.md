@@ -300,12 +300,52 @@ The 5955 DLL has **not** been executed; Windows API semantics, stack
 probe behaviour, PEB values, PE file bounds and ABI are still unaudited.
 Static analysis and standalone tests cannot establish runtime safety.
 
+## PE input validation (offline, DLL execution still locked)
+
+The original FT9201 loader read `e_lfanew`, image size, section offsets
+and section bytes without first validating their on-disk ranges. The
+5955 bridge now checks PE32+ x64 headers, a bounded section table,
+file-backed section data, section/image-page overlap, W+X section
+permissions, entry point location, required import-directory coverage
+and the absence of a TLS directory **before** copying PE sections or
+attempting to map executable memory. A complete regular-file read is
+required; truncated, oversized, non-regular and symlink paths fail
+closed. Its import descriptor/thunk/name parsing is bounded within
+the scratch image and the import directory's declared size.
+
+Synthetic C tests:
+
+    cc -std=c11 -O2 -Wall -Wextra -Werror -Iengine \\
+      engine/ft5955_pe_guard.c tests/test_moh_pe_guard.c \\
+      -o /tmp/ft5955_pe_guard_test
+    /tmp/ft5955_pe_guard_test
+
+Also check the **actual SHA-verified original DLL** without loading it:
+
+    python3 tools/moh_pe_guard_probe.py '/home/tim/Downloads/7_Fingerprint-module.zip'
+    python3 -m unittest discover -s tests -p 'test_moh_loader_teb_gate.py'
+    bash tools/build_moh_engine_smoke.sh
+
+The private-DLL probe compiles an inert C validator into a temporary
+directory, verifies the original MOH SHA256, checks the image structure
+and removes the extracted DLL and helper afterwards. It neither
+loads executable DLL code nor accesses USB/fingerprints.
+
+**Important limitations:** header/section checks and the bounded
+import walker are only partial PE safety checks. The inherited export
+parser, loaded-image permissions/lifetime, relocation assumptions,
+failure-path resource cleanup and Windows ABI/shim correctness still
+require separate review. Passing this test is **not** authorisation
+to enable vendor DLL execution or to integrate with system
+fprintd/PAM. Registered import names remain **86/110, 24 missing**.
+
 ## Next work on this branch
 
 1. Implement the missing Windows shims with actual expected semantics, not
    blanket success or unbounded access to the host registry/filesystem.
-2. Validate PE header bounds/mapping and the remaining FT9201 shims against
-   the exact known DLL. Missing-import names alone are not enough.
+2. Complete the PE export/import-directory, relocation, mmap and
+   failure-cleanup audits, plus the remaining inherited FT9201 shims,
+   against the exact known DLL. Bounded header parsing is only a first step.
 3. Trace the MOH WinBio engine ABI, pipeline/storage layout and BIR requirements
    before using Attach or accepting any sample.
 4. Execute a query-interface-only smoke-test in a disposable, isolated process
