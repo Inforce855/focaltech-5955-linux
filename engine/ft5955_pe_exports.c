@@ -29,11 +29,10 @@ int ft5955_pe_find_export(const uint8_t *img, size_t size,
     if (!img || !requested || !out || !requested[0] ||
         !inside(size,dir,dirlen) || dirlen < 40u || !dir)
         return -1;
-    /* Avoid reading arbitrary caller strings: all requests originate
-     * from the loader's fixed, short export name. */
-    const char *end = memchr(requested,0,256);
-    if (!end) return -1;
-    const size_t wantlen = (size_t)(end-requested);
+    /* The caller supplies a NUL-terminated *trusted* symbol name.
+     * It is not read from the untrusted PE file. */
+    const size_t wantlen = strlen(requested);
+    if (wantlen > 255u) return -1;
     const uint8_t *d = img+dir;
     const uint32_t nfunc = read32(d+20);
     const uint32_t nnames = read32(d+24);
