@@ -181,6 +181,40 @@ An optional *build-only* command exists:
 This builds native/build/ft5955_moh_smoke but never loads a proprietary DLL.
 **Do not execute the smoke binary yet on the live workstation.**
 
+## Existing-shim correctness audit: per-thread Win32 TLS
+
+The FT9201 baseline used a process-global array for all four Win32 TLS
+functions. `TlsAlloc` allocated monotonically increasing slot numbers,
+`TlsFree` never actually freed a slot and separate pthreads could read each
+other's TLS values. This is unsafe for native WinBio matcher execution.
+
+`engine/ft5955_compat_tls.[ch]` now implements:
+
+- `TlsAlloc`: global bounded slot pool (1,088 Win32-style indices).
+- `TlsGetValue` / `TlsSetValue`: values scoped to the current Linux
+  thread using pthread TLS, including genuine NULL as a successful result.
+- `TlsFree`: releases the global index; incrementing its generation on
+  reuse prevents stale values in other threads being exposed.
+- Invalid indices report Win32 `ERROR_INVALID_PARAMETER` (87) via the
+  now thread-local `GetLastError`; allocating beyond capacity reports
+  an error and `TLS_OUT_OF_INDEXES`.
+
+Thread storage is freed when the pthread exits. Unlike FLS, TLS has no
+destructor callbacks for individual indices. Synthetic tests cover three
+concurrent threads, slot reuse while other threads hold previous values,
+invalid indices and exhaustion of the bounded index pool.
+
+    cc -std=c11 -O2 -Wall -Wextra -Werror -pthread -Iengine \\
+      engine/ft5955_compat_tls.c engine/ft5955_compat_error.c \\
+      tests/test_moh_compat_tls.c -o /tmp/ft5955_tls_test
+    /tmp/ft5955_tls_test
+    bash tools/build_moh_engine_smoke.sh
+
+**Name coverage remains 86/110 (24 missing).** This fixes four existing
+registered shims, not four new imports. The vendor engine's direct TEB,
+CRT TLS, fiber and thread-creation behaviour is not yet verified; real DLL
+execution stays blocked.
+
 ## Existing-shim correctness audit: per-thread GetLastError
 
 The FT9201 baseline stored its Windows `GetLastError` value in a **single
