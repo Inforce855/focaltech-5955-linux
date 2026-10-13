@@ -34,6 +34,7 @@ class EnrolGUI:
         self.complete=False
         self.touches=0
         self.added=0
+        self.capture_running=False
         self.last_feedback="none"
         root.title("FocalTech 5955 — Fingerprint enrolment")
         root.geometry("530x650")
@@ -92,6 +93,7 @@ class EnrolGUI:
         self.touches=0
         self.added=0
         self.last_feedback="none"
+        self.capture_running=False
         self.stop_event.clear()
         self.engine_ready.clear()
         self.start_button.configure(state="disabled")
@@ -132,8 +134,15 @@ class EnrolGUI:
             pass
 
     def next_touches(self):
-        if not self.engine_ready.is_set() or self.stop_event.is_set():return
+        if not self.active or self.stop_event.is_set() or self.capture_running:
+            return
+        if not self.engine_ready.is_set() or not self.engine or self.engine.poll() is not None:
+            self.status.set("Engine is not running. Select Start enrolment to begin a new session.")
+            self.stop()
+            return
+        self.capture_running=True
         self.next_button.configure(state="disabled")
+        self.status.set("Waiting for finger release and a fresh touch...")
         threading.Thread(target=self.capture_session,daemon=True).start()
 
     def capture_session(self):
@@ -167,6 +176,7 @@ class EnrolGUI:
             self.events.put(("error",f"Capture stopped: {exc}"))
         finally:
             self.capture=None
+            self.events.put(("capture-finished",))
 
     def drain(self):
         while True:
@@ -220,8 +230,16 @@ class EnrolGUI:
                     self.status.set(event[1])
             elif kind=="session-end":
                 if not self.complete and not self.stop_event.is_set():
-                    self.next_button.configure(state="normal")
-                    self.status.set("NOT ENROLLED YET — engine needs more useful captures. Use Continue for another eight touches, or Stop.")
+                    self.status.set("NOT ENROLLED YET — capture batch finished. Continue for another eight touches.")
+            elif kind=="capture-finished":
+                self.capture_running=False
+                if self.active and not self.complete and not self.stop_event.is_set():
+                    if self.engine and self.engine.poll() is None:
+                        self.next_button.configure(state="normal")
+                        self.status.set("NOT ENROLLED YET — click Continue: next eight touches.")
+                    else:
+                        self.status.set("Engine stopped. Click Start enrolment for a new session.")
+                        self.stop()
             elif kind=="error":
                 if not self.complete:
                     self.draw_target("error")
@@ -238,6 +256,7 @@ class EnrolGUI:
             try:self.engine.stdin.close()
             except (OSError,ValueError):pass
         self.active=False
+        self.capture_running=False
         self.update_progress()
         self.start_button.configure(state="normal")
         self.next_button.configure(state="disabled")
