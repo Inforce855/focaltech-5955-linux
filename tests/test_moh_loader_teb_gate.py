@@ -84,6 +84,16 @@ class GatedTebWiring(unittest.TestCase):
         self.assertNotIn("static u16 g_env[2]", SOURCE)
         self.assertIn("engine/ft5955_compat_env.c", BUILD)
 
+    def test_slist_requires_atomic_push_and_real_flush(self):
+        self.assertIn('#include "ft5955_compat_slist.h"', SOURCE)
+        for name in ("InitializeSListHead", "InterlockedFlushSList",
+                     "InterlockedPushEntrySList"):
+            self.assertIn(f'reg("{name}", (void*)ft5955_{name})', SOURCE)
+        self.assertNotIn("static void MS sh_InitSList", SOURCE)
+        self.assertNotIn("static void* MS sh_FlushSList", SOURCE)
+        self.assertIn("engine/ft5955_compat_slist.c", BUILD)
+        self.assertIn("-latomic", BUILD)
+
     def test_export_resolver_is_bounded(self):
         self.assertIn('#include "ft5955_pe_exports.h"', SOURCE)
         self.assertIn("engine/ft5955_pe_exports.c", BUILD)
