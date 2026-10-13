@@ -19,7 +19,7 @@ def matched(pattern, data, default="-"):
     m=re.search(pattern,data)
     return m.group(1) if m else default
 
-def summarize(log, files, completion_from_update=False):
+def summarize(log, files, completion_from_update=False, probe_commit=False, skip_status=False):
     marks=list(re.finditer(r"\[5955\] Enrolment sample (\d+)/(\d+):", log))
     if not marks:
         print("No per-sample enrolment records found. Probe may have failed.",file=sys.stderr)
@@ -47,7 +47,7 @@ def summarize(log, files, completion_from_update=False):
         update=re.search(r"ENROLL_DIAG update_hr=0x([0-9a-fA-F]{8}) update_reject=(\d+)",section)
         status=re.search(r"ENROLL_DIAG status_hr=0x([0-9a-fA-F]{8}) status_reject=(\d+)",section)
         up=(f"0x{update.group(1)} / {update.group(2)}" if update else "-")
-        st=(f"0x{status.group(1)} / {status.group(2)}" if status else "-")
+        st=(f"0x{status.group(1)} / {status.group(2)}" if status else ("not queried" if skip_status else "-"))
         if update and status and update.group(1).lower()=="00000000" and status.group(1).lower()=="00090001":
             inconsistent.append(index)
         ex_hr=matched(r"ENROLL_EXT call_hr=0x([0-9a-fA-F]{8})",section)
@@ -65,7 +65,10 @@ def summarize(log, files, completion_from_update=False):
         print(f"Processed: {len(marks)}  |  Valid updates: {accepted}"
               f"  |  Rejected: {rejected}  |  UpdateEnrollment=S_OK reached: {'YES' if complete else 'NO'}")
         print("Windows-capture-workflow interpretation ONLY; GetEnrollmentStatus remains independent.")
-        print("Actual template commit and successful verification: NOT TESTED.")
+        if probe_commit:
+            print("Mock-storage CommitEnrollment probe requested. Identity verification is NOT TESTED.")
+        else:
+            print("Actual template commit and successful verification: NOT TESTED.")
     else:
         print(f"Processed: {len(marks)}  |  Incomplete/needs more: {accepted - int(complete)}"
               f"  |  Rejected: {rejected}  |  Complete by GetEnrollmentStatus: {'YES' if complete else 'NO'}")
@@ -94,7 +97,21 @@ def summarize(log, files, completion_from_update=False):
     print("A zero internal match score is not proof of a failed identity verification.")
     if found_match:print("At least one nonzero internal match score was observed.")
     else:print("No nonzero internal match score was observed in this run.")
-    print("No biometric template was committed or saved.")
+    if probe_commit:
+        probe=re.search(r"COMMIT_PROBE hr=0x([0-9a-fA-F]{8}) record_seen=(\d+) bounded_template=(\d+)",log)
+        if probe:
+            print("OFFLINE COMMIT PROBE:",f"HRESULT=0x{probe.group(1)};",
+                  f"record received={'YES' if probe.group(2)=='1' else 'NO'};",
+                  f"bounded nonempty template={'YES' if probe.group(3)=='1' else 'NO'}")
+            if probe.group(1).lower() == "00000000" and probe.group(3)=="1":
+                print("Mock storage received a template in memory. Matching/verification NOT ESTABLISHED.")
+            else:
+                print("A usable committed template was NOT demonstrated.")
+        else:
+            print("OFFLINE COMMIT PROBE: NOT REACHED or result UNAVAILABLE.")
+        print("No biometric template persisted or saved; sandbox process has exited.")
+    else:
+        print("No biometric template was committed or saved.")
     return True
 
 def main():
@@ -104,6 +121,10 @@ def main():
                     default=ROOT/"local-data/enroll-captures")
     ap.add_argument("--completion-from-update",action="store_true",
                     help="opt-in Windows capture workflow interpretation; stop at UpdateEnrollment S_OK, retain status as diagnostic")
+    ap.add_argument("--probe-commit-in-memory",action="store_true",
+                    help="after UpdateEnrollment S_OK, call engine CommitEnrollment only inside disposable sandbox/mock storage; never write templates")
+    ap.add_argument("--skip-enrollment-status",action="store_true",
+                    help="skip independent status query to mimic Windows enrollment capture sequence")
     ap.add_argument("--invert-input",action="store_true",
                     help="offline test: invert PGM grayscale polarity IN MEMORY (255-value), without modifying files")
     ap.add_argument("--with-sample-hint",action="store_true",
@@ -116,6 +137,8 @@ def main():
                     help="number of existing PGM images, 2-20 (default: 16)")
     args=ap.parse_args()
     if not 2<=args.limit<=20:ap.error("--limit must be between 2 and 20")
+    if (args.probe_commit_in_memory or args.skip_enrollment_status) and not args.completion_from_update:
+        ap.error("--probe-commit-in-memory/--skip-enrollment-status require --completion-from-update")
     if not args.archive.is_file():ap.error("Driver archive not found")
     if not args.captures_dir.is_dir():ap.error("Private capture directory not found")
     files=sorted(args.captures_dir.glob("enroll_capture_*.pgm"))[:args.limit]
@@ -126,9 +149,16 @@ def main():
             ap.error(f"Not a regular private PGM file: {path}")
     print(f"Replaying {len(files)} existing local PGM captures. No USB or new scans.")
     print("Pixel polarity:", "INVERTED (255-pixel, in-memory only)" if args.invert_input else "ORIGINAL")
+    if args.probe_commit_in_memory:
+        print("EXPERIMENT: Attempt CommitEnrollment into mock in-memory storage, then wipe it.")
+    if args.skip_enrollment_status:
+        print("EXPERIMENT: Do not call GetEnrollmentStatus; match Windows capture callback sequence.")
     if args.completion_from_update:
         print("EXPERIMENT: Use UpdateEnrollment to decide when capture collection is ready.")
-        print("GetEnrollmentStatus is still queried for diagnostics; no commit performed.")
+        if not args.skip_enrollment_status:
+            print("GetEnrollmentStatus will also be queried for diagnostics.")
+        if not args.probe_commit_in_memory:
+            print("No commit will be attempted.")
     if args.with_enrollment_parameters:
         print("EXPERIMENT: SetEnrollmentParameters enabled (unknown finger subtype).")
     if args.with_extended_status:
@@ -137,7 +167,7 @@ def main():
         print("EXPERIMENT: QuerySampleHint enabled (read-only DLL call).")
     try:
         proc=subprocess.run(
-            ["bash",str(BATCH),*(["--invert-pixels"] if args.invert_input else []),*(["--completion-from-update"] if args.completion_from_update else []),*(["--with-enrollment-parameters"] if args.with_enrollment_parameters else []),*(["--with-extended-status"] if args.with_extended_status else []),*(["--with-sample-hint"] if args.with_sample_hint else []),str(args.archive.resolve()),*map(str,files)],
+            ["bash",str(BATCH),*(["--invert-pixels"] if args.invert_input else []),*(["--completion-from-update"] if args.completion_from_update else []),*(["--skip-enrollment-status"] if args.skip_enrollment_status else []),*(["--probe-commit-in-memory"] if args.probe_commit_in_memory else []),*(["--with-enrollment-parameters"] if args.with_enrollment_parameters else []),*(["--with-extended-status"] if args.with_extended_status else []),*(["--with-sample-hint"] if args.with_sample_hint else []),str(args.archive.resolve()),*map(str,files)],
             cwd=ROOT,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
             text=True,timeout=120,check=False)
     except subprocess.TimeoutExpired:
@@ -160,7 +190,7 @@ def main():
     setup=re.search(r"ENROLL_DIAG set_params_hr=0x([0-9a-fA-F]{8}) subfactor=(\d+)",proc.stderr)
     if args.with_enrollment_parameters:
         print("SetEnrollmentParameters result:",(f"0x{setup.group(1)}; subfactor={setup.group(2)}" if setup else "NOT CONFIRMED"))
-    ok=summarize(proc.stderr,files,completion_from_update=args.completion_from_update)
+    ok=summarize(proc.stderr,files,completion_from_update=args.completion_from_update,probe_commit=args.probe_commit_in_memory,skip_status=args.skip_enrollment_status)
     return 0 if ok else 1
 
 if __name__=="__main__":
