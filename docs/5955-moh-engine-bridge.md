@@ -34,7 +34,7 @@ Read-only static comparison on the exact MOH DLL:
   QueryPerformanceFrequency, Sleep, GetLocalTime, GetCurrentThread and
   GetConsoleOutputCP. QueryPerformanceCounter also now uses the same real
   nanosecond monotonic clock as QueryPerformanceFrequency.
-- **Expected after this patch: 78/110 names covered, 32 still missing**.
+- **Expected after this patch: 80/110 names covered, 30 still missing**.
   Four FLS APIs now use a pthread-backed per-thread implementation with
   tested thread isolation, re-use and callback cleanup. This does not
   emulate multiple Windows fibers sharing one pthread; that behavior and
@@ -63,7 +63,7 @@ temporarily extracts that private DLL, verifies its SHA256, calls objdump on its
 import table, compares imports to registered loader shims and cleans up.
 You can alternatively supply the private MOH DLL path directly.
 
-Its expected current result is **78/110 covered, 32 missing** and exit status 1.
+Its expected current result is **80/110 covered, 30 missing** and exit status 1.
 That exit status indicates a *correctly enforced import gate*, not a test crash.
 No USB calls, enrolment, fingerprint images, templates or authentication changes.
 
@@ -81,8 +81,18 @@ The four FLS shims also have an isolated C test:
       -o /tmp/ft5955_compat_fls_test
     /tmp/ft5955_compat_fls_test
 
-Both new compatibility C test binaries have passed in the isolated
-analysis environment;
+The new restricted locale LCID functions (GetUserDefaultLCID,
+IsValidLocale) intentionally support only en-GB, en-US and invariant
+identifiers; they are **not** complete Windows NLS implementations and other
+locales fail closed. The isolated locale test is:
+
+    cc -std=c11 -O2 -Wall -Wextra -Werror -Iengine \\
+      engine/ft5955_compat_locale.c tests/test_moh_compat_locale.c \\
+      -o /tmp/ft5955_compat_locale_test
+    /tmp/ft5955_compat_locale_test
+
+The time and FLS compatibility C test binaries passed on the Nobara host;
+the locale test and updated complete loader must still be checked there.
 the complete PE loader smoke-test must still be built and checked on Nobara.
 
 An optional *build-only* command exists:
