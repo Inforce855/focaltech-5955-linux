@@ -141,21 +141,33 @@ def summarize(log, files, completion_from_update=False, probe_commit=False, skip
             item=outcomes.get(int(index))
             if item:
                 hr,match,reject=item
-                verdict="YES" if match=="1" and hr.lower()=="00000000" else "NO" if hr.lower()=="00000000" else "UNCONFIRMED"
-                print(f"{index:>4}     0x{accept}        0x{hr}        {verdict:<11}{reject}")
+                code=hr.lower()
+                if code=="00000000":
+                    verdict="MATCH" if match=="1" else "NO MATCH"
+                elif code=="80098005":  # WINBIO_E_NO_MATCH
+                    verdict="NO MATCH"
+                else:
+                    verdict="ERROR"
+                print(f"{index:>4}     0x{accept}        0x{hr}        {verdict:<11} {reject}")
             else:
-                print(f"{index:>4}     0x{accept}        unavailable      -")
+                print(f"{index:>4}     0x{accept}        unavailable       -")
         if not rows:
             print("No held-out verification attempt confirmed; check commit preflight.")
         print("No biometric data persisted; these are tests of previously captured samples only.")
         if verify_original_polarity:
             verified=[outcomes[int(idx)] for idx,accept in rows if accept.lower()=="00000000" and int(idx) in outcomes]
             unexpected=sum(1 for hr,match,reject in verified if hr.lower()=="00000000" and match=="1")
-            print(f"Polarity negative control: {unexpected} MATCHES across {len(verified)} completed verification calls.")
+            no_match=sum(1 for hr,match,reject in verified
+                         if hr.lower()=="80098005" or (hr.lower()=="00000000" and match=="0"))
+            other_errors=len(verified)-unexpected-no_match
+            print(f"Polarity negative control: {unexpected} MATCH, {no_match} NO MATCH, "
+                  f"{other_errors} OTHER ERROR across {len(verified)} verification calls.")
             if unexpected:
-                print("WARNING: polarity reversal alone did not prevent all matches; investigate before authentication use.")
-            elif verified:
-                print("All completed verification calls reported non-match or error under polarity reversal.")
+                print("WARNING: polarity reversal still matched some captures; investigate before authentication use.")
+            elif no_match==len(verified) and verified:
+                print("All tested polarity-reversed fingerprints were explicitly rejected as non-matches.")
+            elif other_errors:
+                print("Some tests failed for reasons other than a confirmed non-match.")
             print("This is a preprocessing-mismatch test, NOT an independent wrong-finger/security false-accept test.")
         else:
             print("Successful matches show recognition of held-out same-finger captures, not a measured false-accept rate.")
