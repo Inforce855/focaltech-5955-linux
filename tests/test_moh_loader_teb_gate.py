@@ -76,6 +76,14 @@ class GatedTebWiring(unittest.TestCase):
         h = (ROOT / "engine" / "ft5955_compat_sysinfo.h").read_text(encoding="utf-8")
         self.assertIn("_Static_assert(sizeof(ft5955_system_info) == 48", h)
 
+    def test_private_windows_environment(self):
+        self.assertIn('#include "ft5955_compat_env.h"', SOURCE)
+        for name in ("GetEnvironmentStringsW", "FreeEnvironmentStringsW",
+                     "SetEnvironmentVariableW"):
+            self.assertIn(f'reg("{name}", (void*)ft5955_{name})', SOURCE)
+        self.assertNotIn("static u16 g_env[2]", SOURCE)
+        self.assertIn("engine/ft5955_compat_env.c", BUILD)
+
     def test_export_resolver_is_bounded(self):
         self.assertIn('#include "ft5955_pe_exports.h"', SOURCE)
         self.assertIn("engine/ft5955_pe_exports.c", BUILD)
