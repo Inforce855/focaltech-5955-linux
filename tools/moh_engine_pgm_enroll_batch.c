@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later
- * One-sample P5 PGM enrolment diagnostic for the isolated 5955 MOH engine.
+ * Multi-sample P5 PGM enrolment diagnostic for the isolated 5955 MOH engine.
  * Calls CreateEnrollment and UpdateEnrollment; does not commit a template. Never prints pixels.
  */
 #include "ft_engine.h"
@@ -79,7 +79,10 @@ int main(int argc,char **argv)
     int status=ft_engine_open(argv[2]);
     fprintf(stderr,"[5955] Attach wrapper status: %d\\n",status);
     if(status!=0) return 1;
-    ft_engine_enroll_begin();
+    if(ft_engine_enroll_begin()!=0) {
+        fprintf(stderr,"[5955] CreateEnrollment failed; stopping offline replay.\n");
+        return 3;
+    }
     fprintf(stderr,"[5955] CreateEnrollment initiated; %d distinct-capture files supplied.\\n",argc-3);
     int result=1;
     for(int i=3;i<argc;i++){
