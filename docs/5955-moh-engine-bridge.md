@@ -34,7 +34,7 @@ Read-only static comparison on the exact MOH DLL:
   QueryPerformanceFrequency, Sleep, GetLocalTime, GetCurrentThread and
   GetConsoleOutputCP. QueryPerformanceCounter also now uses the same real
   nanosecond monotonic clock as QueryPerformanceFrequency.
-- **Expected after this patch: 87/110 names covered, 23 still missing**.
+- **Expected after this patch: 88/110 names covered, 22 still missing**.
   Four FLS APIs now use a pthread-backed per-thread implementation with
   tested thread isolation, re-use and callback cleanup. This does not
   emulate multiple Windows fibers sharing one pthread; that behavior and
@@ -63,7 +63,7 @@ temporarily extracts that private DLL, verifies its SHA256, calls objdump on its
 import table, compares imports to registered loader shims and cleans up.
 You can alternatively supply the private MOH DLL path directly.
 
-Its expected current result is **87/110 covered, 23 missing** and exit status 1.
+Its expected current result is **88/110 covered, 22 missing** and exit status 1.
 That exit status indicates a *correctly enforced import gate*, not a test crash.
 No USB calls, enrolment, fingerprint images, templates or authentication changes.
 
@@ -151,7 +151,7 @@ Test this separately:
       -o /tmp/ft5955_compat_locale_info_test
     /tmp/ft5955_compat_locale_info_test
 
-**Important:** 87/110 means **registered API names**, not 83 APIs fully
+**Important:** 88/110 means **registered API names**, not 83 APIs fully
 compatible with the real DLL. The inherited FT9201 shims contain mock
 Windows handles, no-op critical sections and other approximations whose
 semantics must be audited before any engine execution. Even the new locale
@@ -562,6 +562,55 @@ Nothing changes the DLL-execution gates.
 Windows API references:
 https://learn.microsoft.com/en-us/windows/win32/api/processenv/nf-processenv-setenvironmentvariablew
 https://learn.microsoft.com/en-us/windows/win32/api/processenv/nf-processenv-getenvironmentstringsw
+
+## x64 SLIST compatibility: one new import and two repaired shims
+
+The inherited FT9201 loader's `InitializeSListHead` merely cleared a
+16-byte header, while `InterlockedFlushSList` always returned NULL and
+discarded any potential list. The verified MOH DLL additionally imports
+`InterlockedPushEntrySList`, which was unresolved.
+
+The experimental bridge now uses a 16-byte-aligned Win64 header and
+`SLIST_ENTRY` with an atomic, 128-bit compare-and-exchange loop.
+It stores the x64 Depth (16 bits), Sequence (48 bits) and aligned
+NextEntry pointer. The push operation links the new entry to the
+former first entry and returns that **previous first entry**. Flush
+atomically removes and returns the entire linked list. Concurrent
+pushes and flushes update the header as one operation, rather than
+mutating it through non-atomic pointer writes.
+
+This is intentionally limited to this pinned x64 environment:
+- Headers and entries must be 16-byte aligned and initialised before use.
+- No `InterlockedPopEntrySList` (not imported by the verified DLL);
+  no safe reclamation if callers free entries concurrently with list use.
+- The code follows a documented x64 16-byte header representation but
+  has not been proven binary-compatible with every modern Windows header
+  variant or every CRT use of its fields.
+- The test exercises direct header fields, push return pointers, empty
+  and populated flush, list traversal and 6,000 entries pushed by four
+  pthreads. It never executes the original Windows DLL.
+- GCC's 128-bit atomic operations require `-latomic` for the Linux
+  build; this was added to the **still-gated** smoke build.
+
+Offline Nobara tests:
+
+    cc -std=gnu11 -O2 -Wall -Wextra -Werror -pthread -Iengine \\
+      engine/ft5955_compat_slist.c tests/test_moh_compat_slist.c \\
+      -latomic -o /tmp/ft5955_slist_test
+    /tmp/ft5955_slist_test
+    python3 -m unittest discover -s tests -p 'test_moh_loader_teb_gate.py'
+    bash tools/build_moh_engine_smoke.sh
+    python3 tools/moh_engine_preflight.py '/home/tim/Downloads/7_Fingerprint-module.zip'
+
+**Expected import-name coverage: 88/110, 22 missing**, not yet
+validated on Nobara. This is one previously unresolved name plus two
+repaired existing functions; it is not proof that Windows SList
+behaviour is complete. DLL execution remains blocked.
+
+Microsoft Win32 references:
+https://learn.microsoft.com/en-us/windows/win32/api/interlockedapi/nf-interlockedapi-interlockedpushentryslist
+https://learn.microsoft.com/en-us/windows/win32/api/interlockedapi/nf-interlockedapi-initializeslisthead
+https://learn.microsoft.com/en-us/windows/win32/sync/interlocked-singly-linked-lists
 
 ## Next work on this branch
 
