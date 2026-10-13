@@ -10,7 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE = (ROOT / "engine" / "ft_engine.c").read_text(encoding="utf-8")
 BUILD = (ROOT / "tools" / "build_moh_engine_smoke.sh").read_text(encoding="utf-8")
 START = SOURCE.index("static int __attribute__((unused)) load_pe(void)")
-END = SOURCE.index("// find an export by name", START)
+# Use the next function definition, not a comment that may be reworded.
+END = SOURCE.index("static __attribute__((unused)) void* get_export(", START)
 LOADER = SOURCE[START:END]
 
 
