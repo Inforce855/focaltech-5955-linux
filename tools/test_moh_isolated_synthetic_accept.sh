@@ -5,13 +5,14 @@
 # API shims are incomplete. Run only after reviewing and accepting the risk.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-if [[ $# != 1 || ! -f "$1" ]]; then
-  echo "Usage: bash tools/test_moh_isolated_synthetic_accept.sh /path/to/7_Fingerprint-module.zip" >&2
+if [[ $# -lt 1 || $# -gt 2 || ! -f "$1" || ( $# -eq 2 && "$2" != "gradient" && "$2" != "waves" ) ]]; then
+  echo "Usage: bash tools/test_moh_isolated_synthetic_accept.sh /path/to/7_Fingerprint-module.zip [gradient|waves]" >&2
   exit 2
 fi
 for command in bwrap gcc python3 objdump timeout; do
   command -v "$command" >/dev/null || { echo "Missing: $command" >&2; exit 2; }
 done
+pattern="${2:-gradient}"
 root="$(mktemp -d /tmp/ft5955-isolated.XXXXXXXX)"
 trap 'rm -rf -- "$root"' EXIT
 chmod 700 "$root"
@@ -78,7 +79,7 @@ set +e
     --proc /proc --dev /dev --tmpfs /tmp \
     --ro-bind "$root/synthetic-accept" /tmp/synthetic-accept \
     --ro-bind "$root/engine.dll" /tmp/engine.dll \
-    --chdir /tmp -- /tmp/synthetic-accept --synthetic-accept /tmp/engine.dll
+    --chdir /tmp -- /tmp/synthetic-accept --synthetic-accept /tmp/engine.dll "$pattern"
 )
 status=$?
 set -e
@@ -86,7 +87,7 @@ echo "Isolated Synthetic Accept probe exit code: $status"
 if [[ $status == 124 || $status == 137 ]]; then
   echo "TIMEOUT / killed."
 elif [[ $status != 0 ]]; then
-  echo "Probe failed or DLL initialisation returned an error. Attach remains unsafe for normal builds."
+  echo "Synthetic probe returned an unexpected error or crashed; normal builds remain guarded."
 else
   echo "Synthetic AcceptSampleData returned HRESULT 0 (NOT proof of matching)."
 fi
