@@ -5,8 +5,15 @@
 # API shims are incomplete. Run only after reviewing and accepting the risk.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# Optional, strictly offline comparison: invoke the standard WinBio V3
+# SetEnrollmentParameters callback after CreateEnrollment.
+declare -a enrollment_setup_flags=()
+if [[ "${1:-}" == "--with-enrollment-parameters" ]]; then
+  enrollment_setup_flags=(-DFT5955_OFFLINE_SET_ENROLLMENT_PARAMETERS)
+  shift
+fi
 if (( $# < 3 || $# > 21 )); then
-  echo "Usage: bash tools/test_moh_isolated_pgm_enroll_batch.sh vendor.zip sample1.pgm sample2.pgm [...]" >&2
+  echo "Usage: bash tools/test_moh_isolated_pgm_enroll_batch.sh [--with-enrollment-parameters] vendor.zip sample1.pgm sample2.pgm [...]" >&2
   exit 2
 fi
 if [[ ! -f "$1" ]]; then
@@ -60,7 +67,7 @@ PY
 gcc -std=gnu11 -O0 -g -Wall -Wextra -Wno-unused-parameter \
   -DFT5955_ALLOW_DLL_EXECUTION_AFTER_AUDIT -DFT5955_ALLOW_UNVERIFIED_ATTACH \
   -DFT5955_OFFLINE_SENSOR_SIZE_SIM \
-  -pthread -Iengine engine/ft_engine.c engine/ft5955_compat_time.c \
+  -pthread "${enrollment_setup_flags[@]}" -Iengine engine/ft_engine.c engine/ft5955_compat_time.c \
   engine/ft5955_compat_fls.c engine/ft5955_compat_locale.c \
   engine/ft5955_compat_datetime.c engine/ft5955_compat_locale_enum.c \
   engine/ft5955_compat_compare.c engine/ft5955_compat_temp.c \
