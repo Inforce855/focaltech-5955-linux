@@ -812,7 +812,34 @@ int ft_engine_enroll_begin(void){
   u64 (MS *Create)(void*)=*(void**)((u8*)g_iface+32+12*8);
   u32 hr=(u32)Create(&pipeline);
   fprintf(stderr,"[5955] ENROLL_DIAG create_hr=0x%08x\n",hr);
-  return hr==0?0:-2;
+  if(hr!=0) return -2;
+#if defined(FT5955_OFFLINE_SET_ENROLLMENT_PARAMETERS)
+  /* Opt-in OFFLINE comparison only. Windows calls this immediately after
+   * CreateEnrollment. Interface slot 30 was validated from the WinBio ABI.
+   * SubFactor=0 (WINBIO_ANSI_381_POS_UNKNOWN): do not guess user's finger. */
+  {
+    struct ft_enrollment_parameters {
+      size_t Size;
+      u8 SubFactor;
+    };
+    _Static_assert(sizeof(struct ft_enrollment_parameters)==16,
+                   "unexpected x64 enrollment parameter layout");
+    size_t iface_size=0;
+    memcpy(&iface_size,(const u8*)g_iface+8,sizeof iface_size);
+    if(iface_size<32u+31u*8u) {
+      fprintf(stderr,"[5955] ENROLL_DIAG set_params=blocked-interface-size\n");
+      return -3;
+    }
+    u64 (MS *SetParams)(void*,const void*)=
+        *(void**)((u8*)g_iface+32+30*8);
+    if(!SetParams) return -4;
+    const struct ft_enrollment_parameters ep={sizeof ep,0};
+    u32 phr=(u32)SetParams(&pipeline,&ep);
+    fprintf(stderr,"[5955] ENROLL_DIAG set_params_hr=0x%08x subfactor=0\n",phr);
+    if(phr!=0) return -5;
+  }
+#endif
+  return 0;
 }
 
 int ft_engine_enroll_update(void){
