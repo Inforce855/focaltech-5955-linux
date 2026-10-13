@@ -19,6 +19,52 @@ extern void ft_engine_log_sample_hint(void);
 extern void ft_engine_log_extended_enrollment_status(void);
 #endif
 
+
+#if defined(FT5955_OFFLINE_WINDOWS_BIR_DIRECT)
+extern uint32_t ft_engine_accept_offline_windows_bir(
+    const uint8_t *bir,size_t length,uint8_t purpose);
+#endif
+
+/* Only the already-observed Focal5955 Windows Raw BIR layout is allowed.
+ * This validator intentionally does not attempt to parse arbitrary WinBio
+ * records or export any bytes outside the disposable sandbox. */
+#if defined(FT5955_OFFLINE_WINDOWS_BIR_DIRECT) || defined(FT5955_OFFLINE_WINDOWS_BIR_SYNTHETIC)
+#define WIN_BIR_SIZE 5256u
+#define WIN_BIR_PIXEL_OFFSET 136u
+#define WIN_BIR_PIXEL_SIZE 5120u
+static uint32_t read32(const uint8_t *p)
+{
+    return (uint32_t)p[0] | ((uint32_t)p[1]<<8)
+        | ((uint32_t)p[2]<<16) | ((uint32_t)p[3]<<24);
+}
+static uint8_t *read_windows_bir(const char *path)
+{
+    FILE *fp=fopen(path,"rb");
+    if(!fp){ perror("[5955] Windows BIR open");return NULL; }
+    uint8_t *buf=malloc(WIN_BIR_SIZE);
+    if(!buf){ fclose(fp);return NULL; }
+    int ok=fread(buf,1,WIN_BIR_SIZE,fp)==WIN_BIR_SIZE
+        && fgetc(fp)==EOF && !ferror(fp);
+    fclose(fp);
+    const uint32_t expected[]={
+        48,32, 40,80, 5136,120, 0,0
+    };
+    if(ok) {
+        for(size_t k=0;k<8;k++) {
+            if(read32(buf+k*4)!=expected[k]) ok=0;
+        }
+    }
+    if(ok && (buf[32+4]&0x02)) ok=0; /* Encrypted-record flag */
+    if(!ok) {
+        fprintf(stderr,"[5955] Windows BIR rejected: unexpected size, "
+                "layout or encrypted data. No data displayed.\n");
+        memset(buf,0,WIN_BIR_SIZE);free(buf);
+        return NULL;
+    }
+    return buf;
+}
+#endif
+
 static int token(FILE *fp, char *out, size_t cap)
 {
     int c;
@@ -78,7 +124,7 @@ static uint8_t *read_pgm(const char *path,unsigned *w,unsigned *h)
 }
 int main(int argc,char **argv)
 {
-    if(argc<5 || argc>23 || strcmp(argv[1],"--pgm-enroll-batch")!=0){
+    if(argc<4 || argc>23 || strcmp(argv[1],"--pgm-enroll-batch")!=0){
         fprintf(stderr,"Usage: %s --pgm-enroll-batch /tmp/engine.dll sample1.pgm sample2.pgm [...]\\n",argv[0]);
         return 2;
     }
@@ -96,21 +142,35 @@ int main(int argc,char **argv)
     int result=1;
     for(int i=3;i<argc;i++){
         unsigned w=0,h=0;
+        uint32_t hr=UINT32_MAX;
+#if defined(FT5955_OFFLINE_WINDOWS_BIR_DIRECT) || defined(FT5955_OFFLINE_WINDOWS_BIR_SYNTHETIC)
+        uint8_t *windows_bir=read_windows_bir(argv[i]);
+        if(!windows_bir) return 2;
+        fprintf(stderr,"[5955] Enrolment sample %d/%d: genuine Windows BIR, 5256 bytes.\n",i-2,argc-3);
+#if defined(FT5955_OFFLINE_WINDOWS_BIR_DIRECT)
+        fprintf(stderr,"[5955] WINDOWS_BIR_TEST direct-unchanged\n");
+        hr=ft_engine_accept_offline_windows_bir(windows_bir,WIN_BIR_SIZE,4);
+#else
+        fprintf(stderr,"[5955] WINDOWS_BIR_TEST synthetic-from-vendor-pixels\n");
+        hr=ft_engine_accept(windows_bir+WIN_BIR_PIXEL_OFFSET,64,80,4);
+#endif
+        memset(windows_bir,0,WIN_BIR_SIZE);
+        free(windows_bir);
+#else
         uint8_t *pixels=read_pgm(argv[i],&w,&h);
         if(!pixels) return 2;
         fprintf(stderr,"[5955] Enrolment sample %d/%d: %ux%u P5 image.\\n",i-2,argc-3,w,h);
         if(w!=64 || h!=80) fprintf(stderr,"[5955] WARNING: image will be cropped/scaled to 64x80.\\n");
 #if defined(FT5955_OFFLINE_INVERT_INPUT_PIXELS)
-        /* Only the sandbox's private in-memory buffer is modified.
-         * No conversion is written to disk; original PGM files stay intact. */
         for(size_t j=0;j<(size_t)w*h;j++) pixels[j]=(uint8_t)(255u-pixels[j]);
         fprintf(stderr,"[5955] OFFLINE_INPUT_POLARITY inverted\n");
 #else
         fprintf(stderr,"[5955] OFFLINE_INPUT_POLARITY original\n");
 #endif
-        uint32_t hr=ft_engine_accept(pixels,(int)w,(int)h,4);
+        hr=ft_engine_accept(pixels,(int)w,(int)h,4);
         memset(pixels,0,(size_t)w*h);
         free(pixels);
+#endif
         fprintf(stderr,"[5955] AcceptSampleData HRESULT: 0x%08x\\n",hr);
         if(hr==BAD_CAPTURE){
             fprintf(stderr,"[5955] Rejected image; proceeding to next distinct capture.\\n");
