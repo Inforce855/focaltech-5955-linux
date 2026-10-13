@@ -487,7 +487,7 @@ int ft_engine_smoke_interface(const char *dll_path){
 }
 
 int ft_engine_open(const char *dll_path){
-#ifndef FT5955_ALLOW_UNVERIFIED_ATTACH
+#if !defined(FT5955_ALLOW_UNVERIFIED_ATTACH) || !defined(FT5955_ALLOW_DLL_EXECUTION_AFTER_AUDIT)
   (void)dll_path;
   fprintf(stderr,"[5955] BLOCKED: 9201 Attach ABI not verified for the MOH 5955 engine\n");
   return -100;
