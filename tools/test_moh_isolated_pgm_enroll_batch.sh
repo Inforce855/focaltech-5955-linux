@@ -10,6 +10,9 @@ cd "$(dirname "$0")/.."
 declare -a enrollment_setup_flags=()
 while (( $# > 0 )); do
   case "$1" in
+    --invert-pixels)
+      enrollment_setup_flags+=(-DFT5955_OFFLINE_INVERT_INPUT_PIXELS)
+      shift ;;
     --with-enrollment-parameters)
       enrollment_setup_flags+=(-DFT5955_OFFLINE_SET_ENROLLMENT_PARAMETERS)
       shift ;;
@@ -23,7 +26,7 @@ while (( $# > 0 )); do
   esac
 done
 if (( $# < 3 || $# > 21 )); then
-  echo "Usage: bash tools/test_moh_isolated_pgm_enroll_batch.sh [--with-enrollment-parameters] [--with-extended-status] [--with-sample-hint] vendor.zip sample1.pgm sample2.pgm [...]" >&2
+  echo "Usage: bash tools/test_moh_isolated_pgm_enroll_batch.sh [--invert-pixels] [--with-enrollment-parameters] [--with-extended-status] [--with-sample-hint] vendor.zip sample1.pgm sample2.pgm [...]" >&2
   exit 2
 fi
 if [[ ! -f "$1" ]]; then
