@@ -19,7 +19,7 @@ def matched(pattern, data, default="-"):
     m=re.search(pattern,data)
     return m.group(1) if m else default
 
-def summarize(log, files, completion_from_update=False, probe_commit=False, skip_status=False, with_duplicate_check=False, mock_empty_content_query=False, verify_after_commit=False):
+def summarize(log, files, completion_from_update=False, probe_commit=False, skip_status=False, with_duplicate_check=False, mock_empty_content_query=False, verify_after_commit=False, verify_original_polarity=False):
     marks=list(re.finditer(r"\[5955\] Enrolment sample (\d+)/(\d+):", log))
     if not marks:
         print("No per-sample enrolment records found. Probe may have failed.",file=sys.stderr)
@@ -68,7 +68,7 @@ def summarize(log, files, completion_from_update=False, probe_commit=False, skip
               f"  |  Rejected: {rejected}  |  UpdateEnrollment=S_OK reached: {'YES' if complete else 'NO'}")
         print("Windows-capture-workflow interpretation ONLY; GetEnrollmentStatus remains independent.")
         if probe_commit:
-            print("Mock-storage CommitEnrollment probe requested. Identity verification is NOT TESTED.")
+            print("Mock-storage CommitEnrollment probe requested." + (" Held-out verification follows." if verify_after_commit else " Identity verification is NOT TESTED."))
         else:
             print("Actual template commit and successful verification: NOT TESTED.")
     else:
@@ -120,7 +120,7 @@ def summarize(log, files, completion_from_update=False, probe_commit=False, skip
                   f"bounded nonempty template={'YES' if probe.group(3)=='1' else 'NO'};",
                   f"AddRecord callbacks={probe.group(4) if probe.group(4) is not None else 'unavailable'}")
             if probe.group(1).lower() == "00000000" and probe.group(3)=="1":
-                print("Mock storage received a template in memory. Matching/verification NOT ESTABLISHED.")
+                print("Mock storage received a template in memory; held-out verification results appear below." if verify_after_commit else "Mock storage received a template in memory. Matching/verification NOT ESTABLISHED.")
             else:
                 print("A usable committed template was NOT demonstrated.")
         else:
@@ -129,6 +129,8 @@ def summarize(log, files, completion_from_update=False, probe_commit=False, skip
     else:
         print("No biometric template was committed or saved.")
     if verify_after_commit:
+        if verify_original_polarity:
+            print("\nNEGATIVE CONTROL: samples 1-12 enrolled inverted, held-out samples 13-16 verified ORIGINAL (non-inverted) polarity.")
         rows=re.findall(r"VERIFY_PROBE sample=(\d+) accept_hr=0x([0-9a-fA-F]{8})",log)
         outcomes={int(n):(hr,match,reject) for n,hr,match,reject in
                   re.findall(r"VERIFY_PROBE sample=(\d+) hr=0x([0-9a-fA-F]{8}) match=(\d+) reject=(\d+)",log)}
@@ -146,7 +148,17 @@ def summarize(log, files, completion_from_update=False, probe_commit=False, skip
         if not rows:
             print("No held-out verification attempt confirmed; check commit preflight.")
         print("No biometric data persisted; these are tests of previously captured samples only.")
-        print("Successful matches would show recognition of held-out same-finger captures, not a measured false-accept rate.")
+        if verify_original_polarity:
+            verified=[outcomes[int(idx)] for idx,accept in rows if accept.lower()=="00000000" and int(idx) in outcomes]
+            unexpected=sum(1 for hr,match,reject in verified if hr.lower()=="00000000" and match=="1")
+            print(f"Polarity negative control: {unexpected} MATCHES across {len(verified)} completed verification calls.")
+            if unexpected:
+                print("WARNING: polarity reversal alone did not prevent all matches; investigate before authentication use.")
+            elif verified:
+                print("All completed verification calls reported non-match or error under polarity reversal.")
+            print("This is a preprocessing-mismatch test, NOT an independent wrong-finger/security false-accept test.")
+        else:
+            print("Successful matches show recognition of held-out same-finger captures, not a measured false-accept rate.")
     return True
 
 def main():
@@ -160,6 +172,8 @@ def main():
                     help="after UpdateEnrollment S_OK, call engine CommitEnrollment only inside disposable sandbox/mock storage; never write templates")
     ap.add_argument("--verify-after-commit",action="store_true",
                     help="use remaining private PGM captures to verify against template committed in disposable sandbox")
+    ap.add_argument("--verify-original-polarity",action="store_true",
+                    help="negative control: keep inverted enrollment but DO NOT invert held-out verification images")
     ap.add_argument("--mock-empty-content-query",action="store_true",
                     help="opt-in sandbox-only empty-DB QueryByContent mock; requires duplicate preflight")
     ap.add_argument("--with-duplicate-check",action="store_true",
@@ -186,6 +200,8 @@ def main():
         ap.error("--mock-empty-content-query requires --with-duplicate-check")
     if args.verify_after_commit and not (args.probe_commit_in_memory and args.with_duplicate_check and args.mock_empty_content_query and args.skip_enrollment_status and args.completion_from_update):
         ap.error("--verify-after-commit requires --probe-commit-in-memory --with-duplicate-check --mock-empty-content-query --skip-enrollment-status and --completion-from-update")
+    if args.verify_original_polarity and not (args.verify_after_commit and args.invert_input and args.limit>=13):
+        ap.error("--verify-original-polarity requires --verify-after-commit --invert-input and at least 13 captures")
     if not args.archive.is_file():ap.error("Driver archive not found")
     if not args.captures_dir.is_dir():ap.error("Private capture directory not found")
     files=sorted(args.captures_dir.glob("enroll_capture_*.pgm"))[:args.limit]
@@ -204,6 +220,8 @@ def main():
         print("EXPERIMENT: Empty mock database QueryByContent returns NO_RESULTS instead of E_NOTIMPL.")
     if args.verify_after_commit:
         print("EXPERIMENT: Verify remaining captures only after successful in-memory commit; discard private template on exit.")
+    if args.verify_original_polarity:
+        print("NEGATIVE CONTROL: 1-12 enrolled inverted; 13-16 verified in ORIGINAL polarity, no image files modified.")
     if args.skip_enrollment_status:
         print("EXPERIMENT: Do not call GetEnrollmentStatus; match Windows capture callback sequence.")
     if args.completion_from_update:
@@ -220,7 +238,7 @@ def main():
         print("EXPERIMENT: QuerySampleHint enabled (read-only DLL call).")
     try:
         proc=subprocess.run(
-            ["bash",str(BATCH),*(["--invert-pixels"] if args.invert_input else []),*(["--completion-from-update"] if args.completion_from_update else []),*(["--skip-enrollment-status"] if args.skip_enrollment_status else []),*(["--probe-commit-in-memory"] if args.probe_commit_in_memory else []),*(["--with-duplicate-check"] if args.with_duplicate_check else []),*(["--mock-empty-content-query"] if args.mock_empty_content_query else []),*(["--verify-after-commit"] if args.verify_after_commit else []),*(["--with-enrollment-parameters"] if args.with_enrollment_parameters else []),*(["--with-extended-status"] if args.with_extended_status else []),*(["--with-sample-hint"] if args.with_sample_hint else []),str(args.archive.resolve()),*map(str,files)],
+            ["bash",str(BATCH),*(["--invert-pixels"] if args.invert_input else []),*(["--completion-from-update"] if args.completion_from_update else []),*(["--skip-enrollment-status"] if args.skip_enrollment_status else []),*(["--probe-commit-in-memory"] if args.probe_commit_in_memory else []),*(["--with-duplicate-check"] if args.with_duplicate_check else []),*(["--mock-empty-content-query"] if args.mock_empty_content_query else []),*(["--verify-after-commit"] if args.verify_after_commit else []),*(["--verify-original-polarity"] if args.verify_original_polarity else []),*(["--with-enrollment-parameters"] if args.with_enrollment_parameters else []),*(["--with-extended-status"] if args.with_extended_status else []),*(["--with-sample-hint"] if args.with_sample_hint else []),str(args.archive.resolve()),*map(str,files)],
             cwd=ROOT,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
             text=True,timeout=120,check=False)
     except subprocess.TimeoutExpired:
@@ -243,7 +261,7 @@ def main():
     setup=re.search(r"ENROLL_DIAG set_params_hr=0x([0-9a-fA-F]{8}) subfactor=(\d+)",proc.stderr)
     if args.with_enrollment_parameters:
         print("SetEnrollmentParameters result:",(f"0x{setup.group(1)}; subfactor={setup.group(2)}" if setup else "NOT CONFIRMED"))
-    ok=summarize(proc.stderr,files,completion_from_update=args.completion_from_update,probe_commit=args.probe_commit_in_memory,skip_status=args.skip_enrollment_status,with_duplicate_check=args.with_duplicate_check,mock_empty_content_query=args.mock_empty_content_query,verify_after_commit=args.verify_after_commit)
+    ok=summarize(proc.stderr,files,completion_from_update=args.completion_from_update,probe_commit=args.probe_commit_in_memory,skip_status=args.skip_enrollment_status,with_duplicate_check=args.with_duplicate_check,mock_empty_content_query=args.mock_empty_content_query,verify_after_commit=args.verify_after_commit,verify_original_polarity=args.verify_original_polarity)
     return 0 if ok else 1
 
 if __name__=="__main__":
