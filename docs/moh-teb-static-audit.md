@@ -182,8 +182,11 @@ directory and cannot execute callbacks. Repeated entry on the same
 thread preserves its TEB/CRT TLS data; other threads require their own
 layout and GS installation.
 
-**Normal builds do not execute the Windows DLL.** The SHA-pinned import
-check still reports 86 of 110 names covered and 24 missing. The loader's
+**Normal builds do not execute the Windows DLL.** The legacy Attach
+entry now additionally requires **both** deliberate compile-time unlocks,
+not merely its original Attach-specific one. Neither unlock should be
+enabled at this stage. The SHA-pinned import check still reports
+86 of 110 names covered and 24 missing. The loader's
 PE bounds, process flags, thread/TEB restoration, Windows API shims and
 WinBio ABI must all be reviewed before any explicit execution unlock.
 
