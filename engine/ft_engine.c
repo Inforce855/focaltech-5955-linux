@@ -818,9 +818,18 @@ int ft_engine_enroll_update(void){
   u64 (MS *Update)(void*,void*)=*(void**)((u8*)g_iface+32+13*8);
   u64 (MS *Status)(void*,void*)=*(void**)((u8*)g_iface+32+14*8);
   u32 urej=0; u64 uhr=Update(&pipeline,&urej);
-  if((u32)uhr==0x80098008 || urej) return 2;   /* frame rejected (dup/low quality) */
+  fprintf(stderr,"[5955] ENROLL_DIAG update_hr=0x%08x update_reject=%u\\n",
+          (u32)uhr,urej);
+  if((u32)uhr==0x80098008u) return 2; /* WINBIO_E_BAD_CAPTURE */
+  if(((u32)uhr & 0x80000000u)!=0) return -2; /* unexpected failure */
+  if(urej) return 2;
   u32 srej=0; u64 shr=Status(&pipeline,&srej);
-  return (u32)shr==0 ? 0 : 1;                    /* 0 complete, 1 need more */
+  fprintf(stderr,"[5955] ENROLL_DIAG status_hr=0x%08x status_reject=%u\\n",
+          (u32)shr,srej);
+  if((u32)shr==0) return 0;           /* S_OK: ready to commit */
+  if((u32)shr==0x00090001u) return 1; /* WINBIO_I_MORE_DATA */
+  if((u32)shr==0x80098008u || srej) return 2; /* rejected */
+  return -3; /* unrecognised status: NOT proof more data needed */
 }
 
 static void fill_identity(u8 *id){ memset(id,0,76); *(u32*)id=3; for(int i=0;i<16;i++) id[8+i]=0xA0+i; }
