@@ -26,6 +26,7 @@
 #include <asm/prctl.h>
 #include "ft5955_compat_time.h"
 #include "ft5955_compat_fls.h"
+#include "ft5955_compat_locale.h"
 
 typedef uint8_t u8; typedef uint16_t u16; typedef uint32_t u32; typedef uint64_t u64;
 #define MS __attribute__((ms_abi))
@@ -200,6 +201,8 @@ static void register_shims(void){
   R(CreateFileW);R(SetFilePointerEx);R(CloseHandle);R(FindFirstFileExA);R(FindNextFileA);R(FindClose);R(GetSystemDirectoryA);
   R(CreateEventW);R(SetEvent);R(ResetEvent);R(WaitForSingleObject);R(WaitForSingleObjectEx);R(CreateThread);R(DeviceIoControl);
   R(GetACP);R(GetOEMCP);R(GetCPInfo);R(IsValidCodePage);R(MultiByteToWideChar);R(WideCharToMultiByte);R(LCMapStringW);R(GetStringTypeW);
+  reg("GetUserDefaultLCID", (void*)ft5955_GetUserDefaultLCID);
+  reg("IsValidLocale", (void*)ft5955_IsValidLocale);
   R(GetSystemInfo);R(GetSystemTimeAsFileTime);R(GetTickCount);
   reg("QueryPerformanceCounter", (void*)ft5955_QueryPerformanceCounter);
   reg("QueryPerformanceFrequency", (void*)ft5955_QueryPerformanceFrequency);
