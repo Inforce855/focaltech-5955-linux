@@ -435,6 +435,45 @@ name coverage stays **86/110 (24 missing)**. Passing these synthetic
 tests does not establish engine readiness or Windows heap equivalence;
 the DLL remains locked out.
 
+## Existing-shim correctness: real Windows clock semantics
+
+The borrowed FT9201 loader returned artificial timestamps:
+`GetSystemTimeAsFileTime` added a fixed count on each call regardless
+of the actual UTC time, while `GetTickCount` advanced exactly five
+milliseconds per invocation. Neither modelled Windows timing and both
+could interfere with timeouts or timestamp checks.
+
+The registered shims now use Linux clocks, without accessing any USB
+device, fingerprint information or Windows executable:
+
+- `GetSystemTimeAsFileTime` reads `CLOCK_REALTIME` and converts from
+  the Unix epoch to 100-nanosecond intervals since 1 January 1601 UTC.
+  The 8-byte result matches the x64 FILETIME two-DWORD representation.
+- `GetTickCount` reads `CLOCK_BOOTTIME`, converts to milliseconds and
+  deliberately truncates to the Windows 32-bit wrapping counter.
+  `CLOCK_BOOTTIME` includes suspended time on Linux.
+- Existing `QueryPerformanceCounter` uses `CLOCK_MONOTONIC`; its
+  independent high-resolution counter is not treated as wall time.
+
+Standalone Nobara test:
+
+    cc -std=c11 -O2 -Wall -Wextra -Werror -Iengine \\
+      engine/ft5955_compat_time.c tests/test_moh_compat_wallclock.c \\
+      -o /tmp/ft5955_wallclock_test
+    /tmp/ft5955_wallclock_test
+    python3 -m unittest discover -s tests -p 'test_moh_loader_teb_gate.py'
+    bash tools/build_moh_engine_smoke.sh
+
+The test compares the UTC FILETIME with `CLOCK_REALTIME` before/after
+the call and the tick count with `CLOCK_BOOTTIME` before/after, including
+the wrap-safe unsigned difference after a brief sleep. System clock
+adjustments during the test could cause a false negative. If the native
+clock read fails, the narrow shim returns zero: this is an unsupported
+clock-failure case, not a complete Windows error-path emulation.
+
+These replace **two existing registered imports**: coverage remains
+**86/110 names, 24 missing**. The Windows DLL is still locked out.
+
 ## Next work on this branch
 
 1. Implement the missing Windows shims with actual expected semantics, not
