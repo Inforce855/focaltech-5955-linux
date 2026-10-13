@@ -284,6 +284,18 @@ and safe reuse after Delete. **Import-name coverage stays 86/110**:
 the change improves five previously registered but ineffective shims.
 Neither Windows DLL entry points nor libfprint/PAM are executed or modified.
 
+## Current offline TEB audit
+
+Before further Win32 shims or any DLL execution, run the SHA-pinned
+static GS/FS scanner documented in [moh-teb-static-audit.md](moh-teb-static-audit.md).
+The scan reads the **private original MOH DLL** and reports which TEB
+memory offsets are referenced directly. It does not execute code or access
+fingerprint samples. Static disassembly is partial evidence: a pointer
+loaded through GS can be dereferenced indirectly without any more GS
+instructions. The bridge's synthetic TEB currently has process-global
+buffers and initializes GS **after** TLS callbacks, both known issues to
+assess before runtime bring-up.
+
 ## Next work on this branch
 
 1. Implement the missing Windows shims with actual expected semantics, not
