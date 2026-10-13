@@ -14,6 +14,7 @@ completion_from_update=0
 probe_commit=0
 skip_status=0
 duplicate_check=0
+mock_content_query=0
 while (( $# > 0 )); do
   case "$1" in
     --windows-bir-direct)
@@ -44,6 +45,10 @@ while (( $# > 0 )); do
       duplicate_check=1
       enrollment_setup_flags+=(-DFT5955_OFFLINE_PROBE_DUPLICATE)
       shift ;;
+    --mock-empty-content-query)
+      mock_content_query=1
+      enrollment_setup_flags+=(-DFT5955_OFFLINE_MOCK_EMPTY_QUERY_BY_CONTENT)
+      shift ;;
     --invert-pixels)
       enrollment_setup_flags+=(-DFT5955_OFFLINE_INVERT_INPUT_PIXELS)
       shift ;;
@@ -60,7 +65,7 @@ while (( $# > 0 )); do
   esac
 done
 if (( $# < 2 || $# > 21 )); then
-  echo "Usage: bash tools/test_moh_isolated_pgm_enroll_batch.sh [--windows-bir-direct|--windows-bir-synthetic] [--invert-pixels] [--completion-from-update] [--skip-enrollment-status] [--probe-commit-in-memory] [--with-duplicate-check] [--with-enrollment-parameters] [--with-extended-status] [--with-sample-hint] vendor.zip sample1.pgm [...], or vendor.zip one_private.bir" >&2
+  echo "Usage: bash tools/test_moh_isolated_pgm_enroll_batch.sh [--windows-bir-direct|--windows-bir-synthetic] [--invert-pixels] [--completion-from-update] [--skip-enrollment-status] [--probe-commit-in-memory] [--with-duplicate-check] [--mock-empty-content-query] [--with-enrollment-parameters] [--with-extended-status] [--with-sample-hint] vendor.zip sample1.pgm [...], or vendor.zip one_private.bir" >&2
   exit 2
 fi
 if [[ ! -f "$1" ]]; then
@@ -69,6 +74,10 @@ if [[ ! -f "$1" ]]; then
 fi
 if (( (skip_status || probe_commit) && ! completion_from_update )); then
   echo "ERROR: --probe-commit-in-memory and --skip-enrollment-status require --completion-from-update." >&2
+  exit 2
+fi
+if (( mock_content_query && ! duplicate_check )); then
+  echo "ERROR: --mock-empty-content-query requires --with-duplicate-check." >&2
   exit 2
 fi
 if (( duplicate_check && ! probe_commit )); then
