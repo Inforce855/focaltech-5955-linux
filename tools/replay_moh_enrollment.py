@@ -19,7 +19,7 @@ def matched(pattern, data, default="-"):
     m=re.search(pattern,data)
     return m.group(1) if m else default
 
-def summarize(log, files, completion_from_update=False, probe_commit=False, skip_status=False, with_duplicate_check=False, mock_empty_content_query=False):
+def summarize(log, files, completion_from_update=False, probe_commit=False, skip_status=False, with_duplicate_check=False, mock_empty_content_query=False, verify_after_commit=False):
     marks=list(re.finditer(r"\[5955\] Enrolment sample (\d+)/(\d+):", log))
     if not marks:
         print("No per-sample enrolment records found. Probe may have failed.",file=sys.stderr)
@@ -126,6 +126,25 @@ def summarize(log, files, completion_from_update=False, probe_commit=False, skip
         print("No biometric template persisted or saved; sandbox process has exited.")
     else:
         print("No biometric template was committed or saved.")
+    if verify_after_commit:
+        rows=re.findall(r"VERIFY_PROBE sample=(\d+) accept_hr=0x([0-9a-fA-F]{8})",log)
+        outcomes={int(n):(hr,match,reject) for n,hr,match,reject in
+                  re.findall(r"VERIFY_PROBE sample=(\d+) hr=0x([0-9a-fA-F]{8}) match=(\d+) reject=(\d+)",log)}
+        print("\nHELD-OUT VERIFICATION (not used for enrollment)")
+        print("Capture  Accept HRESULT   Verify HRESULT  Match  Reject")
+        print("-"*63)
+        for index,accept in rows:
+            item=outcomes.get(int(index))
+            if item:
+                hr,match,reject=item
+                verdict="YES" if match=="1" and hr.lower()=="00000000" else "NO" if hr.lower()=="00000000" else "UNCONFIRMED"
+                print(f"{index:>4}     0x{accept}        0x{hr}        {verdict:<11}{reject}")
+            else:
+                print(f"{index:>4}     0x{accept}        unavailable      -")
+        if not rows:
+            print("No held-out verification attempt confirmed; check commit preflight.")
+        print("No biometric data persisted; these are tests of previously captured samples only.")
+        print("Successful matches would show recognition of held-out same-finger captures, not a measured false-accept rate.")
     return True
 
 def main():
@@ -137,6 +156,8 @@ def main():
                     help="opt-in Windows capture workflow interpretation; stop at UpdateEnrollment S_OK, retain status as diagnostic")
     ap.add_argument("--probe-commit-in-memory",action="store_true",
                     help="after UpdateEnrollment S_OK, call engine CommitEnrollment only inside disposable sandbox/mock storage; never write templates")
+    ap.add_argument("--verify-after-commit",action="store_true",
+                    help="use remaining private PGM captures to verify against template committed in disposable sandbox")
     ap.add_argument("--mock-empty-content-query",action="store_true",
                     help="opt-in sandbox-only empty-DB QueryByContent mock; requires duplicate preflight")
     ap.add_argument("--with-duplicate-check",action="store_true",
@@ -161,6 +182,8 @@ def main():
         ap.error("--with-duplicate-check requires --probe-commit-in-memory")
     if args.mock_empty_content_query and not args.with_duplicate_check:
         ap.error("--mock-empty-content-query requires --with-duplicate-check")
+    if args.verify_after_commit and not (args.probe_commit_in_memory and args.with_duplicate_check and args.mock_empty_content_query and args.skip_enrollment_status and args.completion_from_update):
+        ap.error("--verify-after-commit requires --probe-commit-in-memory --with-duplicate-check --mock-empty-content-query --skip-enrollment-status and --completion-from-update")
     if not args.archive.is_file():ap.error("Driver archive not found")
     if not args.captures_dir.is_dir():ap.error("Private capture directory not found")
     files=sorted(args.captures_dir.glob("enroll_capture_*.pgm"))[:args.limit]
@@ -177,6 +200,8 @@ def main():
         print("EXPERIMENT: Call CheckForDuplicate before CommitEnrollment, matching the Windows commit sequence.")
     if args.mock_empty_content_query:
         print("EXPERIMENT: Empty mock database QueryByContent returns NO_RESULTS instead of E_NOTIMPL.")
+    if args.verify_after_commit:
+        print("EXPERIMENT: Verify remaining captures only after successful in-memory commit; discard private template on exit.")
     if args.skip_enrollment_status:
         print("EXPERIMENT: Do not call GetEnrollmentStatus; match Windows capture callback sequence.")
     if args.completion_from_update:
@@ -193,7 +218,7 @@ def main():
         print("EXPERIMENT: QuerySampleHint enabled (read-only DLL call).")
     try:
         proc=subprocess.run(
-            ["bash",str(BATCH),*(["--invert-pixels"] if args.invert_input else []),*(["--completion-from-update"] if args.completion_from_update else []),*(["--skip-enrollment-status"] if args.skip_enrollment_status else []),*(["--probe-commit-in-memory"] if args.probe_commit_in_memory else []),*(["--with-duplicate-check"] if args.with_duplicate_check else []),*(["--mock-empty-content-query"] if args.mock_empty_content_query else []),*(["--with-enrollment-parameters"] if args.with_enrollment_parameters else []),*(["--with-extended-status"] if args.with_extended_status else []),*(["--with-sample-hint"] if args.with_sample_hint else []),str(args.archive.resolve()),*map(str,files)],
+            ["bash",str(BATCH),*(["--invert-pixels"] if args.invert_input else []),*(["--completion-from-update"] if args.completion_from_update else []),*(["--skip-enrollment-status"] if args.skip_enrollment_status else []),*(["--probe-commit-in-memory"] if args.probe_commit_in_memory else []),*(["--with-duplicate-check"] if args.with_duplicate_check else []),*(["--mock-empty-content-query"] if args.mock_empty_content_query else []),*(["--verify-after-commit"] if args.verify_after_commit else []),*(["--with-enrollment-parameters"] if args.with_enrollment_parameters else []),*(["--with-extended-status"] if args.with_extended_status else []),*(["--with-sample-hint"] if args.with_sample_hint else []),str(args.archive.resolve()),*map(str,files)],
             cwd=ROOT,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
             text=True,timeout=120,check=False)
     except subprocess.TimeoutExpired:
@@ -216,7 +241,7 @@ def main():
     setup=re.search(r"ENROLL_DIAG set_params_hr=0x([0-9a-fA-F]{8}) subfactor=(\d+)",proc.stderr)
     if args.with_enrollment_parameters:
         print("SetEnrollmentParameters result:",(f"0x{setup.group(1)}; subfactor={setup.group(2)}" if setup else "NOT CONFIRMED"))
-    ok=summarize(proc.stderr,files,completion_from_update=args.completion_from_update,probe_commit=args.probe_commit_in_memory,skip_status=args.skip_enrollment_status,with_duplicate_check=args.with_duplicate_check,mock_empty_content_query=args.mock_empty_content_query)
+    ok=summarize(proc.stderr,files,completion_from_update=args.completion_from_update,probe_commit=args.probe_commit_in_memory,skip_status=args.skip_enrollment_status,with_duplicate_check=args.with_duplicate_check,mock_empty_content_query=args.mock_empty_content_query,verify_after_commit=args.verify_after_commit)
     return 0 if ok else 1
 
 if __name__=="__main__":
