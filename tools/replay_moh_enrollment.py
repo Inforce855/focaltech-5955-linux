@@ -31,6 +31,7 @@ def summarize(log, files):
     complete=False
     found_match=False
     inconsistent=[]
+    extended=[]
     for n,m in enumerate(marks):
         end=marks[n+1].start() if n+1<len(marks) else len(log)
         section=log[m.start():end]
@@ -49,6 +50,11 @@ def summarize(log, files):
         st=(f"0x{status.group(1)} / {status.group(2)}" if status else "-")
         if update and status and update.group(1).lower()=="00000000" and status.group(1).lower()=="00090001":
             inconsistent.append(index)
+        ex_hr=matched(r"ENROLL_EXT call_hr=0x([0-9a-fA-F]{8})",section)
+        ex_meta=re.search(r"ENROLL_EXT template_hr=0x([0-9a-fA-F]{8}) reject=(\d+) percent=(\d+) factor=(\d+) subfactor=(\d+)",section)
+        ex_counts=re.search(r"ENROLL_EXT general=(\d+) center=(\d+) top=(\d+) bottom=(\d+) left=(\d+) right=(\d+)",section)
+        if ex_hr!="-":
+            extended.append((index,ex_hr,ex_meta,ex_counts))
         outcome=matched(r"\[5955\] UpdateEnrollment sample \d+: (-?\d+)",section)
         if outcome=="0":complete=True;accepted+=1
         elif outcome=="1":accepted+=1
@@ -57,6 +63,16 @@ def summarize(log, files):
     print("-"*87)
     print(f"Processed: {len(marks)}  |  Incomplete/needs more: {accepted - int(complete)}"
           f"  |  Rejected: {rejected}  |  Complete: {'YES' if complete else 'NO'}")
+    if extended:
+        print("\nExtended enrollment status (engine-reported; counters are requirements, not accepted touches):")
+        print("Capture  Call HRESULT  Template HRESULT  Progress   General Center Top Bottom Left Right")
+        for index,hr,meta,counts in extended:
+            template=("0x"+meta.group(1)) if meta else "-"
+            progress=(meta.group(3)+"%") if meta else "-"
+            values=(" ".join(counts.groups()) if counts else "unavailable")
+            print(f"{index:>6}   0x{hr}     {template:<13} {progress:>5}     {values}")
+        if not any(meta is not None for _,_,meta,_ in extended):
+            print("Extended status was not supplied; do not infer any area coverage.")
     if inconsistent:
         nums=", ".join(map(str,inconsistent))
         print(f"STATUS DISAGREEMENT at capture(s): {nums}")
@@ -75,6 +91,8 @@ def main():
     ap.add_argument("archive",type=Path,help="local FocalTech driver ZIP")
     ap.add_argument("--captures-dir",type=Path,
                     default=ROOT/"local-data/enroll-captures")
+    ap.add_argument("--with-extended-status",action="store_true",
+                    help="opt-in offline query of WinBio extended enrollment status (ABI experimental)")
     ap.add_argument("--with-enrollment-parameters",action="store_true",
                     help="opt-in offline call to standard WinBio SetEnrollmentParameters after CreateEnrollment")
     ap.add_argument("--limit",type=int,default=16,
@@ -92,9 +110,11 @@ def main():
     print(f"Replaying {len(files)} existing local PGM captures. No USB or new scans.")
     if args.with_enrollment_parameters:
         print("EXPERIMENT: SetEnrollmentParameters enabled (unknown finger subtype).")
+    if args.with_extended_status:
+        print("EXPERIMENT: QueryExtendedEnrollmentStatus enabled; isolated vendor DLL call.")
     try:
         proc=subprocess.run(
-            ["bash",str(BATCH),*(["--with-enrollment-parameters"] if args.with_enrollment_parameters else []),str(args.archive.resolve()),*map(str,files)],
+            ["bash",str(BATCH),*(["--with-enrollment-parameters"] if args.with_enrollment_parameters else []),*(["--with-extended-status"] if args.with_extended_status else []),str(args.archive.resolve()),*map(str,files)],
             cwd=ROOT,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
             text=True,timeout=120,check=False)
     except subprocess.TimeoutExpired:
