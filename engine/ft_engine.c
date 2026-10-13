@@ -204,6 +204,7 @@ static void register_shims(void){
   R(GetACP);R(GetOEMCP);R(GetCPInfo);R(IsValidCodePage);R(MultiByteToWideChar);R(WideCharToMultiByte);R(LCMapStringW);R(GetStringTypeW);
   reg("GetUserDefaultLCID", (void*)ft5955_GetUserDefaultLCID);
   reg("IsValidLocale", (void*)ft5955_IsValidLocale);
+  reg("GetLocaleInfoW", (void*)ft5955_GetLocaleInfoW);
   reg("GetDateFormatW", (void*)ft5955_GetDateFormatW);
   reg("GetTimeFormatW", (void*)ft5955_GetTimeFormatW);
   R(GetSystemInfo);R(GetSystemTimeAsFileTime);R(GetTickCount);
