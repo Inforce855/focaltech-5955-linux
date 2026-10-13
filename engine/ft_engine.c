@@ -777,23 +777,23 @@ uint32_t ft_engine_accept(const uint8_t *img,int sw,int sh,uint8_t purpose){
   int total=build_bir(small, ENG_W, ENG_H);
   u32 rej=0;
   u64 (MS *Accept)(void*,void*,u64,u64,void*)=*(void**)((u8*)g_iface+32+8*8);
-  return (u32)Accept(pipeline, birbuf, total, purpose, &rej);
+  return (u32)Accept(&pipeline, birbuf, total, purpose, &rej);
 }
 
 void ft_engine_enroll_begin(void){
   if(set_engine_gs_current()!=0) return;
   g_have_record=0; g_rec_tsize=0;
   u64 (MS *Create)(void*)=*(void**)((u8*)g_iface+32+12*8);
-  Create(pipeline);
+  Create(&pipeline);
 }
 
 int ft_engine_enroll_update(void){
   if(set_engine_gs_current()!=0) return -1;
   u64 (MS *Update)(void*,void*)=*(void**)((u8*)g_iface+32+13*8);
   u64 (MS *Status)(void*,void*)=*(void**)((u8*)g_iface+32+14*8);
-  u32 urej=0; u64 uhr=Update(pipeline,&urej);
+  u32 urej=0; u64 uhr=Update(&pipeline,&urej);
   if((u32)uhr==0x80098008 || urej) return 2;   /* frame rejected (dup/low quality) */
-  u32 srej=0; u64 shr=Status(pipeline,&srej);
+  u32 srej=0; u64 shr=Status(&pipeline,&srej);
   return (u32)shr==0 ? 0 : 1;                    /* 0 complete, 1 need more */
 }
 
@@ -804,7 +804,7 @@ int ft_engine_enroll_commit(uint8_t **out,size_t *outlen){
   u8 id[76]; fill_identity(id);
   g_have_record=0;
   u64 (MS *Commit)(void*,void*,u8)=*(void**)((u8*)g_iface+32+17*8);
-  if((u32)Commit(pipeline,id,1)!=0 || !g_have_record) return -1;
+  if((u32)Commit(&pipeline,id,1)!=0 || !g_have_record) return -1;
   *out=malloc(g_rec_tsize); if(!*out) return -2;
   memcpy(*out, g_rec_template, g_rec_tsize); *outlen=g_rec_tsize;
   return 0;
@@ -817,6 +817,6 @@ int ft_engine_verify(const uint8_t *tmpl,size_t tmpllen){
   u8 id[76]; fill_identity(id);
   u8 m=0; u32 ps=0,hs=0,vr=0; void*plp=0,*hp=0;
   u64 (MS *Verify)(void*,void*,u8,void*,void*,void*,void*,void*,void*)=*(void**)((u8*)g_iface+32+10*8);
-  Verify(pipeline, id, 1, &m, &ps, &plp, &hs, &hp, &vr);
+  Verify(&pipeline, id, 1, &m, &ps, &plp, &hs, &hp, &vr);
   return m?1:0;
 }
