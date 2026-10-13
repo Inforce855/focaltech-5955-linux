@@ -8,8 +8,22 @@ cd "$(dirname "$0")/.."
 # Optional, strictly offline comparison: invoke the standard WinBio V3
 # SetEnrollmentParameters callback after CreateEnrollment.
 declare -a enrollment_setup_flags=()
+input_kind=pgm
+windows_bir_mode=none
 while (( $# > 0 )); do
   case "$1" in
+    --windows-bir-direct)
+      [[ "$windows_bir_mode" == none ]] || { echo 'Choose one Windows BIR mode only' >&2; exit 2; }
+      input_kind=bir
+      windows_bir_mode=direct
+      enrollment_setup_flags+=(-DFT5955_OFFLINE_WINDOWS_BIR_DIRECT)
+      shift ;;
+    --windows-bir-synthetic)
+      [[ "$windows_bir_mode" == none ]] || { echo 'Choose one Windows BIR mode only' >&2; exit 2; }
+      input_kind=bir
+      windows_bir_mode=synthetic
+      enrollment_setup_flags+=(-DFT5955_OFFLINE_WINDOWS_BIR_SYNTHETIC)
+      shift ;;
     --invert-pixels)
       enrollment_setup_flags+=(-DFT5955_OFFLINE_INVERT_INPUT_PIXELS)
       shift ;;
@@ -25,13 +39,23 @@ while (( $# > 0 )); do
     *) break ;;
   esac
 done
-if (( $# < 3 || $# > 21 )); then
-  echo "Usage: bash tools/test_moh_isolated_pgm_enroll_batch.sh [--invert-pixels] [--with-enrollment-parameters] [--with-extended-status] [--with-sample-hint] vendor.zip sample1.pgm sample2.pgm [...]" >&2
+if (( $# < 2 || $# > 21 )); then
+  echo "Usage: bash tools/test_moh_isolated_pgm_enroll_batch.sh [--windows-bir-direct|--windows-bir-synthetic] [--invert-pixels] [--with-enrollment-parameters] [--with-extended-status] [--with-sample-hint] vendor.zip sample1.pgm [...], or vendor.zip one_private.bir" >&2
   exit 2
 fi
 if [[ ! -f "$1" ]]; then
   echo "ERROR: Vendor driver archive not found: $1" >&2
   exit 2
+fi
+if [[ "$input_kind" == bir ]]; then
+  if (( $# != 2 )); then
+    echo "ERROR: Windows BIR A/B run requires exactly one private BIR input." >&2
+    exit 2
+  fi
+  if [[ " ${enrollment_setup_flags[*]} " == *" -DFT5955_OFFLINE_INVERT_INPUT_PIXELS "* ]]; then
+    echo "ERROR: BIR polarity cannot be modified in the raw BIR A/B test." >&2
+    exit 2
+  fi
 fi
 declare -a sample_mounts=() sample_paths=()
 declare -A seen=()
@@ -41,14 +65,18 @@ for arg in "${@:2}"; do
     echo "ERROR: PGM image not found: $arg" >&2
     exit 2
   fi
+  if [[ "$input_kind" == bir && "$arg" != *.bir ]]; then
+    echo "ERROR: the Windows reference must be a .bir file." >&2
+    exit 2
+  fi
   original="$(realpath -- "$arg")"
   if [[ -n "${seen[$original]:-}" ]]; then
     echo "ERROR: duplicate PGM supplied; use distinct capture files" >&2
     exit 2
   fi
   seen[$original]=1
-  sample_mounts+=(--ro-bind "$original" "/tmp/sample$index.pgm")
-  sample_paths+=("/tmp/sample$index.pgm")
+  sample_mounts+=(--ro-bind "$original" "/tmp/sample$index.$input_kind")
+  sample_paths+=("/tmp/sample$index.$input_kind")
   ((index+=1))
 done
 for command in bwrap gcc python3 objdump timeout; do
@@ -107,7 +135,7 @@ for path in /lib /lib64 /bin /sbin; do
     mounts+=(--ro-bind "$path" "$path")
   fi
 done
-echo "Launching isolated MOH multi-sample PGM enrolment probe (15-second limit). No USB, no template commit."
+echo "Launching isolated MOH enrolment probe (15-second limit). No USB, no template commit."
 echo "WARNING: experimental DLL execution; may abort or crash inside sandbox."
 set +e
 (
