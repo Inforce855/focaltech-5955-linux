@@ -40,6 +40,7 @@
 #include "ft5955_compat_identity.h"
 #include "ft5955_compat_heap.h"
 #include "ft5955_compat_sysinfo.h"
+#include "ft5955_compat_env.h"
 #include "ft5955_compat_teb_layout.h"
 
 typedef uint8_t u8; typedef uint16_t u16; typedef uint32_t u32; typedef uint64_t u64;
@@ -158,9 +159,6 @@ static char g_cmd[]="loader"; static u16 g_cmdw[]={'l','o','a','d','e','r',0};
 static char* MS sh_GetCommandLineA(void){ return g_cmd; }
 static u16*  MS sh_GetCommandLineW(void){ return g_cmdw; }
 static void MS sh_GetStartupInfoW(void*si){ memset(si,0,104); *(u32*)si=104; }
-static u16 g_env[2]={0,0};
-static u16* MS sh_GetEnvironmentStringsW(void){ return g_env; }
-static int  MS sh_FreeEnvironmentStringsW(void*p){ return 1; }
 
 // exception/unwind (only hit if the engine throws — hope not)
 static void MS sh_RtlCaptureContext(void*ctx){ memset(ctx,0,1232); }
@@ -228,7 +226,10 @@ static void __attribute__((unused)) register_shims(void){
   reg("GetLocalTime", (void*)ft5955_GetLocalTime);
   R(IsDebuggerPresent);R(IsProcessorFeaturePresent);
   R(EncodePointer);R(DecodePointer);R(VerSetConditionMask);R(VerifyVersionInfoA);
-  R(GetCommandLineA);R(GetCommandLineW);R(GetStartupInfoW);R(GetEnvironmentStringsW);R(FreeEnvironmentStringsW);
+  R(GetCommandLineA);R(GetCommandLineW);R(GetStartupInfoW);
+  reg("GetEnvironmentStringsW", (void*)ft5955_GetEnvironmentStringsW);
+  reg("FreeEnvironmentStringsW", (void*)ft5955_FreeEnvironmentStringsW);
+  reg("SetEnvironmentVariableW", (void*)ft5955_SetEnvironmentVariableW);
   R(RtlCaptureContext);R(RtlLookupFunctionEntry);R(RtlVirtualUnwind);R(RtlUnwindEx);R(RtlPcToFileHeader);
   R(SetUnhandledExceptionFilter);R(UnhandledExceptionFilter);R(RaiseException);R(TerminateProcess);R(ExitProcess);
 #undef R
