@@ -67,6 +67,15 @@ class GatedTebWiring(unittest.TestCase):
         self.assertIn("CLOCK_REALTIME", time_source)
         self.assertIn("CLOCK_BOOTTIME", time_source)
 
+    def test_system_info_exact_win64_structure_no_memset_64(self):
+        self.assertIn('#include "ft5955_compat_sysinfo.h"', SOURCE)
+        self.assertIn('reg("GetSystemInfo", (void*)ft5955_GetSystemInfo)', SOURCE)
+        self.assertNotIn("memset(p,0,64)", SOURCE)
+        self.assertNotIn("static void MS sh_GetSystemInfo", SOURCE)
+        self.assertIn("engine/ft5955_compat_sysinfo.c", BUILD)
+        h = (ROOT / "engine" / "ft5955_compat_sysinfo.h").read_text(encoding="utf-8")
+        self.assertIn("_Static_assert(sizeof(ft5955_system_info) == 48", h)
+
     def test_export_resolver_is_bounded(self):
         self.assertIn('#include "ft5955_pe_exports.h"', SOURCE)
         self.assertIn("engine/ft5955_pe_exports.c", BUILD)
