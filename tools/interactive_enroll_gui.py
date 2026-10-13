@@ -106,7 +106,8 @@ class EnrolGUI:
         try:
             self.engine=subprocess.Popen(["bash",str(SCRIPT),str(self.archive)],
                     stdin=subprocess.PIPE,stdout=subprocess.PIPE,
-                    stderr=subprocess.DEVNULL,bufsize=0,cwd=HERE.parent)
+                    stderr=subprocess.PIPE,bufsize=0,cwd=HERE.parent)
+            threading.Thread(target=self.read_engine_diagnostics,daemon=True).start()
             for line in iter(self.engine.stdout.readline,b""):
                 line=line.decode("utf-8","replace").strip()
                 if line=="READY":
@@ -118,6 +119,17 @@ class EnrolGUI:
                 self.events.put(("error","Engine process ended before enrolment completed. Check preflight and sandbox requirements."))
         except Exception as exc:
             self.events.put(("error",f"Engine start failed: {exc}"))
+
+    def read_engine_diagnostics(self):
+        """Consume verbose vendor logs, retaining only raw return codes."""
+        try:
+            for line in iter(self.engine.stderr.readline,b""):
+                msg=line.decode("utf-8","replace")
+                for part in msg.split("[5955] ENROLL_DIAG "):
+                    if part.startswith(("update_hr=","status_hr=")):
+                        self.events.put(("diagnostic",part.splitlines()[0].strip()))
+        except (OSError,ValueError):
+            pass
 
     def next_touches(self):
         if not self.engine_ready.is_set() or self.stop_event.is_set():return
@@ -198,7 +210,11 @@ class EnrolGUI:
                         self.status.set("NOT ENROLLED — engine session ended: "+parts[-1])
                         self.stop()
                 else:
-                    self.events.put(("error",event[1]))
+                    self.events.put(("error",event[1]+"; last result: "+self.last_feedback))
+            elif kind=="diagnostic":
+                self.last_feedback=event[1]
+                # Diagnostics are non-biometric: HRESULTs and rejection codes only.
+                self.status.set("Engine diagnostic: "+event[1])
             elif kind=="sensor":
                 if not self.complete:
                     self.status.set(event[1])
