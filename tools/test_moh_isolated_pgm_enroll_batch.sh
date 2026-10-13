@@ -8,12 +8,19 @@ cd "$(dirname "$0")/.."
 # Optional, strictly offline comparison: invoke the standard WinBio V3
 # SetEnrollmentParameters callback after CreateEnrollment.
 declare -a enrollment_setup_flags=()
-if [[ "${1:-}" == "--with-enrollment-parameters" ]]; then
-  enrollment_setup_flags=(-DFT5955_OFFLINE_SET_ENROLLMENT_PARAMETERS)
-  shift
-fi
+while (( $# > 0 )); do
+  case "$1" in
+    --with-enrollment-parameters)
+      enrollment_setup_flags+=(-DFT5955_OFFLINE_SET_ENROLLMENT_PARAMETERS)
+      shift ;;
+    --with-extended-status)
+      enrollment_setup_flags+=(-DFT5955_OFFLINE_QUERY_EXTENDED_ENROLLMENT_STATUS)
+      shift ;;
+    *) break ;;
+  esac
+done
 if (( $# < 3 || $# > 21 )); then
-  echo "Usage: bash tools/test_moh_isolated_pgm_enroll_batch.sh [--with-enrollment-parameters] vendor.zip sample1.pgm sample2.pgm [...]" >&2
+  echo "Usage: bash tools/test_moh_isolated_pgm_enroll_batch.sh [--with-enrollment-parameters] [--with-extended-status] vendor.zip sample1.pgm sample2.pgm [...]" >&2
   exit 2
 fi
 if [[ ! -f "$1" ]]; then
