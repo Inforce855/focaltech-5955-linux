@@ -51,6 +51,9 @@ class EnrolGUI:
         self.status=tk.StringVar(value="Ready to start. No fingerprint template will be saved.")
         ttk.Label(frame,textvariable=self.status,wraplength=460,justify="center",
                   font=("Sans",11)).pack(pady=10)
+        self.diagnostic=tk.StringVar(value="Last engine result: awaiting first capture")
+        ttk.Label(frame,textvariable=self.diagnostic,wraplength=480,justify="center",
+                  font=("Sans",9)).pack(pady=(0,6))
         self.progress=tk.StringVar(value="Touches: 0   •   Accepted: 0   •   Status: NOT COMPLETE")
         ttk.Label(frame,textvariable=self.progress).pack(pady=3)
         buttons=ttk.Frame(frame)
@@ -93,6 +96,7 @@ class EnrolGUI:
         self.touches=0
         self.added=0
         self.last_feedback="none"
+        self.diagnostic.set("Last engine result: awaiting first capture")
         self.capture_running=False
         self.stop_event.clear()
         self.engine_ready.clear()
@@ -209,7 +213,7 @@ class EnrolGUI:
                         self.draw_target("complete")
                         self.status.set("Enrolment complete in engine memory. No template committed.")
                         self.stop()
-                    self.progress.set(f"Touches: {self.touches}   •   Accepted: {self.added}")
+                    self.update_progress()
                 elif parts[0]=="DONE":
                     if parts[-1]=="complete":
                         self.complete=True
@@ -224,7 +228,7 @@ class EnrolGUI:
             elif kind=="diagnostic":
                 self.last_feedback=event[1]
                 # Diagnostics are non-biometric: HRESULTs and rejection codes only.
-                self.status.set("Engine diagnostic: "+event[1])
+                self.diagnostic.set("Last engine result: "+event[1])
             elif kind=="sensor":
                 if not self.complete:
                     self.status.set(event[1])
