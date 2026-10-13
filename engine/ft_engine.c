@@ -41,6 +41,7 @@
 #include "ft5955_compat_heap.h"
 #include "ft5955_compat_sysinfo.h"
 #include "ft5955_compat_env.h"
+#include "ft5955_compat_slist.h"
 #include "ft5955_compat_teb_layout.h"
 
 typedef uint8_t u8; typedef uint16_t u16; typedef uint32_t u32; typedef uint64_t u64;
@@ -88,9 +89,6 @@ static void reg(const char*n, void*f){ if(nshims>=(int)(sizeof shims/sizeof*shim
 static void* find_shim(const char*n){ for(int i=0;i<nshims;i++) if(!strcmp(shims[i].name,n)) return shims[i].fn; return 0; }
 
 // ================= SHIMS (all MS ABI) =================
-
-static void MS sh_InitSList(void*p){ memset(p,0,16); }
-static void* MS sh_FlushSList(void*p){ return 0; }
 
 
 // process/thread/module
@@ -188,7 +186,9 @@ static void __attribute__((unused)) register_shims(void){
   reg("EnterCriticalSection", (void*)ft5955_EnterCriticalSection);
   reg("LeaveCriticalSection", (void*)ft5955_LeaveCriticalSection);
   reg("DeleteCriticalSection", (void*)ft5955_DeleteCriticalSection);
-  reg("InitializeSListHead",sh_InitSList);reg("InterlockedFlushSList",sh_FlushSList);
+  reg("InitializeSListHead", (void*)ft5955_InitializeSListHead);
+  reg("InterlockedFlushSList", (void*)ft5955_InterlockedFlushSList);
+  reg("InterlockedPushEntrySList", (void*)ft5955_InterlockedPushEntrySList);
   reg("TlsAlloc", (void*)ft5955_TlsAlloc);
   reg("TlsFree", (void*)ft5955_TlsFree);
   reg("TlsGetValue", (void*)ft5955_TlsGetValue);
