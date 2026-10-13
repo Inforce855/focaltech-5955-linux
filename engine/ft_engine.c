@@ -613,6 +613,24 @@ static u32 MS st_QueryBySubject(void*pipe,void*identity,u8 sub){
   if(identity) memcpy(g_rec_identity, identity, sizeof g_rec_identity);
   return g_have_record ? 0 : 0x8009801f; // WINBIO_E_DATABASE_NO_RESULTS
 }
+/* Opt-in offline mock for an initially EMPTY biometric database.
+ * WINBIO_STORAGE_INTERFACE QueryByContent is slot 12 (+0x80), with ABI
+ * (Pipeline, SubFactor, ULONG IndexVector[], SIZE_T IndexElementCount).
+ * Never reads or prints the caller's biometric index vector. The mock
+ * cannot search templates; once a record exists it fails closed.
+ * In the empty case, Microsoft's documented result is
+ * WINBIO_E_DATABASE_NO_RESULTS, rather than generic E_NOTIMPL. */
+#if defined(FT5955_OFFLINE_MOCK_EMPTY_QUERY_BY_CONTENT)
+static unsigned g_storage_query_content_calls = 0;
+static u32 MS st_QueryByContent(void*pipe,u8 subtype,const u32*vector,size_t count){
+  (void)pipe;(void)subtype;(void)vector;(void)count;
+  ++g_storage_query_content_calls;
+  fprintf(stderr,"[storage] QueryByContent -> %s\n",
+          g_have_record?"UNIMPLEMENTED_NONEMPTY":"NO_RESULTS_EMPTY");
+  return g_have_record ? UINT32_C(0x80004001) : UINT32_C(0x8009801f);
+}
+#endif
+
 static u32 MS st_FirstRecord(void*pipe){
   fprintf(stderr,"[storage] FirstRecord -> %s\n", g_have_record?"S_OK":"NO_RESULTS");
   return g_have_record ? 0 : 0x8009801f;
@@ -656,6 +674,9 @@ static void __attribute__((unused)) build_storage_vtable(void){
   }
   g_storage_vt.slots[FT5955_SLOT(0x68)]=(u64)st_AddRecord;
   g_storage_vt.slots[FT5955_SLOT(0x78)]=(u64)st_QueryBySubject;
+#if defined(FT5955_OFFLINE_MOCK_EMPTY_QUERY_BY_CONTENT)
+  g_storage_vt.slots[FT5955_SLOT(0x80)]=(u64)st_QueryByContent;
+#endif
   g_storage_vt.slots[FT5955_SLOT(0x90)]=(u64)st_FirstRecord;
   g_storage_vt.slots[FT5955_SLOT(0x98)]=(u64)st_NextRecord;
   g_storage_vt.slots[FT5955_SLOT(0xa0)]=(u64)st_GetCurrentRecord;
@@ -992,6 +1013,10 @@ int ft_engine_probe_duplicate_offline(void){
   u32 hr=(u32)Check(&pipeline,identity,&subfactor,&duplicate);
   fprintf(stderr,"[5955] DUPLICATE_PROBE hr=0x%08x duplicate=%u\n",
           hr,(unsigned)(duplicate!=0));
+#if defined(FT5955_OFFLINE_MOCK_EMPTY_QUERY_BY_CONTENT)
+  fprintf(stderr,"[5955] DUPLICATE_PROBE mock_content_queries=%u\n",
+          g_storage_query_content_calls);
+#endif
   memset(identity,0,sizeof identity);
   if(hr!=0 || duplicate!=0) return -3;
   return 0;
@@ -1020,6 +1045,10 @@ void ft_engine_probe_commit_offline(void){
                               g_rec_tsize<=sizeof g_rec_template);
   fprintf(stderr,"[5955] COMMIT_PROBE hr=0x%08x record_seen=%u bounded_template=%u add_calls=%u\n",
           hr,received,bounded,g_storage_add_calls);
+#if defined(FT5955_OFFLINE_MOCK_EMPTY_QUERY_BY_CONTENT)
+  fprintf(stderr,"[5955] COMMIT_PROBE mock_content_queries_total=%u\n",
+          g_storage_query_content_calls);
+#endif
   memset(id,0,sizeof id);
   memset(g_rec_identity,0,sizeof g_rec_identity);
   memset(g_rec_template,0,sizeof g_rec_template);
