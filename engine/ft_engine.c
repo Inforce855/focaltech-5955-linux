@@ -861,6 +861,49 @@ int ft_engine_enroll_update(void){
   return -3; /* unrecognised status: NOT proof more data needed */
 }
 
+/* Experimental, offline-only WinBio v3 extended enrolment status (slot 31).
+ * Windows SDK ABI: header 24 bytes, Specific union 352 bytes, total 376.
+ * A padded 4096-byte allocation protects against unexpected vendor writes,
+ * but passes the documented exact size. No biometrics are printed. */
+#if defined(FT5955_OFFLINE_QUERY_EXTENDED_ENROLLMENT_STATUS)
+void ft_engine_log_extended_enrollment_status(void) {
+  if(set_engine_gs_current()!=0) return;
+  size_t iface_size=0;
+  memcpy(&iface_size,(u8*)g_iface+8,sizeof iface_size);
+  if(iface_size<32u+32u*8u) {
+    fprintf(stderr,"[5955] ENROLL_EXT unavailable=interface-too-small\n");
+    return;
+  }
+  u64 (MS *Query)(void*,void*,size_t)=*(void**)((u8*)g_iface+32+31*8);
+  if(!Query) {
+    fprintf(stderr,"[5955] ENROLL_EXT unavailable=null-callback\n");
+    return;
+  }
+  union { u64 alignment; u8 bytes[4096]; } response;
+  memset(&response,0,sizeof response);
+  const size_t status_size=376u;
+  u32 hr=(u32)Query(&pipeline,response.bytes,status_size);
+  fprintf(stderr,"[5955] ENROLL_EXT call_hr=0x%08x\n",hr);
+  if(hr!=0) return;
+  u32 state=0,reject=0,percent=0,factor=0;
+  memcpy(&state,response.bytes+0,4);
+  memcpy(&reject,response.bytes+4,4);
+  memcpy(&percent,response.bytes+8,4);
+  memcpy(&factor,response.bytes+12,4);
+  const u8 subfactor=response.bytes[16];
+  fprintf(stderr,"[5955] ENROLL_EXT template_hr=0x%08x reject=%u percent=%u factor=%u subfactor=%u\n",
+          state,reject,percent,factor,(unsigned)subfactor);
+  if(factor!=8u || percent>100u) {
+    fprintf(stderr,"[5955] ENROLL_EXT counters=unavailable-or-invalid\n");
+    return;
+  }
+  u32 counts[6]={0};
+  for(size_t j=0;j<6;j++) memcpy(&counts[j],response.bytes+24u+4u*j,4);
+  fprintf(stderr,"[5955] ENROLL_EXT general=%u center=%u top=%u bottom=%u left=%u right=%u\n",
+          counts[0],counts[1],counts[2],counts[3],counts[4],counts[5]);
+}
+#endif
+
 static void fill_identity(u8 *id){ memset(id,0,76); *(u32*)id=3; for(int i=0;i<16;i++) id[8+i]=0xA0+i; }
 
 int ft_engine_enroll_commit(uint8_t **out,size_t *outlen){
