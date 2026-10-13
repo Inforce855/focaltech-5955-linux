@@ -19,7 +19,7 @@ from moh_engine_preflight import PIN, archive_engine
 
 IMAGE_BASE = 0x180000000
 ATTACH_RVA = 0x128D20
-MAX_BYTES = 0x400
+MAX_BYTES = 0x1000
 
 def inspect(dll: Path, length: int) -> int:
     if not dll.is_file():
@@ -56,11 +56,11 @@ def inspect(dll: Path, length: int) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("archive", type=Path, help="Private MOH driver ZIP or DLL")
-    parser.add_argument("--bytes", type=lambda x: int(x, 0), default=0x240,
-                        help="Disassembly window, 0x40 to 0x400 (default 0x240)")
+    parser.add_argument("--bytes", type=lambda x: int(x, 0), default=0x800,
+                        help="Disassembly window, 0x40 to 0x1000 (default 0x800)")
     args = parser.parse_args()
     if not 0x40 <= args.bytes <= MAX_BYTES:
-        parser.error("--bytes must be between 0x40 and 0x400")
+        parser.error("--bytes must be between 0x40 and 0x1000")
     try:
         if args.archive.suffix.lower() == ".zip":
             with tempfile.TemporaryDirectory(prefix="ft5955-disasm-") as temp:
