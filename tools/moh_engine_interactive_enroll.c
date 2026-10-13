@@ -39,7 +39,7 @@ int main(int argc,char **argv) {
     int status=ft_engine_enroll_update();
     if(status==0) { printf("TOUCH %d complete\n",i); puts("DONE complete"); return 0; }
     if(status==1) { printf("TOUCH %d added\n",i); continue; }
-    if(status==2) { printf("TOUCH %d reposition\n",i); continue; }
+    if(status==2) { printf("TOUCH %d rejected\n",i); continue; }
     printf("ERROR enrollment-%d\n",status);
     return 3;
   }
