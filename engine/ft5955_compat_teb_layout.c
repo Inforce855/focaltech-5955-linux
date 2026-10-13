@@ -51,6 +51,9 @@ static void prepare_process(void)
 }
 int ft5955_teb_prepare_current(void)
 {
+    /* Re-entering the engine on the same pthread must preserve CRT TLS data. */
+    if (current.prepared)
+        return 0;
     pthread_attr_t attr;
     void *stack_low = NULL;
     size_t stack_size = 0;
