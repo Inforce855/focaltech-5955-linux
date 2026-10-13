@@ -15,6 +15,7 @@ probe_commit=0
 skip_status=0
 duplicate_check=0
 mock_content_query=0
+verify_after_commit=0
 while (( $# > 0 )); do
   case "$1" in
     --windows-bir-direct)
@@ -49,6 +50,10 @@ while (( $# > 0 )); do
       mock_content_query=1
       enrollment_setup_flags+=(-DFT5955_OFFLINE_MOCK_EMPTY_QUERY_BY_CONTENT)
       shift ;;
+    --verify-after-commit)
+      verify_after_commit=1
+      enrollment_setup_flags+=(-DFT5955_OFFLINE_VERIFY_AFTER_COMMIT)
+      shift ;;
     --invert-pixels)
       enrollment_setup_flags+=(-DFT5955_OFFLINE_INVERT_INPUT_PIXELS)
       shift ;;
@@ -65,7 +70,7 @@ while (( $# > 0 )); do
   esac
 done
 if (( $# < 2 || $# > 21 )); then
-  echo "Usage: bash tools/test_moh_isolated_pgm_enroll_batch.sh [--windows-bir-direct|--windows-bir-synthetic] [--invert-pixels] [--completion-from-update] [--skip-enrollment-status] [--probe-commit-in-memory] [--with-duplicate-check] [--mock-empty-content-query] [--with-enrollment-parameters] [--with-extended-status] [--with-sample-hint] vendor.zip sample1.pgm [...], or vendor.zip one_private.bir" >&2
+  echo "Usage: bash tools/test_moh_isolated_pgm_enroll_batch.sh [--windows-bir-direct|--windows-bir-synthetic] [--invert-pixels] [--completion-from-update] [--skip-enrollment-status] [--probe-commit-in-memory] [--with-duplicate-check] [--mock-empty-content-query] [--verify-after-commit] [--with-enrollment-parameters] [--with-extended-status] [--with-sample-hint] vendor.zip sample1.pgm [...], or vendor.zip one_private.bir" >&2
   exit 2
 fi
 if [[ ! -f "$1" ]]; then
@@ -74,6 +79,10 @@ if [[ ! -f "$1" ]]; then
 fi
 if (( (skip_status || probe_commit) && ! completion_from_update )); then
   echo "ERROR: --probe-commit-in-memory and --skip-enrollment-status require --completion-from-update." >&2
+  exit 2
+fi
+if (( verify_after_commit && (!probe_commit || !duplicate_check || !mock_content_query || !skip_status || !completion_from_update) )); then
+  echo "ERROR: --verify-after-commit requires --probe-commit-in-memory --with-duplicate-check --mock-empty-content-query --skip-enrollment-status --completion-from-update." >&2
   exit 2
 fi
 if (( mock_content_query && ! duplicate_check )); then
