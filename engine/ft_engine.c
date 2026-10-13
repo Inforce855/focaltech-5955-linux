@@ -861,6 +861,33 @@ int ft_engine_enroll_update(void){
   return -3; /* unrecognised status: NOT proof more data needed */
 }
 
+/* Optional read-only offline diagnostic: WinBio V1 QuerySampleHint slot 7.
+ * Does not return biometric content or alter enrollment state. */
+#if defined(FT5955_OFFLINE_QUERY_SAMPLE_HINT)
+void ft_engine_log_sample_hint(void) {
+  if(set_engine_gs_current()!=0 || !g_iface) return;
+  size_t iface_size=0;
+  memcpy(&iface_size,(u8*)g_iface+8,sizeof iface_size);
+  if(iface_size<32u+8u*8u) {
+    fprintf(stderr,"[5955] ENROLL_HINT unavailable=interface-too-small\n");
+    return;
+  }
+  u64 (MS *QueryHint)(void*,size_t*)=*(void**)((u8*)g_iface+32u+7u*8u);
+  if(!QueryHint) {
+    fprintf(stderr,"[5955] ENROLL_HINT unavailable=null-callback\n");
+    return;
+  }
+  size_t hint=0;
+  u32 hr=(u32)QueryHint(&pipeline,&hint);
+  fprintf(stderr,"[5955] ENROLL_HINT query_hr=0x%08x",hr);
+  if(hr==0 && hint>0 && hint<=128u) {
+    fprintf(stderr," samples=%zu\n",hint);
+  } else {
+    fprintf(stderr," samples=unavailable\n");
+  }
+}
+#endif
+
 /* Experimental, offline-only WinBio v3 extended enrolment status (slot 31).
  * Windows SDK ABI: header 24 bytes, Specific union 352 bytes, total 376.
  * A padded 4096-byte allocation protects against unexpected vendor writes,
