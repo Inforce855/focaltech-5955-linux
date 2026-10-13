@@ -181,6 +181,36 @@ An optional *build-only* command exists:
 This builds native/build/ft5955_moh_smoke but never loads a proprietary DLL.
 **Do not execute the smoke binary yet on the live workstation.**
 
+## Existing-shim correctness audit: per-thread GetLastError
+
+The FT9201 baseline stored its Windows `GetLastError` value in a **single
+global variable**, so errors from simultaneous matcher threads could
+overwrite one another. We replaced the Win32 ABI `GetLastError` and
+`SetLastError` entry points with C11 `_Thread_local` storage in
+`engine/ft5955_compat_error.[ch]`. The existing `TlsGetValue` success
+path resets **only the current thread's** last-error value; the
+failure-only `CreateFileW` placeholder sets the current thread's
+ERROR_FILE_NOT_FOUND (2) value.
+
+These changes do **not** add any new imports: expected registered coverage
+remains **86/110**, with 24 absent. The multi-threaded test isolates two
+worker threads and checks that neither can overwrite the other or the main
+thread:
+
+    cc -std=c11 -O2 -Wall -Wextra -Werror -pthread -Iengine \\
+      engine/ft5955_compat_error.c tests/test_moh_compat_error.c \\
+      -o /tmp/ft5955_error_test
+    /tmp/ft5955_error_test
+    bash tools/build_moh_engine_smoke.sh
+
+The test was compiled and executed in the development sandbox; the full
+loader build must also be checked on Nobara. As with the critical-section
+bridge, this implements the **imported API behaviour**, not full
+Windows TEB emulation: code that reads `NtCurrentTeb()->LastErrorValue`
+directly would still need compatible per-thread TEB state. The inherited
+`TlsAlloc`/`TlsGetValue` array is likewise not yet a true per-thread TLS
+implementation. **Do not enable Windows DLL execution yet.**
+
 ## Existing-shim correctness audit: Win32 CRITICAL_SECTION
 
 The borrowed FT9201 loader's **five critical-section entries were no-ops**.
