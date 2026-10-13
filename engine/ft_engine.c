@@ -868,6 +868,17 @@ int ft_engine_enroll_update(void){
   u32 srej=0; u64 shr=Status(&pipeline,&srej);
   fprintf(stderr,"[5955] ENROLL_DIAG status_hr=0x%08x status_reject=%u\n",
           (u32)shr,srej);
+#if defined(FT5955_OFFLINE_COMPLETION_FROM_UPDATE)
+  /* The documented Windows EnrollCapture adapter workflow uses the
+   * UpdateEnrollment HRESULT for its capture-completion decision.
+   * This optional OFFLINE experiment retains GetEnrollmentStatus as an
+   * independent diagnostic but does not let it override UpdateEnrollment.
+   * Neither S_OK nor this policy establishes a committed/verified template. */
+  fprintf(stderr,"[5955] ENROLL_DIAG completion_policy=update_hresult\n");
+  if((u32)uhr==0) return 0;
+  if((u32)uhr==0x00090001u) return 1;
+  return -4;
+#endif
   if((u32)shr==0) return 0;           /* S_OK: ready to commit */
   if((u32)shr==0x00090001u) return 1; /* WINBIO_I_MORE_DATA */
   if((u32)shr==0x80098008u || srej) return 2; /* rejected */
