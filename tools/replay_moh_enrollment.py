@@ -37,8 +37,8 @@ def summarize(log, files):
         if not 1<=index<=len(files):
             print("Invalid per-sample marker; stopping.",file=sys.stderr)
             return False
-        quality=matched(r"focal_SendImageAndGetQualityAreaCond[^\\n]*?quality = (\d+)",section)
-        area=matched(r"focal_SendImageAndGetQualityAreaCond[^\\n]*?area = (\d+)",section)
+        quality=matched(r"focal_SendImageAndGetQualityAreaCond\.\.\.quality = (\d+)",section)
+        area=matched(r"focal_SendImageAndGetQualityAreaCond\.\.\.quality = \d+, area = (\d+)",section)
         scores=re.findall(r"FtVerifyByTemplate\.\.\.leave, gVerifyScores = (\d+)",section)
         score=scores[-1] if scores else "-"
         if score not in ("-","0"):found_match=True
