@@ -18,6 +18,9 @@ extern void ft_engine_log_sample_hint(void);
 #if defined(FT5955_OFFLINE_PROBE_COMMIT)
 extern void ft_engine_probe_commit_offline(void);
 #endif
+#if defined(FT5955_OFFLINE_PROBE_DUPLICATE)
+extern int ft_engine_probe_duplicate_offline(void);
+#endif
 #if defined(FT5955_OFFLINE_QUERY_EXTENDED_ENROLLMENT_STATUS)
 extern void ft_engine_log_extended_enrollment_status(void);
 #endif
@@ -192,8 +195,19 @@ int main(int argc,char **argv)
         if(update==0){
             fprintf(stderr,"[5955] Capture collection reached UpdateEnrollment S_OK.\\n");
 #if defined(FT5955_OFFLINE_PROBE_COMMIT)
+#if defined(FT5955_OFFLINE_PROBE_DUPLICATE)
+            fprintf(stderr,"[5955] DOCUMENTED_COMMIT_WORKFLOW duplicate check before commit.\\n");
+            int preflight=ft_engine_probe_duplicate_offline();
+            if(preflight==0){
+                fprintf(stderr,"[5955] Attempting experimental CommitEnrollment into mock storage ONLY.\\n");
+                ft_engine_probe_commit_offline();
+            } else {
+                fprintf(stderr,"[5955] COMMIT_PROBE skipped=duplicate-preflight-blocked.\\n");
+            }
+#else
             fprintf(stderr,"[5955] Attempting experimental CommitEnrollment into mock storage ONLY.\\n");
             ft_engine_probe_commit_offline();
+#endif
 #else
             fprintf(stderr,"[5955] No CommitEnrollment performed.\\n");
 #endif
