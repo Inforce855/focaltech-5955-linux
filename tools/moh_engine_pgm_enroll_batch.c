@@ -12,6 +12,9 @@
 #define MAX_DIM 2048
 #define MAX_PIXELS (MAX_DIM*MAX_DIM)
 #define BAD_CAPTURE UINT32_C(0x80098008)
+#if defined(FT5955_OFFLINE_QUERY_SAMPLE_HINT)
+extern void ft_engine_log_sample_hint(void);
+#endif
 #if defined(FT5955_OFFLINE_QUERY_EXTENDED_ENROLLMENT_STATUS)
 extern void ft_engine_log_extended_enrollment_status(void);
 #endif
@@ -82,6 +85,9 @@ int main(int argc,char **argv)
     int status=ft_engine_open(argv[2]);
     fprintf(stderr,"[5955] Attach wrapper status: %d\\n",status);
     if(status!=0) return 1;
+#if defined(FT5955_OFFLINE_QUERY_SAMPLE_HINT)
+    ft_engine_log_sample_hint();
+#endif
     if(ft_engine_enroll_begin()!=0) {
         fprintf(stderr,"[5955] CreateEnrollment failed; stopping offline replay.\n");
         return 3;
