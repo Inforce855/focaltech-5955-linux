@@ -34,7 +34,7 @@ Read-only static comparison on the exact MOH DLL:
   QueryPerformanceFrequency, Sleep, GetLocalTime, GetCurrentThread and
   GetConsoleOutputCP. QueryPerformanceCounter also now uses the same real
   nanosecond monotonic clock as QueryPerformanceFrequency.
-- **Expected after this patch: 85/110 names covered, 25 still missing**.
+- **Expected after this patch: 86/110 names covered, 24 still missing**.
   Four FLS APIs now use a pthread-backed per-thread implementation with
   tested thread isolation, re-use and callback cleanup. This does not
   emulate multiple Windows fibers sharing one pthread; that behavior and
@@ -63,7 +63,7 @@ temporarily extracts that private DLL, verifies its SHA256, calls objdump on its
 import table, compares imports to registered loader shims and cleans up.
 You can alternatively supply the private MOH DLL path directly.
 
-Its expected current result is **85/110 covered, 25 missing** and exit status 1.
+Its expected current result is **86/110 covered, 24 missing** and exit status 1.
 That exit status indicates a *correctly enforced import gate*, not a test crash.
 No USB calls, enrolment, fingerprint images, templates or authentication changes.
 
@@ -90,6 +90,24 @@ locales fail closed. The isolated locale test is:
       engine/ft5955_compat_locale.c tests/test_moh_compat_locale.c \\
       -o /tmp/ft5955_compat_locale_test
     /tmp/ft5955_compat_locale_test
+
+GetTempPathW is the first filesystem-adjacent shim. It reports a
+**synthetic Windows path** (C:\\Windows\\Temp\\) and honours the Win32
+buffer-size contract, but it does **not** map that path onto Linux or permit
+filesystem writes. The inherited CreateFileW remains a failure-only shim.
+Test it offline:
+
+    cc -std=c11 -O2 -Wall -Wextra -Werror -Iengine \\
+      engine/ft5955_compat_temp.c tests/test_moh_compat_temp.c \\
+      -o /tmp/ft5955_compat_temp_test
+    /tmp/ft5955_compat_temp_test
+
+**Additional safeguard:** even if import-name coverage eventually reaches
+110/110, the default ft_engine_smoke_interface entry point is now blocked
+unless the source is deliberately built with
+FT5955_ALLOW_DLL_EXECUTION_AFTER_AUDIT. Do NOT use that compile-time option
+until the inherited FT9201 shims, PE bounds and the 5955 WinBio ABI have
+been reviewed. The 5955-specific Attach path remains separately disabled.
 
 CompareStringW now has a bounded *experimental* ASCII-only implementation
 with Windows-x64 ABI, Win32 return values (1/2/3, error 0), a 4096-code-unit
@@ -133,7 +151,7 @@ Test this separately:
       -o /tmp/ft5955_compat_locale_info_test
     /tmp/ft5955_compat_locale_info_test
 
-**Important:** 85/110 means **registered API names**, not 83 APIs fully
+**Important:** 86/110 means **registered API names**, not 83 APIs fully
 compatible with the real DLL. The inherited FT9201 shims contain mock
 Windows handles, no-op critical sections and other approximations whose
 semantics must be audited before any engine execution. Even the new locale
