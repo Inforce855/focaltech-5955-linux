@@ -11,9 +11,9 @@ checks = [
      "FT5955_ALLOW_DLL_EXECUTION_AFTER_AUDIT" in source),
     ("Typed WinBio pipeline declared",
      "static ft5955_winbio_pipeline pipeline;" in source),
-    ("SensorInterface assigned", "pipeline.sensor_interface=g_sensor_vt;" in source),
+    ("SensorInterface assigned", "pipeline.sensor_interface=&g_sensor_vt;" in source),
     ("EngineInterface assigned", "pipeline.engine_interface=iface;" in source),
-    ("StorageInterface assigned", "pipeline.storage_interface=g_storage_vt;" in source),
+    ("StorageInterface assigned", "pipeline.storage_interface=&g_storage_vt;" in source),
     ("Unverified engine context writes removed",
      "*(u32*)(ctx+0x24)" not in source and
      "*(u32*)(ctx+0x28)" not in source),
