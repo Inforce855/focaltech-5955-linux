@@ -29,6 +29,7 @@
 #include "ft5955_compat_locale.h"
 #include "ft5955_compat_datetime.h"
 #include "ft5955_compat_compare.h"
+#include "ft5955_compat_temp.h"
 
 typedef uint8_t u8; typedef uint16_t u16; typedef uint32_t u32; typedef uint64_t u64;
 #define MS __attribute__((ms_abi))
@@ -206,6 +207,7 @@ static void register_shims(void){
   reg("GetUserDefaultLCID", (void*)ft5955_GetUserDefaultLCID);
   reg("IsValidLocale", (void*)ft5955_IsValidLocale);
   reg("GetLocaleInfoW", (void*)ft5955_GetLocaleInfoW);
+  reg("GetTempPathW", (void*)ft5955_GetTempPathW);
   reg("CompareStringW", (void*)ft5955_CompareStringW);
   reg("EnumSystemLocalesW", (void*)ft5955_EnumSystemLocalesW);
   reg("GetDateFormatW", (void*)ft5955_GetDateFormatW);
@@ -471,6 +473,11 @@ static int g_loaded __attribute__((unused)) = 0;
 /* Experimental 5955-only interface smoke-test. Does NOT Attach, enroll or
  * use USB. Run only in an offline, isolated test environment. */
 int ft_engine_smoke_interface(const char *dll_path){
+#ifndef FT5955_ALLOW_DLL_EXECUTION_AFTER_AUDIT
+  (void)dll_path;
+  fprintf(stderr,"[5955] BLOCKED: runtime shim and MOH engine ABI audit not yet complete\\n");
+  return -100;
+#else
   g_dllpath=dll_path;
   register_shims();
   if(load_pe()!=0) return -1;
@@ -481,6 +488,7 @@ int ft_engine_smoke_interface(const char *dll_path){
   if((u32)Query(&iface)!=0 || !iface) return -3;
   fprintf(stderr,"[5955] WbioQueryEngineInterface returned a non-null interface\n");
   return 0;
+#endif /* FT5955_ALLOW_DLL_EXECUTION_AFTER_AUDIT */
 }
 
 int ft_engine_open(const char *dll_path){
