@@ -598,6 +598,9 @@ static u8  g_rec_identity[76];
 static u8  g_rec_template[1<<20];   // enrollment template can be ~200KB (up to 18 sub-tpls)
 static u64 g_rec_tsize = 0;
 static int g_have_record = 0;
+#if defined(FT5955_OFFLINE_VERIFY_AFTER_COMMIT)
+static u8 g_rec_subfactor = 0;
+#endif
 #if defined(FT5955_OFFLINE_PROBE_COMMIT)
 static unsigned g_storage_add_calls = 0;
 #endif
@@ -608,10 +611,21 @@ static unsigned g_storage_add_calls = 0;
 
 
 static u32 MS st_QueryBySubject(void*pipe,void*identity,u8 sub){
+#if defined(FT5955_OFFLINE_VERIFY_AFTER_COMMIT)
+  /* Read-only lookup against the single previously committed private record.
+   * The old placeholder copied the QUERY identity into stored identity,
+   * which could fabricate a match and must not occur during this test. */
+  const int found=g_have_record && identity &&
+      memcmp(identity,g_rec_identity,sizeof g_rec_identity)==0 &&
+      sub==g_rec_subfactor;
+  fprintf(stderr,"[storage] QueryBySubject -> %s\n",found?"FOUND":"NO_RESULTS");
+  return found ? 0 : UINT32_C(0x8009801f);
+#else
   fprintf(stderr,"[storage] QueryBySubject(sub=%u) -> %s\n", sub,
           g_have_record?"S_OK":"NO_RESULTS");
   if(identity) memcpy(g_rec_identity, identity, sizeof g_rec_identity);
   return g_have_record ? 0 : 0x8009801f; // WINBIO_E_DATABASE_NO_RESULTS
+#endif
 }
 /* Opt-in offline mock for an initially EMPTY biometric database.
  * WINBIO_STORAGE_INTERFACE QueryByContent is slot 12 (+0x80), with ABI
@@ -640,9 +654,13 @@ static u32 MS st_NextRecord(void*pipe){
   return 0x80098020; // single-record store: always end after the first
 }
 static u32 MS st_GetCurrentRecord(void*pipe,u8*rec){
-  fprintf(stderr,"[storage] GetCurrentRecord (tsize=%lu)\n",(unsigned long)g_rec_tsize);
+  if(!rec || !g_have_record || g_rec_tsize==0) return UINT32_C(0x8009801f);
+  fprintf(stderr,"[storage] GetCurrentRecord (template present)\n");
   memset(rec,0,0x40);
   *(u64*)(rec+0x00)=(u64)g_rec_identity;
+#if defined(FT5955_OFFLINE_VERIFY_AFTER_COMMIT)
+  rec[0x08]=g_rec_subfactor;
+#endif
   *(u64*)(rec+0x20)=(u64)g_rec_template;
   *(u64*)(rec+0x28)=g_rec_tsize;
   return 0;
@@ -655,6 +673,9 @@ static u32 MS st_AddRecord(void*pipe,u8*rec,u8 sub){
   u64 idp=*(u64*)(rec+0x00);
   fprintf(stderr,"[storage] AddRecord(sub=%u) template=%#lx size=%lu\n",sub,(unsigned long)tp,(unsigned long)ts);
   if(idp) memcpy(g_rec_identity,(void*)idp,sizeof g_rec_identity);
+#if defined(FT5955_OFFLINE_VERIFY_AFTER_COMMIT)
+  g_rec_subfactor=rec[0x08];
+#endif
   if(tp && ts && ts<=sizeof g_rec_template){ memcpy(g_rec_template,(void*)tp,ts); g_rec_tsize=ts; g_have_record=1; }
   return 0;
 }
@@ -1029,10 +1050,10 @@ int ft_engine_probe_duplicate_offline(void){
  * Correct Windows x64 signature: Pipeline, Identity, SubFactor, PayloadBlob,
  * PayloadBlobSize (older wrapper incorrectly passed only three arguments). */
 #if defined(FT5955_OFFLINE_PROBE_COMMIT)
-void ft_engine_probe_commit_offline(void){
+int ft_engine_probe_commit_offline(void){
   if(set_engine_gs_current()!=0 || !g_iface){
     fprintf(stderr,"[5955] COMMIT_PROBE unavailable=engine-state\n");
-    return;
+    return 0;
   }
   u8 id[76]; fill_identity(id);
   g_have_record=0; g_rec_tsize=0;
@@ -1045,6 +1066,13 @@ void ft_engine_probe_commit_offline(void){
                               g_rec_tsize<=sizeof g_rec_template);
   fprintf(stderr,"[5955] COMMIT_PROBE hr=0x%08x record_seen=%u bounded_template=%u add_calls=%u\n",
           hr,received,bounded,g_storage_add_calls);
+  const int ready=(hr==0 && bounded);
+#if defined(FT5955_OFFLINE_VERIFY_AFTER_COMMIT)
+  if(ready){
+    memset(id,0,sizeof id);
+    return 1; /* hold the private template only until offline verification ends */
+  }
+#endif
 #if defined(FT5955_OFFLINE_MOCK_EMPTY_QUERY_BY_CONTENT)
   fprintf(stderr,"[5955] COMMIT_PROBE mock_content_queries_total=%u\n",
           g_storage_query_content_calls);
@@ -1053,6 +1081,40 @@ void ft_engine_probe_commit_offline(void){
   memset(g_rec_identity,0,sizeof g_rec_identity);
   memset(g_rec_template,0,sizeof g_rec_template);
   g_rec_tsize=0; g_have_record=0;
+  return 0;
+}
+#endif
+
+#if defined(FT5955_OFFLINE_VERIFY_AFTER_COMMIT)
+/* Use fresh (held-out) already-captured frame features against a committed
+ * in-memory template. ABI from PIBIO_ENGINE_VERIFY_FEATURE_SET_FN:
+ * 64-bit SIZE_T outputs, Boolean Match byte, ULONG reject detail.
+ * Never log payload/hash/identity/templates/pixel data. */
+void ft_engine_probe_verify_current_offline(int sample_index){
+  if(set_engine_gs_current()!=0 || !g_iface || !g_have_record ||
+     g_rec_tsize==0 || g_rec_tsize>sizeof g_rec_template){
+    fprintf(stderr,"[5955] VERIFY_PROBE sample=%d unavailable=template-state\n",sample_index);
+    return;
+  }
+  u8 id[76]; fill_identity(id);
+  u8 match=0, *payload=NULL, *hash=NULL;
+  size_t payload_size=0, hash_size=0;
+  u32 reject=0;
+  u64 (MS *Verify)(void*,const void*,u8,u8*,u8**,size_t*,u8**,size_t*,u32*)=
+      *(void**)((u8*)g_iface+32+10*8);
+  u32 hr=(u32)Verify(&pipeline,id,g_rec_subfactor,&match,&payload,
+                     &payload_size,&hash,&hash_size,&reject);
+  fprintf(stderr,"[5955] VERIFY_PROBE sample=%d hr=0x%08x match=%u reject=%u\n",
+          sample_index,hr,(unsigned)(match!=0),reject);
+  memset(id,0,sizeof id);
+}
+
+void ft_engine_probe_wipe_offline(void){
+  memset(g_rec_identity,0,sizeof g_rec_identity);
+  memset(g_rec_template,0,sizeof g_rec_template);
+  g_rec_tsize=0;
+  g_rec_subfactor=0;
+  g_have_record=0;
 }
 #endif
 
