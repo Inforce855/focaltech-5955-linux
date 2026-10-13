@@ -60,9 +60,9 @@ $hr=[Focal5955.WinBioCapture]::WinBioOpenSession(
     [IntPtr]::Zero, [UIntPtr]::Zero, [IntPtr]::new(1),
     [ref]$session
 )
-Write-Host ('WinBioOpenSession HRESULT: 0x{0:X8}' -f [uint32]$hr)
+Write-Host ('WinBioOpenSession HRESULT: 0x{0:X8}' -f [BitConverter]::ToUInt32([BitConverter]::GetBytes([int32]$hr),0))
 if ($hr -ne 0) {
-    if ([uint32]$hr -eq 0x80070005) { Write-Host 'ACCESS DENIED: administrator privileges or sensor permissions.' }
+    if ([BitConverter]::ToUInt32([BitConverter]::GetBytes([int32]$hr),0) -eq 0x80070005) { Write-Host 'ACCESS DENIED: administrator privileges or sensor permissions.' }
     return
 }
 try {
@@ -71,10 +71,10 @@ try {
         $session,$purpose,[byte]$modeFlag,
         [ref]$unit,[ref]$sample,[ref]$sampleSize,[ref]$reject
     )
-    Write-Host ('WinBioCaptureSample HRESULT: 0x{0:X8}' -f [uint32]$hr)
+    Write-Host ('WinBioCaptureSample HRESULT: 0x{0:X8}' -f [BitConverter]::ToUInt32([BitConverter]::GetBytes([int32]$hr),0))
     Write-Host ("Sensor unit: {0}  Reject reason: {1}" -f $unit,$reject)
     if ($hr -ne 0) {
-        switch ([uint32]$hr) {
+        switch ([BitConverter]::ToUInt32([BitConverter]::GetBytes([int32]$hr),0)) {
             0x80070005 { Write-Host 'ACCESS DENIED: raw sample access was refused.' }
             0x80004001 { Write-Host 'E_NOTIMPL: this sensor does not support the capture mode.' }
             0x80098008 { Write-Host 'BAD_CAPTURE: try a separate fresh press.' }
