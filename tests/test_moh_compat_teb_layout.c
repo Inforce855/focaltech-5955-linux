@@ -2,6 +2,7 @@
  * Offline per-thread TEB/PEB x64 layout test with actual Linux stack bounds.
  * Does NOT install GS, execute Windows DLL code or touch fingerprint files.
  */
+#define _POSIX_C_SOURCE 200809L
 #include "ft5955_compat_teb_layout.h"
 #include <assert.h>
 #include <pthread.h>
