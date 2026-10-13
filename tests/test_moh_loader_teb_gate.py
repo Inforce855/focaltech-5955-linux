@@ -27,9 +27,18 @@ class GatedTebWiring(unittest.TestCase):
         self.assertNotIn("g_tls_block[", SOURCE)
         self.assertNotIn("cbaddr", LOADER)
         self.assertNotIn("g_tls_array", LOADER)
-        self.assertIn('if(tlsrva){', LOADER)
-        self.assertIn("PE TLS directory/callbacks not audited", LOADER)
-        self.assertLess(LOADER.index("if(tlsrva){"), LOADER.index("g_image=m;"))
+        self.assertIn("ft5955_pe_guard(g_file,(size_t)g_filelen,&layout)", LOADER)
+        self.assertIn("PE headers/sections invalid or unsupported", LOADER)
+        self.assertIn("engine/ft5955_pe_guard.c", BUILD)
+        self.assertLess(LOADER.index("ft5955_pe_guard("), LOADER.index("img=calloc"))
+        self.assertLess(LOADER.index("ft5955_pe_guard("), LOADER.index("g_image=m;"))
+
+    def test_import_walk_is_bounded(self):
+        self.assertIn("layout.import_size", LOADER)
+        self.assertIn("invalid/unterminated import descriptors", LOADER)
+        self.assertIn("invalid import-function name", LOADER)
+        self.assertLess(LOADER.index("invalid import-function name"),
+                        LOADER.index("int mfd=memfd_create("))
 
     def test_import_gate_and_thread_setup_before_dllmain(self):
         self.assertLess(LOADER.index("if(unresolved_imports)"),
