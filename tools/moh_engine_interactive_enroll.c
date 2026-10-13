@@ -2,7 +2,8 @@
  * Interactive, session-persistent isolated MOH enrolment.
  * Binary stdin: 5120 bytes per 64x80 P5-derived grayscale frame.
  * Machine-readable stdout: READY, TOUCH <n> <state>, DONE.
- * No template commit, storage, USB, image printing or network.
+ * Optional guarded in-memory commit to mock storage, with immediate wipe;
+ * no real biometric database, USB inside sandbox, image printing or network.
  */
 #include "ft_engine.h"
 #include <stdint.h>
@@ -12,6 +13,10 @@
 #define W 64
 #define H 80
 #define BAD_CAPTURE UINT32_C(0x80098008)
+#if defined(FT5955_OFFLINE_INTERACTIVE_COMPLETE_WORKFLOW)
+extern int ft_engine_probe_duplicate_offline(void);
+extern int ft_engine_probe_commit_offline(void);
+#endif
 static int get_frame(uint8_t *data) {
   size_t filled=0;
   while (filled<W*H) {
@@ -37,7 +42,21 @@ int main(int argc,char **argv) {
     if(hr==BAD_CAPTURE) { printf("TOUCH %d bad-capture\n",i); continue; }
     if(hr) { printf("ERROR accept-%08x\n",(unsigned)hr); return 3; }
     int status=ft_engine_enroll_update();
-    if(status==0) { printf("TOUCH %d complete\n",i); puts("DONE complete"); return 0; }
+    if(status==0) {
+#if defined(FT5955_OFFLINE_INTERACTIVE_COMPLETE_WORKFLOW)
+      /* A ready capture count alone is not a completed enrollment.
+       * Follow tested Windows commit sequence through mock storage. */
+      int duplicate=ft_engine_probe_duplicate_offline();
+      if(duplicate!=0) { puts("ERROR duplicate-preflight"); return 3; }
+      if(ft_engine_probe_commit_offline()!=1) {
+        puts("ERROR commit-not-confirmed");
+        return 3;
+      }
+#endif
+      printf("TOUCH %d complete\n",i);
+      puts("DONE complete");
+      return 0;
+    }
     if(status==1) { printf("TOUCH %d added\n",i); continue; }
     if(status==2) { printf("TOUCH %d rejected\n",i); continue; }
     printf("ERROR enrollment-%d\n",status);
