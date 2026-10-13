@@ -30,6 +30,7 @@
 #include "ft5955_compat_datetime.h"
 #include "ft5955_compat_compare.h"
 #include "ft5955_compat_temp.h"
+#include "ft5955_compat_cs.h"
 
 typedef uint8_t u8; typedef uint16_t u16; typedef uint32_t u32; typedef uint64_t u64;
 #define MS __attribute__((ms_abi))
@@ -80,11 +81,6 @@ static u64   MS sh_HeapSize(void*h,u32 f,void*p){ return 0; }
 static int   MS sh_HeapValidate(void*h,u32 f,void*p){ return 1; }
 static int   MS sh_HeapQueryInformation(void*h,int c,void*b,u64 l,u64*r){ return 0; }
 
-static void MS sh_InitCS(void*p){ }
-static u32  MS sh_InitCSSpin(void*p,u32 s){ return 1; }
-static void MS sh_EnterCS(void*p){ }
-static void MS sh_LeaveCS(void*p){ }
-static void MS sh_DeleteCS(void*p){ }
 static void MS sh_InitSList(void*p){ memset(p,0,16); }
 static void* MS sh_FlushSList(void*p){ return 0; }
 
@@ -186,8 +182,11 @@ static void __attribute__((unused)) register_shims(void){
 #define R(n) reg(#n, (void*)sh_##n)
   R(SetLastError);R(GetLastError);R(GetProcessHeap);R(HeapAlloc);R(HeapFree);R(HeapReAlloc);
   R(HeapSize);R(HeapValidate);R(HeapQueryInformation);
-  reg("InitializeCriticalSection",sh_InitCS);reg("InitializeCriticalSectionAndSpinCount",sh_InitCSSpin);
-  reg("EnterCriticalSection",sh_EnterCS);reg("LeaveCriticalSection",sh_LeaveCS);reg("DeleteCriticalSection",sh_DeleteCS);
+  reg("InitializeCriticalSection", (void*)ft5955_InitializeCriticalSection);
+  reg("InitializeCriticalSectionAndSpinCount", (void*)ft5955_InitializeCriticalSectionAndSpinCount);
+  reg("EnterCriticalSection", (void*)ft5955_EnterCriticalSection);
+  reg("LeaveCriticalSection", (void*)ft5955_LeaveCriticalSection);
+  reg("DeleteCriticalSection", (void*)ft5955_DeleteCriticalSection);
   reg("InitializeSListHead",sh_InitSList);reg("InterlockedFlushSList",sh_FlushSList);
   R(TlsAlloc);R(TlsFree);R(TlsGetValue);R(TlsSetValue);
   reg("FlsAlloc", (void*)ft5955_FlsAlloc);
