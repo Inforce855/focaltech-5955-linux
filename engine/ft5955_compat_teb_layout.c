@@ -10,6 +10,8 @@
 #include <pthread.h>
 #include <stdint.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/syscall.h>
 
 /* Windows x64 ABI offsets observed in original 5955 MOH image:
  * TEB+0x08 StackBase; TEB+0x10 StackLimit; TEB+0x30 Self;
@@ -36,6 +38,10 @@ static void store_ptr(uint8_t *base, size_t offset, const void *value)
     memcpy(base + offset, &address, sizeof address);
 }
 static void store_u32(uint8_t *base, size_t offset, uint32_t value)
+{
+    memcpy(base + offset, &value, sizeof value);
+}
+static void store_u64(uint8_t *base, size_t offset, uint64_t value)
 {
     memcpy(base + offset, &value, sizeof value);
 }
@@ -75,6 +81,10 @@ int ft5955_teb_prepare_current(void)
 
     if (pthread_once(&process_once, prepare_process) != 0)
         return -5;
+    const pid_t pid = getpid();
+    const long tid = syscall(SYS_gettid);
+    if (pid <= 0 || tid <= 0 || (uint64_t)tid > UINT32_MAX)
+        return -6;
     /* Entire TEB and TLS area must be private to the current pthread. */
     memset(current.teb, 0, sizeof current.teb);
     memset(current.crt_slots, 0, sizeof current.crt_slots);
@@ -83,6 +93,8 @@ int ft5955_teb_prepare_current(void)
     store_ptr(current.teb, 0x08, (void *)high);
     store_ptr(current.teb, 0x10, (void *)low);
     store_ptr(current.teb, 0x30, current.teb);
+    store_u64(current.teb, 0x40, (uint32_t)pid); /* CLIENT_ID.UniqueProcess */
+    store_u64(current.teb, 0x48, (uint32_t)tid); /* CLIENT_ID.UniqueThread */
     store_ptr(current.teb, 0x58, current.crt_slots);
     store_ptr(current.teb, 0x60, process_view.peb);
     current.prepared = 1;
