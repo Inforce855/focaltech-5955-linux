@@ -24,6 +24,7 @@
 #include <sys/mman.h>
 #include <sys/syscall.h>
 #include <asm/prctl.h>
+#include "ft5955_compat_time.h"
 
 typedef uint8_t u8; typedef uint16_t u16; typedef uint32_t u32; typedef uint64_t u64;
 #define MS __attribute__((ms_abi))
@@ -186,14 +187,21 @@ static void register_shims(void){
   reg("InitializeSListHead",sh_InitSList);reg("InterlockedFlushSList",sh_FlushSList);
   R(TlsAlloc);R(TlsFree);R(TlsGetValue);R(TlsSetValue);
   R(GetCurrentProcess);R(GetCurrentProcessId);R(GetCurrentThreadId);
+  reg("GetCurrentThread", (void*)ft5955_GetCurrentThread);
   R(GetModuleHandleW);R(GetModuleHandleA);R(GetModuleHandleExW);R(GetModuleFileNameA);R(GetModuleFileNameW);
   R(LoadLibraryExW);R(FreeLibrary);R(GetProcAddress);
   R(GetStdHandle);R(SetStdHandle);R(GetFileType);R(GetConsoleMode);R(GetConsoleCP);
+  reg("GetConsoleOutputCP", (void*)ft5955_GetConsoleOutputCP);
   R(WriteFile);R(WriteConsoleW);R(OutputDebugStringA);R(OutputDebugStringW);R(FlushFileBuffers);
   R(CreateFileW);R(SetFilePointerEx);R(CloseHandle);R(FindFirstFileExA);R(FindNextFileA);R(FindClose);R(GetSystemDirectoryA);
   R(CreateEventW);R(SetEvent);R(ResetEvent);R(WaitForSingleObject);R(WaitForSingleObjectEx);R(CreateThread);R(DeviceIoControl);
   R(GetACP);R(GetOEMCP);R(GetCPInfo);R(IsValidCodePage);R(MultiByteToWideChar);R(WideCharToMultiByte);R(LCMapStringW);R(GetStringTypeW);
-  R(GetSystemInfo);R(GetSystemTimeAsFileTime);R(GetTickCount);R(QueryPerformanceCounter);R(IsDebuggerPresent);R(IsProcessorFeaturePresent);
+  R(GetSystemInfo);R(GetSystemTimeAsFileTime);R(GetTickCount);
+  reg("QueryPerformanceCounter", (void*)ft5955_QueryPerformanceCounter);
+  reg("QueryPerformanceFrequency", (void*)ft5955_QueryPerformanceFrequency);
+  reg("Sleep", (void*)ft5955_Sleep);
+  reg("GetLocalTime", (void*)ft5955_GetLocalTime);
+  R(IsDebuggerPresent);R(IsProcessorFeaturePresent);
   R(EncodePointer);R(DecodePointer);R(VerSetConditionMask);R(VerifyVersionInfoA);
   R(GetCommandLineA);R(GetCommandLineW);R(GetStartupInfoW);R(GetEnvironmentStringsW);R(FreeEnvironmentStringsW);
   R(RtlCaptureContext);R(RtlLookupFunctionEntry);R(RtlVirtualUnwind);R(RtlUnwindEx);R(RtlPcToFileHeader);
