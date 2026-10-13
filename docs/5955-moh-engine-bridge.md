@@ -393,6 +393,48 @@ beyond these fields, Windows handle semantics and cross-thread
 engine behaviour still require validation. Do not execute the
 vendor DLL.
 
+## Existing-shim correctness: tracked Win32 process heap
+
+The inherited FT9201 heap shims returned a sentinel process-heap handle,
+freed arbitrary pointers directly with `free`, reported all block sizes
+as zero and treated every heap validation as successful. These behaviours
+could cause memory corruption or failed memory-management checks during
+engine initialisation.
+
+`engine/ft5955_compat_heap.[ch]` now provides a restricted process-only
+heap with a stable opaque handle, mutex-protected allocation metadata,
+16-byte-aligned allocations, actual requested sizes, `HEAP_ZERO_MEMORY`
+for allocations and growth, and tracked `HeapFree`/`HeapReAlloc`.
+Unknown, freed or foreign pointers are rejected instead of being passed
+to the host allocator. `HeapValidate` verifies membership in this
+tracked allocation set but **does not inspect heap metadata for
+corruption**. `HeapQueryInformation` supports only
+`HeapCompatibilityInformation` for the synthetic standard heap.
+
+Deliberately unsupported: private heap handles, Windows heap exception
+generation, `HEAP_NO_SERIALIZE` (not valid for our process heap),
+low-fragmentation heap modes and full Windows heap diagnostics. The
+`HEAP_REALLOC_IN_PLACE_ONLY` subset can resize within existing capacity
+but will fail growth that would require moving a pointer. Unsupported
+flags fail rather than claim success.
+
+The standalone test exercises zero-fill and alignment, resizing, buffer
+preservation, invalid/double-freed pointers, thread-local error handling,
+the limited query, and 12,000 allocation/free operations across four
+concurrent pthreads. It never executes the proprietary DLL.
+
+    cc -std=c11 -O2 -Wall -Wextra -Werror -pthread -Iengine \\
+      engine/ft5955_compat_heap.c engine/ft5955_compat_error.c \\
+      tests/test_moh_compat_heap.c -o /tmp/ft5955_heap_test
+    /tmp/ft5955_heap_test
+    python3 -m unittest discover -s tests -p 'test_moh_loader_teb_gate.py'
+    bash tools/build_moh_engine_smoke.sh
+
+All seven functions replace **already registered shims**, so expected
+name coverage stays **86/110 (24 missing)**. Passing these synthetic
+tests does not establish engine readiness or Windows heap equivalence;
+the DLL remains locked out.
+
 ## Next work on this branch
 
 1. Implement the missing Windows shims with actual expected semantics, not
