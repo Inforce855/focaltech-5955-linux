@@ -865,6 +865,15 @@ int ft_engine_enroll_update(void){
   if((u32)uhr==0x80098008u) return 2; /* WINBIO_E_BAD_CAPTURE */
   if(((u32)uhr & 0x80000000u)!=0) return -2; /* unexpected failure */
   if(urej) return 2;
+#if defined(FT5955_OFFLINE_SKIP_ENROLLMENT_STATUS)
+  /* The Windows capture path does not call GetEnrollmentStatus here.
+   * Offline-only experiment: skip the callback entirely so any state
+   * side effect can be excluded from subsequent CommitEnrollment. */
+  fprintf(stderr,"[5955] ENROLL_DIAG status_query=SKIPPED\n");
+  if((u32)uhr==0) return 0;
+  if((u32)uhr==0x00090001u) return 1;
+  return -4;
+#else
   u32 srej=0; u64 shr=Status(&pipeline,&srej);
   fprintf(stderr,"[5955] ENROLL_DIAG status_hr=0x%08x status_reject=%u\n",
           (u32)shr,srej);
@@ -883,6 +892,7 @@ int ft_engine_enroll_update(void){
   if((u32)shr==0x00090001u) return 1; /* WINBIO_I_MORE_DATA */
   if((u32)shr==0x80098008u || srej) return 2; /* rejected */
   return -3; /* unrecognised status: NOT proof more data needed */
+#endif /* !FT5955_OFFLINE_SKIP_ENROLLMENT_STATUS */
 }
 
 /* Optional read-only offline diagnostic: WinBio V1 QuerySampleHint slot 7.
@@ -957,12 +967,42 @@ void ft_engine_log_extended_enrollment_status(void) {
 
 static void fill_identity(u8 *id){ memset(id,0,76); *(u32*)id=3; for(int i=0;i<16;i++) id[8+i]=0xA0+i; }
 
+/* Isolated research probe. Commit the current enrollment exclusively into
+ * the sandbox's mock storage adapter, and report only HRESULT + presence of
+ * a bounded non-empty template. No file is opened or biometric bytes exported.
+ * Correct Windows x64 signature: Pipeline, Identity, SubFactor, PayloadBlob,
+ * PayloadBlobSize (older wrapper incorrectly passed only three arguments). */
+#if defined(FT5955_OFFLINE_PROBE_COMMIT)
+void ft_engine_probe_commit_offline(void){
+  if(set_engine_gs_current()!=0 || !g_iface){
+    fprintf(stderr,"[5955] COMMIT_PROBE unavailable=engine-state\n");
+    return;
+  }
+  u8 id[76]; fill_identity(id);
+  g_have_record=0; g_rec_tsize=0;
+  u64 (MS *Commit)(void*,const void*,u8,const u8*,size_t)=
+      *(void**)((u8*)g_iface+32+17*8);
+  u32 hr=(u32)Commit(&pipeline,id,1,NULL,0);
+  unsigned received=(unsigned)(g_have_record!=0);
+  unsigned bounded=(unsigned)(received && g_rec_tsize>0 &&
+                              g_rec_tsize<=sizeof g_rec_template);
+  fprintf(stderr,"[5955] COMMIT_PROBE hr=0x%08x record_seen=%u bounded_template=%u\n",
+          hr,received,bounded);
+  memset(id,0,sizeof id);
+  memset(g_rec_identity,0,sizeof g_rec_identity);
+  memset(g_rec_template,0,sizeof g_rec_template);
+  g_rec_tsize=0; g_have_record=0;
+}
+#endif
+
 int ft_engine_enroll_commit(uint8_t **out,size_t *outlen){
   if(set_engine_gs_current()!=0) return -1;
   u8 id[76]; fill_identity(id);
   g_have_record=0;
-  u64 (MS *Commit)(void*,void*,u8)=*(void**)((u8*)g_iface+32+17*8);
-  if((u32)Commit(&pipeline,id,1)!=0 || !g_have_record) return -1;
+  u64 (MS *Commit)(void*,const void*,u8,const u8*,size_t)=
+      *(void**)((u8*)g_iface+32+17*8);
+  if((u32)Commit(&pipeline,id,1,NULL,0)!=0 ||
+     !g_have_record || g_rec_tsize==0 || g_rec_tsize>sizeof g_rec_template) return -1;
   *out=malloc(g_rec_tsize); if(!*out) return -2;
   memcpy(*out, g_rec_template, g_rec_tsize); *outlen=g_rec_tsize;
   return 0;
