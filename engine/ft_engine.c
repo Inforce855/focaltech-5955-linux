@@ -140,7 +140,7 @@ static int MS sh_DeviceIoControl(void*h,u32 c,void*ib,u32 il,void*ob,u32 ol,u32*
 #ifdef FT5955_OFFLINE_SENSOR_SIZE_SIM
   if(c==FT5955_IOCTL_BIOMETRIC_SENSOR_SIZE) {
     int success=ft5955_sim_sensor_ioctl(c,ob,ol,ret);
-    fprintf(stderr,"[5955] SYNTHETIC sensor-size IOCTL: %ux%u; status=%d\\n",
+    fprintf(stderr,"[5955] SYNTHETIC sensor-size IOCTL: %ux%u; status=%d\n",
             (unsigned)FT5955_SIM_WIDTH,(unsigned)FT5955_SIM_HEIGHT,success);
     return success;
   }
