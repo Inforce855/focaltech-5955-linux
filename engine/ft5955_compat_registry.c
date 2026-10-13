@@ -165,6 +165,14 @@ uint32_t FT5955_REG_MS ft5955_RegOpenKeyExA(
     if (!location_of(hkey,&from)) {
         pthread_mutex_unlock(&registry_lock); return ERROR_INVALID_HANDLE;
     }
+    /* In this ACL-free virtual registry, a child open cannot grant more
+     * query/set-value rights than the supplied non-predefined parent. */
+    uint32_t predefined_root=0;
+    if (!predefined(hkey,&predefined_root) &&
+        ((access & (FT5955_KEY_QUERY_VALUE | FT5955_KEY_SET_VALUE)) &
+         ~from.access)) {
+        pthread_mutex_unlock(&registry_lock); return ERROR_ACCESS_DENIED;
+    }
     char path[MAX_PATH+1];
     if (!key_path(path,from.path,subkey)) {
         pthread_mutex_unlock(&registry_lock); return ERROR_INVALID_PARAMETER;
