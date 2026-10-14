@@ -3,8 +3,9 @@
 
 Enroll 'Finger 1' and 'Finger 2' by lifting and pressing repeatedly; then
 make new touches to see which enrolled template the vendor matcher reports.
-No fingerprint images, BIRs, templates or labels are saved, uploaded, printed
-or exposed outside the isolated matching process. All disappear on exit.
+Live image frames pass through private local Python memory and anonymous
+pipes; they are not saved, uploaded or printed. Templates never leave the
+isolated engine process and are wiped at process exit.
 No libfprint, fprintd, KDE, PAM, or real biometric database changes.
 
 Run as a regular user with explicit --send after 'sudo -v'. Requires the
