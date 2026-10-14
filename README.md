@@ -8,6 +8,8 @@ The long-term goal is a **fully open-source driver and native matcher** with sta
 
 For the precise current capabilities and known-good call sequence, read **[Current status and safety boundaries](docs/current-status.md)**.
 
+**Standard Linux enrolment decision:** the diagnostic GUIs and terminal two-finger tests are not the product. Our next driver work targets **libfprint**, with **fprintd** providing standard Linux enrolment, management and verification. See [the libfprint/fprintd integration design](docs/libfprint-integration.md).
+
 ## What works, and what does not
 
 | Component | Status |
@@ -108,9 +110,9 @@ The original extensive README and roadmap have **not been discarded**: [historic
 ## Next priorities
 
 1. Live verification of a newly enrolled finger, including genuine different-finger rejection and repeated-session testing.
-2. Harden the privileged USB interface, process isolation and persistent protected template storage.
-3. Develop a genuinely native, distributable matcher to remove the proprietary Windows DLL dependency.
-4. Integrate with `libfprint` / `fprintd`; only after validation, offer **opt-in** KDE/PAM use while retaining password recovery.
+2. Implement the sensor as a **libfprint** `FpDevice` driver; expose the existing 12-impression process through standard libfprint enrolment progress rather than a new production enrolment GUI.
+3. Test a separate development build with **fprintd** for standard enrolment, verify, list and delete operations; design protected, serialisable templates and hardened matcher isolation.
+4. Develop a genuinely native, distributable matcher to eliminate the proprietary Windows DLL; only after reliable testing consider **opt-in** KDE/PAM integration with password recovery.
 5. Factor out transport and device profiles before extending support to other USB or SPI FocalTech models.
 
 More detail: **[Roadmap](docs/roadmap.md)**.
