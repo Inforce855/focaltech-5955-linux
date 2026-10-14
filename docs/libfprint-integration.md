@@ -2,7 +2,7 @@
 
 **Architecture decision — 14 October 2026:** Do **not** build or ship a separate FocalTech-specific enrolment database, enrolment GUI or authentication stack. Implement `2808:5955` support as a **libfprint device driver**, so **fprintd** and its existing Linux clients handle enrolment, verification, identification requests and user-facing progress.
 
-The existing `tools/interactive_enroll_gui.py` and `tools/live_finger_identify.py` are **diagnostic reference programs only**, retained to reproduce the working hardware / isolated matching-engine sequence. These diagnostics now default to the separately installed, root-owned `/usr/local/lib/focaltech-5955/ftWbioEngineAdapter.dll` (verified SHA-256: `a4f037c260e8c86718675ddb6540467a9006ab26184858eb5b8726137185d57c`). They validate a temporary copy before running it inside bubblewrap; the optional ZIP/DLL overrides remain usable. **libfprint/fprintd integration does not yet load this DLL or have a working driver.**
+The existing `tools/interactive_enroll_gui.py` and `tools/live_finger_identify.py` are **diagnostic reference programs only**, retained to reproduce the working hardware / isolated matching-engine sequence. These diagnostics now default to the separately installed, root-owned `/usr/local/lib/focaltech-5955/ftWbioEngineAdapter.dll` (verified SHA-256: `a4f037c260e8c86718675ddb6540467a9006ab26184858eb5b8726137185d57c`). The source passes SHA-256/import checks and the temporary copy receives an additional SHA-256 check before bubblewrap launches it; the optional ZIP/DLL overrides remain usable. **libfprint/fprintd integration does not yet load this DLL or have a working driver.**
 
 ## Responsibilities
 
