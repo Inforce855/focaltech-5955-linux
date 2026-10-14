@@ -16,6 +16,7 @@ import tempfile
 import zipfile
 
 PIN = "a4f037c260e8c86718675ddb6540467a9006ab26184858eb5b8726137185d57c"
+DEFAULT_MOH_DLL = Path("/usr/local/lib/focaltech-5955/ftWbioEngineAdapter.dll")
 IMPORT = re.compile(r"^\s*[0-9A-Fa-f]+\s+<none>\s+[0-9A-Fa-f]+\s+(\S+)")
 DLL = re.compile(r"^\s*DLL Name:\s+(\S+)")
 R = re.compile(r"\bR\(([A-Za-z_]\w*)\)")
@@ -74,7 +75,8 @@ def archive_engine(archive, directory):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("dll", type=Path, help="private MOH DLL or 7_Fingerprint-module.zip")
+    parser.add_argument("dll", type=Path, nargs="?", default=DEFAULT_MOH_DLL,
+                        help="installed MOH DLL (default) or private driver ZIP/DLL")
     parser.add_argument("--source", type=Path,
                         default=Path(__file__).resolve().parents[1] / "engine" / "ft_engine.c")
     args = parser.parse_args()
