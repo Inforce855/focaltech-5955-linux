@@ -107,3 +107,16 @@ The user supplied the full ten labelled verification outcomes after discussion o
 The stdout quality-retry counter showed zero for each operation, but after v0.9.2 rejects intermediate quality errors internally, that libfprint callback counter no longer measures such internal retries. No `FT5955 scan rejected; lift and reposition finger` messages are present in the pasted excerpt. Consequently the logs do **not establish** that the v0.9.2 retry-recovery path was actually exercised. Deliberately withholding verification reports for an intermediate rejection is intentional; it avoids double-report but the retry count needs independent instrumentation if precise metrics are desired.
 
 Do not tune matching thresholds or claim Sellotape caused the additional false rejections without knowing which scans had tape. A small, test-only deterministic quality-rejection injection at the native action layer would be a safer and more decisive way to validate recovery, distinct from matching performance. Cancellation remains untested. No fprintd/PAM/system installation.
+
+
+## Operator-labelled Sellotape verification run — 14 October 2026
+
+The user repeated the live native-libfprint v0.9.1 ten-control roundtrip using the v0.9.2 patched driver, this time clarifying **only the first enrolled-finger verification (A1) was without Sellotape; all subsequent enrolled-finger verifications A2–A6 used tape covering part of the fingertip**. The log shows 12 accepted enrolment stages, with four quality rejects during enrolment (three while at 5/12 and one while at 8/12); those were correctly not counted as accepted. The print was serialised in RAM, restored into a fresh libfprint context/device, and all ten verification controls reached terminal results without a crash.
+
+- Enrolled finger A1, no tape: **MATCH**, 1/1.
+- Enrolled finger A2–A6, Sellotape: **NO_MATCH, MATCH, NO_MATCH, NO_MATCH, MATCH**; 2/5 matched and 3/5 false rejections for the intentionally obstructed finger.
+- Different fingers B/C: 4/4 **NO_MATCH**; no unexpected matches in this run.
+- Aggregate A: 3/6 MATCH; 3/6 false rejection; 0 quality retries *reported via the test-client callback*.
+- The log contains no verification-stage `FT5955 scan rejected; lift and reposition finger` messages. After the v0.9.2 change, the test-client's reported quality-retry counter does not measure internal driver retries, so this run does **not prove** recovery from a quality rejection during verification.
+
+The tape result demonstrates recognition can sometimes succeed despite partial obstruction, but the five taped samples are far too few to estimate a reliable false-reject rate or quantify the tape's causal effect separately from difficult sensor positioning. The four **enrolment** quality rejects confirm the enrolment retry path works; they do **not** exercise the fixed **verification** retry-report path. No system libfprint, fprintd, PAM or stored biometric files were changed.
