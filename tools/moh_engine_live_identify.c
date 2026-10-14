@@ -35,10 +35,13 @@
 
 extern int ft_engine_probe_duplicate_offline(void);
 extern void ft_engine_probe_wipe_offline(void);
+extern uint8_t ft_engine_probe_record_subfactor_offline(void);
+extern void ft_engine_probe_select_subfactor_offline(uint8_t subtype);
 
 struct finger {
     uint8_t *template_bytes;
     size_t template_len;
+    uint8_t subfactor;
     int ready;
     unsigned attempts;
 };
@@ -56,6 +59,7 @@ static void finish(void){
             free(fingers[i].template_bytes);
             fingers[i].template_bytes=NULL;
             fingers[i].template_len=0;
+            fingers[i].subfactor=0;
             fingers[i].ready=0;
         }
     }
@@ -119,6 +123,7 @@ static int enroll(int slot,const uint8_t *image){
     }
     f->template_bytes=temp;
     f->template_len=size;
+    f->subfactor=ft_engine_probe_record_subfactor_offline();
     f->ready=1;
     ft_engine_probe_wipe_offline();
     printf("ENROL %d COMPLETE\n",slot+1);
@@ -142,6 +147,7 @@ static int identify(const uint8_t *image){
             puts("ERROR verification-accept");
             return -1;
         }
+        ft_engine_probe_select_subfactor_offline(fingers[i].subfactor);
         int m=ft_engine_verify(fingers[i].template_bytes,fingers[i].template_len);
         if(m<0){
             puts("ERROR verification-engine");
