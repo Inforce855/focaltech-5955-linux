@@ -37,3 +37,20 @@ The standalone v0.8.1 GLib subprocess cleanup correction was recommended before 
 After the first successful native enrolment + same-finger verification, a separate `ft5955-native-validation-v0.9` standalone source package was prepared. It **does not patch** the compiled, working native driver. The opt-in test client will enrol one finger, call the actual public `fp_print_serialize()` on its real driver-returned `FpPrint`, release the original print, **close and discard its first `FpDevice` / `FpContext`**, deserialize in process memory and create a new libfprint context/device. It will then run four operator-labelled physical controls: enrolled finger MATCH, different finger NO_MATCH, another different finger NO_MATCH, enrolled finger MATCH. Each verify exercises a fresh isolated engine gateway. It saves no biometric file and deliberately does not claim disk/reboot persistence. Unexpected results are reported, not silently accepted. The source has passed three local static safety/design checks and shell syntax validation; compilation against private 1.94.100 and real-hardware tests are **pending**. The environment preparing this package lacked GLib/libfprint build dependencies, so no local C compile claim is made.
 
 The native v0.8.1 subprocess cleanup fix's application status is still unconfirmed by the user's latest terminal output; verify that independently before further stress tests. No login/PAM/fprintd enabled.
+
+## v0.9 real native print restart: 3/4 labelled verifications — 14 October 2026
+
+The user's actual private-libfprint `native_print_roundtrip --live` completed 12 accepted enrolment stages, real `FpPrint` serialisation in RAM, destruction of the original print and `FpContext`, reopening the USB device in a new `FpContext`, and deserialisation of the print. The second native open/handshake succeeded; finger status initially reported `PRESENT`. Four fresh labelled checks then reported:
+
+1. Enrolled finger: **MATCH** (expected).
+2. Different finger: **NO_MATCH** (expected).
+3. Another different finger: **NO_MATCH** (expected).
+4. Enrolled finger again: **NO_MATCH** (**unexpected**, apparent false rejection).
+
+The test correctly exited with `ATTENTION: 1 unexpected verification result(s); not validated for authentication`. Do not claim all four checks passed, or classify this as a stored-template failure—the first same-finger verification **after** restore matched, demonstrating that the restored real template could be consumed by the fresh device and sandbox. The final no-match could reflect acquisition/contact variation, comparison variability or an unobserved operator difference; evidence does not isolate the cause. The driver requires an observed finger OFF followed by a fresh ON before accepting each scan. The nonfatal USB persist warning appeared during opening.
+
+### v0.9.1 repeatability diagnostic (standalone test client only)
+
+A separate source archive `ft5955-native-validation-v0.9.1` was prepared, retaining the real native `FpPrint` RAM roundtrip and driver/device restart while running **10 operator-labelled verification operations** in A/B/A/C/A/B/A/C/A/A order: 6 enrolled-finger A checks, 2 other-finger B and 2 other-finger C controls. The public `FpMatchCb` reports retry-quality events; the summary separately accounts for enrolled-finger missed matches, different-finger unexpected matches and retry events. A later success does not erase an earlier failure, and cancellation is not reported as PASS. Four local source checks and a lexical structural check pass; **Nobara private-libfprint C compilation and live testing are pending.** It does not write template/sample files or modify the working driver. Even a passing 10-sample diagnostic does not establish secure authentication or an empirically measured false-accept rate.
+
+**Next priorities:** repeated same-finger reliability and negative controls, clean cancellation/unplug stress testing, addressing both proprietary matcher isolation and secure at-rest template storage. Leave fprintd/PAM disabled. Do not silently retry NO_MATCH until MATCH.
