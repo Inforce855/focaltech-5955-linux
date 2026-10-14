@@ -33,7 +33,7 @@ The actual FocalTech **2808:5955** has now successfully authenticated a fingerpr
 
 ## Native image-processing prototype (offline, synthetic-only)
 
-We are building a **fully native open-source Linux implementation**, not just a loader that keeps the proprietary Windows matcher. Our first independent C11 image-preparation component lives in [native/](native/). It reads exactly 5,120 little-endian 16-bit measurements and arranges them as **64 columns × 80 rows**, our strongest working layout hypothesis.
+We are building a **fully native open-source Linux implementation**, not just a loader that keeps the proprietary Windows matcher. Our first independent C11 image-preparation component lives in [native/](../../native/). It reads exactly 5,120 little-endian 16-bit measurements and arranges them as **64 columns × 80 rows**, our strongest working layout hypothesis.
 
 It implements a documented **partial** reconstruction of the vendor's image-processing steps: negative signed-word clamping, intensity inversion and histogram construction, followed by our *experimental* 1st/99th-percentile contrast scaling. We have **not** yet reproduced FocalTech's complete histogram smoothing, calibration, feature extractor or matching engine. This component is not suitable for fingerprint identity decisions or login.
 
