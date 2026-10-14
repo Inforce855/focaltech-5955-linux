@@ -20,7 +20,7 @@ NEW = '''      if (result == FT5955_DRIVER_RETRY)
           /* Quality rejection is internal while this verify operation
            * continues acquiring fresh touches. libfprint permits only ONE
            * result report for the entire verification operation. */
-          g_debug ("FT5955 quality retry; awaiting fresh touch");
+          g_message ("FT5955 scan rejected; lift and reposition finger");
           return TRUE;
         }'''
 BACKUP = '.before-v092.bak'
