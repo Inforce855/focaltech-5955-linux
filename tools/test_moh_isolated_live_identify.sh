@@ -34,8 +34,13 @@ with tempfile.TemporaryDirectory() as scratch:
     total,libs,registered,missing=p.audit(candidate,Path("engine/ft_engine.c"))
     if total!=110 or missing:
         raise SystemExit(f"Import audit FAILED: {total} imports, {len(missing)} missing")
-    import shutil
+    import shutil, hashlib
     shutil.copyfile(candidate,dest)
+    # Ensure the sandbox's actual COPY still has the pinned vendor identity
+    # after the original has been audited (do not execute an altered copy).
+    with dest.open("rb") as copied:
+        if hashlib.file_digest(copied,"sha256").hexdigest()!=p.PIN:
+            raise SystemExit("BLOCKED: temporary engine copy did not match pinned SHA-256")
 dest.chmod(0o400)
 print(f"Verified 5955 engine: {total}/{total} imports registered")
 PY
