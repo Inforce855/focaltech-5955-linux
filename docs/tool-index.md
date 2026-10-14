@@ -1,6 +1,6 @@
 # FocalTech 2808:5955 — tool and test index
 
-**Inventory reviewed: 14 October 2026** on `feature/ft5955-moh-engine-bridge`. All 58 files under `tools/` are indexed below; **no tool has been deleted, moved or renamed**. The distinction is between current working *experimental* code and exploratory/historical diagnostic tools, not between safe and unsafe binaries.
+**Inventory reviewed: 14 October 2026** on `feature/ft5955-moh-engine-bridge`. All 61 files under `tools/` are indexed below; **no tool has been deleted, moved or renamed**. The distinction is between current working *experimental* code and exploratory/historical diagnostic tools, not between safe and unsafe binaries.
 
 **Begin with [current project status](current-status.md) or [the root README](../README.md).** Current hardware success is experimental enrolment only; live post-enrolment verification and `libfprint`/PAM login remain unfinished.
 
@@ -19,6 +19,7 @@
 | File | Purpose |
 | --- | --- |
 | [`interactive_enroll_gui.py`](../tools/interactive_enroll_gui.py) | Tk enrolment GUI; communicates with a short-lived USB helper and isolated MOH process. |
+| [`live_finger_identify.py`](../tools/live_finger_identify.py) | **NEW, UNVALIDATED on hardware:** terminal test: enrol two numbered fingers in RAM and identify a fresh touch. |
 | [`auto_contact_capture.py`](../tools/auto_contact_capture.py) | Privileged bounded fresh-contact sensor helper; used by GUIs. |
 | [`live_contact_viewer.py`](../tools/live_contact_viewer.py) | Private in-memory fingerprint image and zero-map viewer. |
 | [`replay_moh_enrollment.py`](../tools/replay_moh_enrollment.py) | Replays existing private PGM images through the isolated Windows matcher; no USB. |
@@ -85,6 +86,7 @@
 | [`build_moh_engine_smoke.sh`](../tools/build_moh_engine_smoke.sh) | Build-only smoke test for experimental compatibility engine. |
 | [`moh_engine_attach_smoke.c`](../tools/moh_engine_attach_smoke.c) | Attach-path C probe fixture. |
 | [`moh_engine_interactive_enroll.c`](../tools/moh_engine_interactive_enroll.c) | Persistent in-memory enrolment engine used by the GUI. |
+| [`moh_engine_live_identify.c`](../tools/moh_engine_live_identify.c) | Bounded two-template C harness (runs only inside temporary isolated process). |
 | [`moh_engine_interface_smoke.c`](../tools/moh_engine_interface_smoke.c) | Vendor WinBio interface C fixture. |
 | [`moh_engine_pgm_accept.c`](../tools/moh_engine_pgm_accept.c) | Single-PGM offline sample acceptance fixture. |
 | [`moh_engine_pgm_enroll.c`](../tools/moh_engine_pgm_enroll.c) | Single-sequence PGM enrolment fixture. |
@@ -93,6 +95,7 @@
 | [`moh_engine_synthetic_accept.c`](../tools/moh_engine_synthetic_accept.c) | Synthetic vendor engine acceptance fixture. |
 | [`test_moh_isolated_attach.sh`](../tools/test_moh_isolated_attach.sh) | Sandboxed attach-path runner. |
 | [`test_moh_isolated_interactive_enroll.sh`](../tools/test_moh_isolated_interactive_enroll.sh) | Sandboxed live-GUI engine runner. |
+| [`test_moh_isolated_live_identify.sh`](../tools/test_moh_isolated_live_identify.sh) | Sandboxed live-identification runner, based on the known capture/enrol isolation recipe. |
 | [`test_moh_isolated_pgm_accept.sh`](../tools/test_moh_isolated_pgm_accept.sh) | Sandboxed PGM sample acceptance runner. |
 | [`test_moh_isolated_pgm_enroll.sh`](../tools/test_moh_isolated_pgm_enroll.sh) | Sandboxed PGM enrolment runner. |
 | [`test_moh_isolated_pgm_enroll_batch.sh`](../tools/test_moh_isolated_pgm_enroll_batch.sh) | Sandboxed 12+4 offline verification runner. |
@@ -112,9 +115,24 @@
 | [`windows_winbio_capture.ps1`](../tools/windows_winbio_capture.ps1) | Windows WinBio capture and BIR reference experiment. |
 | [`windows_winbio_sample_probe.ps1`](../tools/windows_winbio_sample_probe.ps1) | Windows API capture-sequence experiment. |
 
+## Temporary, labelled two-finger identification test (UNVALIDATED)
+
+This CLI keeps both templates only inside a disposable sandbox process. It uses the same bounded sensor helper as the existing GUI, and deliberately does **not** save enrolments for later sessions.
+
+```bash
+# From the feature-branch checkout as a normal user
+sudo -v
+python3 tools/live_finger_identify.py \
+  --archive /path/to/7_Fingerprint-module.zip --send
+```
+
+Follow prompts for **Finger 1**, **Finger 2**, then fresh identification touches. Each finger needs 12 accepted enrolment impressions; up to eight fresh touches are captured in each bounded helper session. Identification returns Finger 1, Finger 2, NONE, REJECTED or AMBIGUOUS, and engine errors abort the test rather than being interpreted as matches.
+
+This is a **new experimental path** and may reveal engine callback/state issues when enrolling the second template. It has not been exercised on real hardware yet. Nothing installs in Linux login, and quitting wipes both temporary templates.
+
 ## Regression coverage
 
-- **`tests/`** contains 47 existing source files covering Python code, protocol parsing, engine shims and safety gates. These files have not been renamed. Individual tests and their assumptions are documented in source.
+- **`tests/`** contains 48 source files covering Python code, protocol parsing, engine shims and safety gates. These files have not been renamed. Individual tests and their assumptions are documented in source.
 - **`native/`** contains open-source image-processing research and C test programs. See [native README](../native/README.md) and [phased roadmap](roadmap.md).
 
 ```bash
