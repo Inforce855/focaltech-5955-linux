@@ -125,7 +125,7 @@ sudo -v
 python3 tools/live_finger_identify.py --send
 ```
 
-By default this uses `/usr/local/lib/focaltech-5955/ftWbioEngineAdapter.dll` after SHA-256/import checks. `--archive /path/to/7_Fingerprint-module.zip` and `--dll /path/to/ftWbioEngineAdapter.dll` remain supported for private fallback testing. The DLL is copied into the isolated runner, not loaded from the host filesystem in place.
+By default this uses `/usr/local/lib/focaltech-5955/ftWbioEngineAdapter.dll` after SHA-256/import checks. `--archive /path/to/7_Fingerprint-module.zip` and `--dll /path/to/ftWbioEngineAdapter.dll` remain supported for private fallback testing. The isolated runner loads its independently hash-checked temporary DLL copy rather than the installed DLL path.
 
 Follow prompts for **Finger 1**, **Finger 2**, then fresh identification touches. Each finger needs 12 accepted enrolment impressions; up to eight fresh touches are captured in each bounded helper session. Identification returns Finger 1, Finger 2, NONE, REJECTED or AMBIGUOUS, and engine errors abort the test rather than being interpreted as matches.
 
