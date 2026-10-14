@@ -71,7 +71,7 @@ sudo -v
 python3 tools/interactive_enroll_gui.py --send
 ```
 
-The diagnostics now use the SHA-pinned, root-owned installed engine at `/usr/local/lib/focaltech-5955/ftWbioEngineAdapter.dll` by default; explicit `--archive` and `--dll` paths still work. A sandboxed temporary copy is used rather than exposing the original pathname to the vendor process. Verify the installed file without executing it using `python3 tools/moh_engine_preflight.py`.
+The diagnostics now use the SHA-pinned, root-owned installed engine at `/usr/local/lib/focaltech-5955/ftWbioEngineAdapter.dll` by default; explicit `--archive` and `--dll` paths still work. The sandbox launches the verified temporary copy from `/tmp/engine.dll`; the system copy is not the DLL load target. Verify the installed file without executing it using `python3 tools/moh_engine_preflight.py`.
 
 Run the GUI as a **normal user**, not root; the USB helper alone uses `sudo -n`. Lift and press between captures. The helper is bounded to eight fresh touches per run; the GUI has a Continue button for the next bounded batch. The engine sandbox has **no USB or network access** and no persistent biometric storage.
 
