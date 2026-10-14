@@ -14,6 +14,7 @@ Five areas have different maturity levels:
 | Proprietary match-on-host (MOH) compatibility bridge | FocalTech Windows matching DLL executes under Linux in an isolated, USB-free bubblewrap process | Development reference with incomplete Windows API semantics; **not open source** |
 | Offline enrolment and matching | 12 successful enrolment updates, duplicate precheck and mock-storage commit; 4/4 held-out same-finger matches with matching polarity | Not a measured false-accept or false-reject rate; no true different-finger security control yet |
 | Live experimental enrolment GUI | One full physical-sensor session completed with 12 usable impressions, 4 rejected, and a temporary in-memory template commit | Template wiped when session ends; **live verification has not yet been demonstrated** |
+| Two-finger identification test | New terminal tool enrols two numbered fingers into isolated RAM and tests fresh impressions against both | **Not yet exercised on the physical reader**; does not retain enrolments across runs |
 | Native C image/matching research | Independent image conversion and several components have synthetic tests | No validated, fully native open-source fingerprint matcher or libfprint driver yet |
 
 **No working `fprintd`, PAM, KDE or system-login fingerprint integration exists yet.** Password login is unaffected.
@@ -39,6 +40,7 @@ For the complete, categorised inventory of all 58 tools without moving or deleti
 | Purpose | Entry point | Type |
 | --- | --- | --- |
 | Experimental live enrolment | `tools/interactive_enroll_gui.py` | GUI with bounded USB helper and isolated engine |
+| Two-finger identification (**unvalidated**) | `tools/live_finger_identify.py` | Terminal test: two RAM-only templates, fresh touch against each; no login changes |
 | Fresh-touch USB acquisition | `tools/auto_contact_capture.py` | Privileged bounded helper; used by GUI |
 | Isolated live GUI engine runner | `tools/test_moh_isolated_interactive_enroll.sh` | Builds and runs isolated MOH process |
 | Reproduce offline enrol/commit/verification | `tools/replay_moh_enrollment.py` | Reads existing **local private** PGMs; no USB |
@@ -68,6 +70,16 @@ python3 tools/interactive_enroll_gui.py --archive /path/to/7_Fingerprint-module.
 ```
 
 Run the GUI as a **normal user**, not root; the USB helper alone uses `sudo -n`. Lift and press between captures. The helper is bounded to eight fresh touches per run; the GUI has a Continue button for the next bounded batch. The engine sandbox has **no USB or network access** and no persistent biometric storage.
+
+### Two-finger test (new; hardware validation pending)
+
+```bash
+sudo -v
+python3 tools/live_finger_identify.py \\
+  --archive /path/to/7_Fingerprint-module.zip --send
+```
+
+Enrol Finger 1 and Finger 2 in sequence, making 12 usable impressions for each, then test additional fingers. Each helper batch is bounded to eight fresh touches and 240 status checks. The test reports Finger 1, Finger 2, NONE, REJECTED, AMBIGUOUS or an engine error. Both templates are destroyed on exit; the scanner cannot recognise enrolments from past sessions. **No physical test has yet confirmed this new multi-template engine state path.**
 
 ## Data protection
 
