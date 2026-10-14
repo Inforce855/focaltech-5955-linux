@@ -2,7 +2,7 @@
 
 **Inventory reviewed: 14 October 2026** on `feature/ft5955-moh-engine-bridge`. All 61 files under `tools/` are indexed below; **no tool has been deleted, moved or renamed**. The distinction is between current working *experimental* code and exploratory/historical diagnostic tools, not between safe and unsafe binaries.
 
-**Begin with [current project status](current-status.md) or [the root README](../README.md).** Current hardware success is experimental enrolment only; live post-enrolment verification and `libfprint`/PAM login remain unfinished.
+**Begin with [current project status](current-status.md) or [the root README](../README.md).** Current hardware success includes experimental live enrolment and two-finger identification; systematic matching validation and `libfprint`/PAM login remain unfinished.
 
 ## Entrypoint and privacy rules
 
@@ -19,7 +19,7 @@
 | File | Purpose |
 | --- | --- |
 | [`interactive_enroll_gui.py`](../tools/interactive_enroll_gui.py) | Tk enrolment GUI; communicates with a short-lived USB helper and isolated MOH process. |
-| [`live_finger_identify.py`](../tools/live_finger_identify.py) | **NEW, UNVALIDATED on hardware:** terminal test: enrol two numbered fingers in RAM and identify a fresh touch. |
+| [`live_finger_identify.py`](../tools/live_finger_identify.py) | **Initial physical test succeeded:** enrol two numbered fingers in RAM and identify fresh touches; tested other unenrolled fingers did not match. |
 | [`auto_contact_capture.py`](../tools/auto_contact_capture.py) | Privileged bounded fresh-contact sensor helper; used by GUIs. |
 | [`live_contact_viewer.py`](../tools/live_contact_viewer.py) | Private in-memory fingerprint image and zero-map viewer. |
 | [`replay_moh_enrollment.py`](../tools/replay_moh_enrollment.py) | Replays existing private PGM images through the isolated Windows matcher; no USB. |
@@ -115,7 +115,7 @@
 | [`windows_winbio_capture.ps1`](../tools/windows_winbio_capture.ps1) | Windows WinBio capture and BIR reference experiment. |
 | [`windows_winbio_sample_probe.ps1`](../tools/windows_winbio_sample_probe.ps1) | Windows API capture-sequence experiment. |
 
-## Temporary, labelled two-finger identification test (UNVALIDATED)
+## Temporary, labelled two-finger identification test (first hardware run succeeded)
 
 This CLI keeps both templates only inside a disposable sandbox process. It uses the same bounded sensor helper as the existing GUI, and deliberately does **not** save enrolments for later sessions.
 
@@ -128,7 +128,7 @@ python3 tools/live_finger_identify.py \
 
 Follow prompts for **Finger 1**, **Finger 2**, then fresh identification touches. Each finger needs 12 accepted enrolment impressions; up to eight fresh touches are captured in each bounded helper session. Identification returns Finger 1, Finger 2, NONE, REJECTED or AMBIGUOUS, and engine errors abort the test rather than being interpreted as matches.
 
-This is a **new experimental path** and may reveal engine callback/state issues when enrolling the second template. It has not been exercised on real hardware yet. Nothing installs in Linux login, and quitting wipes both temporary templates.
+**Initial real-hardware result (14 October 2026):** the operator enrolled two fingers, identified both correctly and tried other fingers without a false match. Two impression rejections were reported across both enrolments. Batch 2 is required by design: 12 accepted impressions per finger, eight maximum touches per bounded batch. This limited test is not a measured error rate or a reliable authentication-security assessment. Nothing installs in Linux login, and quitting wipes both temporary templates.
 
 ## Regression coverage
 
