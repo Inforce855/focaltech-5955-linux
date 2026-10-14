@@ -75,7 +75,7 @@ Run the GUI as a **normal user**, not root; the USB helper alone uses `sudo -n`.
 
 ```bash
 sudo -v
-python3 tools/live_finger_identify.py \\
+python3 tools/live_finger_identify.py \
   --archive /path/to/7_Fingerprint-module.zip --send
 ```
 
