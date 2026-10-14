@@ -33,6 +33,9 @@ This sequence is **not** an instruction to store templates persistently or enabl
 
 ## Current entry points (feature branch)
 
+For the complete, categorised inventory of all 58 tools without moving or deleting them, see the [tool and test index](tool-index.md). For a concise list of open milestones, use the [roadmap](roadmap.md). The original long-form [README](archive/readme-research-log-2026-10-14.md) and [roadmap](archive/roadmap-research-log-2026-10-14.md) remain archived for historical reproducibility.
+
+
 | Purpose | Entry point | Type |
 | --- | --- | --- |
 | Experimental live enrolment | `tools/interactive_enroll_gui.py` | GUI with bounded USB helper and isolated engine |
