@@ -6,7 +6,7 @@
 
 # Development roadmap
 
-> **Current milestone (14 October 2026):** Bounded live USB capture and temporary in-memory enrolment completed on actual hardware. The Windows FocalTech MOH bridge also enrolled 12 offline captures and matched 4/4 held-out same-finger captures with consistent polarity. **Live post-enrolment verification, true different-finger rejection, a native open-source matcher and `libfprint`/`fprintd` integration remain open.** See [current status](current-status.md). The detailed tick-box history below was written incrementally and may contain now-superseded \"not yet tested\" wording.
+> **Current milestone (14 October 2026):** Bounded live USB capture and temporary in-memory enrolment completed on actual hardware. The Windows FocalTech MOH bridge also enrolled 12 offline captures and matched 4/4 held-out same-finger captures with consistent polarity. **Live post-enrolment verification, true different-finger rejection, a native open-source matcher and `libfprint`/`fprintd` integration remain open.** See [current status](../current-status.md). The detailed tick-box history below was written incrementally and may contain now-superseded \"not yet tested\" wording.
 
 ## Immediate next milestones (current)
 
@@ -55,7 +55,7 @@
 - [ ] Implement a rate-limited, interruptible contact monitor if useful (avoid unbounded polling).
 - [ ] Determine whether further initialisation is required for event reporting or imaging.
 
-See [protocol research notes](protocol-research.md) and [image acquisition findings](image-acquisition-research.md).
+See [protocol research notes](../protocol-research.md) and [image acquisition findings](../image-acquisition-research.md).
 
 ## Phase 4 — Fingerprint functions
 
