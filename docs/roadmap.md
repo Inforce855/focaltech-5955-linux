@@ -1,5 +1,20 @@
 # Development roadmap
 
+> **Current milestone (14 October 2026):** Bounded live USB capture and temporary in-memory enrolment completed on actual hardware. The Windows FocalTech MOH bridge also enrolled 12 offline captures and matched 4/4 held-out same-finger captures with consistent polarity. **Live post-enrolment verification, true different-finger rejection, a native open-source matcher and `libfprint`/`fprintd` integration remain open.** See [current status](current-status.md). The detailed tick-box history below was written incrementally and may contain now-superseded \"not yet tested\" wording.
+
+## Immediate next milestones (current)
+
+- [x] Capture a fresh physical fingerprint upon lift/press through a bounded helper.
+- [x] Run the Windows MOH engine in an isolated Linux process.
+- [x] Complete offline 12-impression enrolment with duplicate check, mock-storage commit and held-out 4/4 positive matches.
+- [x] Complete a live GUI enrolment session with temporary mock-storage commit and no saved template.
+- [ ] Implement and test **live verification** against a freshly enrolled finger.
+- [ ] Demonstrate **different-finger rejection** using genuinely different captures.
+- [ ] Harden template storage and engine isolation before any production authentication.
+- [ ] Develop a native, open-source matcher independent of the FocalTech DLL.
+- [ ] Integrate and validate with `libfprint`/`fprintd`, then consider opt-in KDE/PAM use.
+
+
 ## Phase 1 — USB identification (complete)
 
 - [x] Identify USB device ID `2808:5955`.
