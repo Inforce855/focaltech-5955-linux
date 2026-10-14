@@ -2,7 +2,11 @@
 
 Reverse-engineering and Linux userspace support for the **FocalTech USB fingerprint reader, VID:PID `2808:5955`**.
 
-**Project status: First physical fingerprint image captures working under Nobara (11 October 2026)!** USB communication, contact detection, image geometry, handshake, readiness and image-sized transfers have been demonstrated. Distinct fingers produce visibly different images; repeated captures of the first finger look similar. **Visual observations are not automated identity matching, and no functional `libfprint` driver exists yet.** The device is visible on Linux but was not recognised by `libfprint 1.94.100` and `fprintd 1.94.5` on Nobara (Fedora 44 base).
+**Current status (14 October 2026): experimental live fingerprint enrolment working on Nobara; offline matching confirmed.** The `2808:5955` now performs live USB capture and a 12-impression enrolment sequence through a sandboxed compatibility bridge running FocalTech's Windows matching engine. Offline held-out same-finger verification matched **4/4** impressions with consistent image polarity. A live GUI session successfully reached an in-memory mock-storage template commit, then wiped the template. **Live verification, a genuine different-finger control, persistent secure enrolment and `libfprint`/`fprintd`/PAM integration are NOT yet complete.** The long-term goal is a *fully open-source*, reusable FocalTech Linux driver with no proprietary Windows engine.
+
+**Start here:** [Current project status, known-good workflow, safety boundaries and active tools](docs/current-status.md) · [Development roadmap](docs/roadmap.md) · [Native open-source research](native/README.md).
+
+The sections below are a chronological research record. Some dated statements reflect the understanding at the time and are superseded by the current status page.
 
 
 ### Windows MOH image-conversion disassembly (12 October 2026)
@@ -35,7 +39,7 @@ git pull --ff-only
 make -C native test
 ```
 
-That runs five synthetic-only C tests using a local compiler. No sudo, no pip packages, no firmware changes, no system `libfprint` installation and no fingerprint captures. Results are printed to the terminal; the temporary test binary is built under gitignored `native/build/`.
+That runs the synthetic-only native C regression suite using a local compiler. No sudo, no pip packages, no firmware changes, no system `libfprint` installation and no fingerprint captures. Results are printed to the terminal; the temporary test binary is built under gitignored `native/build/`.
 
 See [native/README.md](native/README.md) and [native matcher research](docs/moh-engine-native-matcher.md).
 
