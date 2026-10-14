@@ -80,11 +80,44 @@ dbus-run-session -- bash -c '
 
   /usr/libexec/fprintd >"$TEST_DIR/fprintd.log" 2>&1 &
   fp_pid=$!
+
+  # D-Bus does not activate the manually started daemon: wait until its
+  # well-known name has been acquired. An immediate GetDevices races startup.
+  fp_ready=false
+  for _ in {1..50}; do
+    if [[ "$(timeout 2s gdbus call --address "$DBUS_SYSTEM_BUS_ADDRESS" \
+          --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus \
+          --method org.freedesktop.DBus.NameHasOwner \
+          net.reactivated.Fprint 2>/dev/null || true)" == "(true,)" ]]; then
+      fp_ready=true; break
+    fi
+    if ! kill -0 "$fp_pid" 2>/dev/null; then
+      echo "FAIL: private fprintd exited before registering its D-Bus name." >&2
+      break
+    fi
+    sleep 0.2
+  done
+  if [[ "$fp_ready" != true ]]; then
+    echo "FAIL: private fprintd was not ready; not attempting Claim." >&2
+    echo "=== Private PolicyKit log ==="
+    cat "$TEST_DIR/test-policy.log"
+    echo "=== Private fprintd log ==="
+    cat "$TEST_DIR/fprintd.log"
+    exit 5
+  fi
+
   echo "=== Private fprintd device enumeration ==="
+  enumerate_rc=0
   timeout 15s gdbus call --address "$DBUS_SYSTEM_BUS_ADDRESS" \
     --dest net.reactivated.Fprint \
     --object-path /net/reactivated/Fprint/Manager \
-    --method net.reactivated.Fprint.Manager.GetDevices
+    --method net.reactivated.Fprint.Manager.GetDevices || enumerate_rc=$?
+  if [[ "$enumerate_rc" -ne 0 ]]; then
+    echo "FAIL: private GetDevices call failed." >&2
+    cat "$TEST_DIR/test-policy.log"
+    cat "$TEST_DIR/fprintd.log"
+    exit "$enumerate_rc"
+  fi
 
   echo "=== PRIVATE BUS Claim for current user (no fingerprint capture) ==="
   claim_rc=0
