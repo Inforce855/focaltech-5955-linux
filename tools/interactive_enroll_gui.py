@@ -22,6 +22,7 @@ import tkinter as tk
 from tkinter import ttk
 from live_contact_viewer import read_record
 from raw_to_png import decode_samples, to_8bit
+from moh_engine_preflight import DEFAULT_MOH_DLL
 
 HERE=Path(__file__).resolve().parent
 SCRIPT=HERE/"test_moh_isolated_interactive_enroll.sh"
@@ -336,12 +337,13 @@ class EnrolGUI:
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--archive",type=Path,required=True)
+    p.add_argument("--archive","--dll",dest="archive",type=Path,default=DEFAULT_MOH_DLL,
+                   help="default: installed MOH DLL; alternatively a private driver ZIP/DLL")
     p.add_argument("--send",action="store_true")
     args=p.parse_args()
     if not args.send:p.error("Use --send to authorise bounded sensor interaction")
     if os.geteuid()==0:p.error("Run GUI as regular user; use sudo -v separately")
-    if not args.archive.is_file():p.error("Windows driver archive not found")
+    if not args.archive.is_file():p.error(f"Verified FocalTech DLL or driver ZIP not found: {args.archive}")
     root=tk.Tk()
     EnrolGUI(root,args.archive.resolve())
     root.mainloop()
