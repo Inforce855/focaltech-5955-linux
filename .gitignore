@@ -42,3 +42,11 @@ raw-data/
 # Public demonstrations should use separately generated, clearly labelled synthetic samples.
 fingerprint_*.raw
 fingerprint_*.png
+
+# Real 5955 captures may also be stored under other private names.
+# Ignore raw, PGM and Windows biometric-record files anywhere in the tree.
+# Synthetic test samples, if needed, should be explicitly reviewed before
+# being added, never force-added from an unexamined local capture directory.
+*.raw
+*.pgm
+*.bir
