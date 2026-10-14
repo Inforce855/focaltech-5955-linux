@@ -68,8 +68,10 @@ From your existing, correctly configured feature-branch checkout:
 
 ```bash
 sudo -v
-python3 tools/interactive_enroll_gui.py --archive /path/to/7_Fingerprint-module.zip --send
+python3 tools/interactive_enroll_gui.py --send
 ```
+
+The diagnostics now use the SHA-pinned, root-owned installed engine at `/usr/local/lib/focaltech-5955/ftWbioEngineAdapter.dll` by default; explicit `--archive` and `--dll` paths still work. A sandboxed temporary copy is used rather than exposing the original pathname to the vendor process. Verify the installed file without executing it using `python3 tools/moh_engine_preflight.py`.
 
 Run the GUI as a **normal user**, not root; the USB helper alone uses `sudo -n`. Lift and press between captures. The helper is bounded to eight fresh touches per run; the GUI has a Continue button for the next bounded batch. The engine sandbox has **no USB or network access** and no persistent biometric storage.
 
@@ -77,8 +79,7 @@ Run the GUI as a **normal user**, not root; the USB helper alone uses `sudo -n`.
 
 ```bash
 sudo -v
-python3 tools/live_finger_identify.py \
-  --archive /path/to/7_Fingerprint-module.zip --send
+python3 tools/live_finger_identify.py --send
 ```
 
 Enrol Finger 1 and Finger 2 in sequence, making 12 usable impressions for each, then test additional fingers. Each helper batch is bounded to eight fresh touches and 240 status checks. The test reports Finger 1, Finger 2, NONE, REJECTED, AMBIGUOUS or an engine error. Both templates are destroyed on exit; the scanner cannot recognise enrolments from past sessions. **First user-reported physical test completed successfully:** both enrolled labels recognised; none of the other fingers tried were recognised. Two rejected impressions were reported during enrolment. The second batch was expected because 12 successful impressions exceed the helper's eight-touch limit. Longer-term cross-session and repeated different-finger tests remain necessary.
