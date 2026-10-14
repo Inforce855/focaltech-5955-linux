@@ -68,6 +68,18 @@ sudo -v
 
 Run the GUI as a **regular user**, not as root. Only its short-lived USB capture helper requests `sudo -n`. Lift your finger fully between touches. Each capture batch is bounded to eight images; use **Continue** for another batch. The engine executes in a separate bubblewrap sandbox with no direct USB or network access; template storage is temporary and cleared on exit. The experimental workflow does **not** enrol a system-login fingerprint.
 
+### Optional: identify two fingers (new, not hardware-validated)
+
+There is also a terminal experiment that temporarily enrols **Finger 1** and **Finger 2** and identifies fresh impressions against both. It uses the same bounded live USB helper and an isolated vendor engine, with no saved biometric database:
+
+```bash
+sudo -v
+.venv/bin/python tools/live_finger_identify.py \
+  --archive /path/to/7_Fingerprint-module.zip --send
+```
+
+The test is **new and unvalidated on real hardware**; the second enrolment or repeated verification may expose additional vendor-state issues. Both temporary templates are discarded when you exit. It does not identify fingerprints enrolled in earlier GUI sessions or support Linux login. See [tool and test index](docs/tool-index.md).
+
 For individual utilities and which ones are only historical experiments, see **[Tool and test index](docs/tool-index.md)**. For the guarded Windows-engine bridge and supported local tests, see [MOH bridge engineering notes](docs/5955-moh-engine-bridge.md).
 
 ## Project organisation
