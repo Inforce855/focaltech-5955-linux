@@ -67,7 +67,7 @@ sudo -v
 .venv/bin/python tools/interactive_enroll_gui.py --send
 ```
 
-Both diagnostic launchers default to the already-installed **`/usr/local/lib/focaltech-5955/ftWbioEngineAdapter.dll`**. The isolated runner still validates its pinned SHA-256 and complete import registration **before loading**, copies it into its temporary private directory, and exposes only that copy inside the sandbox. An alternative archive or DLL can still be selected with `--archive /path/to/7_Fingerprint-module.zip` or `--dll /path/to/ftWbioEngineAdapter.dll`; neither form bypasses the same validation. To run a read-only preflight first: `python3 tools/moh_engine_preflight.py`.
+Both diagnostic launchers default to the already-installed **`/usr/local/lib/focaltech-5955/ftWbioEngineAdapter.dll`**. The isolated runner still validates its pinned SHA-256 and complete import registration **before loading**, copies it into its temporary private directory, and launches the verified copy from `/tmp/engine.dll` inside the sandbox. An alternative archive or DLL can still be selected with `--archive /path/to/7_Fingerprint-module.zip` or `--dll /path/to/ftWbioEngineAdapter.dll`; neither form bypasses the same validation. To run a read-only preflight first: `python3 tools/moh_engine_preflight.py`.
 
 Run the GUI as a **regular user**, not as root. Only its short-lived USB capture helper requests `sudo -n`. Lift your finger fully between touches. Each capture batch is bounded to eight images; use **Continue** for another batch. The engine executes in a separate bubblewrap sandbox with no direct USB or network access; template storage is temporary and cleared on exit. The experimental workflow does **not** enrol a system-login fingerprint.
 
