@@ -43,13 +43,16 @@
 
 ## Milestone 4 — Standard Linux fingerprint support
 
-**Status: not started; avoid altering current login.**
+**Architecture chosen: libfprint device driver + fprintd for enrolment and authentication operations. Implementation not yet started.** See [integration design](libfprint-integration.md).
 
-- [ ] Implement an auditable and maintainable `libfprint` driver or upstream-compatible integration.
-- [ ] Add secure, privileged operations, storage and permissions without wide-open USB access.
-- [ ] Test `fprintd-enroll` and `fprintd-verify` without changing system authentication.
-- [ ] Evaluate KDE screen-unlock support and then opt-in PAM login/`sudo` authentication.
-- [ ] Preserve a functioning password-based recovery path at every step.
+- [x] Choose standard Linux `libfprint`/`fprintd` enrolment rather than shipping a separate GUI/database (decision, not working code).
+- [ ] Add a `2808:5955` `FpDevice` driver with synthetic-only discovery/open/close tests in an isolated libfprint development build.
+- [ ] Surface 12 accepted enrolment stages via `fpi_device_enroll_progress`, safely handling retries, finger release and cancellation.
+- [ ] Return a serialisable `FpPrint` with explicitly controlled private template handling; validate template reload across sessions.
+- [ ] Implement verification and identification callbacks, preserving real match/no-match/error outcomes.
+- [ ] Test `fprintd-enroll`, `fprintd-verify`, `fprintd-list` and `fprintd-delete` with a **development** fingerprint stack, without changing production login.
+- [ ] Review privilege boundaries, protected storage and system compatibility before considering any system package replacement.
+- [ ] Only after extensive validation consider KDE screen-unlock and opt-in PAM login/`sudo`, with a functioning password recovery path.
 
 ## Milestone 5 — Other FocalTech readers
 
@@ -63,6 +66,7 @@
 ## Research and test navigation
 
 - [Current evidence and working operation sequence](current-status.md)
+- [libfprint and fprintd target integration](libfprint-integration.md)
 - [Tool and test inventory](tool-index.md)
 - [Native research notes](../native/README.md)
 - [MOH compatibility bridge engineering history](5955-moh-engine-bridge.md)
