@@ -43,3 +43,29 @@ The initial user run compiled and started the private test setup but failed imme
 **Likely race, not established:** the error also occurs if fprintd crashes or cannot acquire its D-Bus name. There was no daemon log from the failed v0.9.5 run, because the runner's `set -e` exited immediately and its cleanup removed the temp files.
 
 GitHub commit `dfd0868341988e71ac7a69ac6e1e5cd2c5665ee5` adds bounded polling for the daemon's `net.reactivated.Fprint` ownership using the private bus before GetDevices, checks for early daemon exit, and prints both logs before cleanup on startup/enumeration failure. This is a script-only update: no native driver, private library, test PolicyKit C helper, system unit, permissions or authentication changes. Retry with the new script and report the full output if Claim still fails. Passing compilation and Claim has not been claimed in advance.
+
+
+## Live Claim success — 14 October 2026, 17:45
+
+After fixing the D-Bus startup race, the user ran `bash ~/Projects/ft5955-native-validation-v0.9.1/tests/ft5955_private_claim_v095.sh` as an unprivileged user on Nobara.
+
+**Results (all PASS for this trial)**:
+
+```text
+=== Private fprintd device enumeration ===
+([objectpath '/net/reactivated/Fprint/Device/0'],)
+=== PRIVATE BUS Claim for current user (no fingerprint capture) ===
+()
+=== Private PolicyKit test decisions ===
+PRIVATE BUS TEST PolicyKit name acquired: org.freedesktop.PolicyKit1
+PRIVATE BUS TEST PolicyKit: action=net.reactivated.fprint.device.verify decision=ALLOW
+libfprint-focaltech_5955-Message: 17:45:30.012: FT5955 USB descriptor OK: 18 bytes, VID=2808 PID=5955
+libfprint-focaltech_5955-Message: 17:45:30.013: FT5955 handshake OK: command 0x34, marker 0xAA55
+libfprint-focaltech_5955-Message: 17:45:30.013: FT5955 finger status: ABSENT
+PASS: isolated fprintd Claim succeeded without modifying system PolicyKit.
+No fingerprint enrolled. Private state directory will be deleted.
+```
+
+The familiar USB persist warning and missing `org.freedesktop.login1` sleep-inhibitor warning appeared, with no impact on Claim success.
+
+**Scope:** The real stock fprintd binary successfully claimed the driver on a disposable private D-Bus with a narrowly scoped test-only PolicyKit stub. No fingerprint was captured or enrolled and no system auth/storage was touched. The ephemeral one-off `gdbus` calling connection drops its Claim on exit; next test requires a **persistent D-Bus client**, private file storage, and an end-to-end enrol/verify workflow before any PAM/system integration. The permissive test-only policy stub is not suitable for live system authentication.
