@@ -14,7 +14,7 @@
 
 ## Milestone 2 — End-to-end enrolment and verification
 
-**Status: enrolment achieved; live verification outstanding.**
+**Status: experimental live enrolment and two-finger identification demonstrated; repeated validation still outstanding.**
 
 - [x] Execute the genuine FocalTech MOH Windows engine through an isolated Linux compatibility bridge.
 - [x] Reproduce the required 12-impression enrolment and `UpdateEnrollment` completion.
@@ -22,9 +22,10 @@
 - [x] Verify four held-out genuine impressions from saved private captures (4/4 matched).
 - [x] Confirm mismatched polarity produces four `WINBIO_E_NO_MATCH` outcomes.
 - [x] Complete one live enrolment GUI session with temporary in-memory template creation.
-- [x] Add an isolated **two-finger temporary identification test harness** with labelled in-memory templates and fresh-touch verification (**hardware testing pending**).
-- [ ] **Live verify** the just-enrolled finger, *before* the temporary template is destroyed.
-- [ ] Test a genuinely **different finger** and record accept/reject behaviour across sessions.
+- [x] Add an isolated **two-finger temporary identification test harness** with labelled in-memory templates and fresh-touch verification.
+- [x] **Demonstrate live verification** of both newly enrolled fingers against their in-memory templates; both labels were recognised in the initial physical test.
+- [x] **Perform an initial different-finger control**: all other fingers the tester tried were rejected as neither enrolled finger.
+- [ ] Reproduce the result across sessions, placements and more genuine/impostor trials; measure outcomes rather than assuming a production-ready false-accept/reject rate.
 - [ ] Measure reliability under repositioning, incomplete contact and repeated touches.
 - [ ] Review and harden the isolation boundary, confidential template lifetime and failure behaviour.
 
