@@ -22,6 +22,7 @@
 - [x] Verify four held-out genuine impressions from saved private captures (4/4 matched).
 - [x] Confirm mismatched polarity produces four `WINBIO_E_NO_MATCH` outcomes.
 - [x] Complete one live enrolment GUI session with temporary in-memory template creation.
+- [x] Add an isolated **two-finger temporary identification test harness** with labelled in-memory templates and fresh-touch verification (**hardware testing pending**).
 - [ ] **Live verify** the just-enrolled finger, *before* the temporary template is destroyed.
 - [ ] Test a genuinely **different finger** and record accept/reject behaviour across sessions.
 - [ ] Measure reliability under repositioning, incomplete contact and repeated touches.
