@@ -11,3 +11,7 @@ A separate standalone source bundle `ft5955-driver-integration-v0.8.tar.gz` has 
 The earlier v0.6.1 `FpPrint` synthetic serialization harness and v0.7 callback header bridge *did* pass on the user's Nobara private build; the new combined v0.8 driver must compile and be tested separately. Do not mix those claims.
 
 No private biometric images, user templates or proprietary DLL were uploaded or committed. The existing MOH feature worktree and running GUI remain unchanged.
+
+## Confirmed private native driver build — 14 October 2026
+
+The user applied the exact v0.8 source patch to `/home/tim/Projects/libfprint-ft5955` and ran `ninja -C build-ft5955` on Nobara (libfprint 1.94.100, GCC 16.2.1, gusb 0.4.9). Meson regenerated with `drivers: virtual_device,focaltech_5955` and the build **completed successfully**, including `drivers_ft5955_native_capture.c.o` and final target generation. The only visible warning was `-Wmisleading-indentation` at `libfprint/drivers/ft5955_native_capture.c:71` for two adjacent `if` statements on one line. The v0.8 offline action-state, codec and gateway tests passed, and the exact source hashes and backup/patch checks passed. The binary `native_enroll_verify` is a separate private-libfprint public-API probe, and **has not yet been compiled/run by the user**. No claim of native real-hardware enrolment or verification is warranted yet. No system installation or PAM/fprintd change was made.
