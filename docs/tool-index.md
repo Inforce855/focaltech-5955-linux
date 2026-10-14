@@ -2,7 +2,7 @@
 
 **Inventory reviewed: 14 October 2026** on `feature/ft5955-moh-engine-bridge`. All 61 files under `tools/` are indexed below; **no tool has been deleted, moved or renamed**. The distinction is between current working *experimental* code and exploratory/historical diagnostic tools, not between safe and unsafe binaries.
 
-**Begin with [current project status](current-status.md) or [the root README](../README.md).** Current hardware success includes experimental live enrolment and two-finger identification; systematic matching validation and `libfprint`/PAM login remain unfinished.
+**Begin with [current project status](current-status.md) or [the root README](../README.md).** The planned supported path is **[libfprint + fprintd](libfprint-integration.md)**; the programmes indexed here remain development diagnostics. Current hardware success includes experimental live enrolment and two-finger identification; systematic matching validation and `libfprint`/PAM login remain unfinished.
 
 ## Entrypoint and privacy rules
 
