@@ -173,10 +173,10 @@ static gboolean run_forced_quality(FpDevice *dev, FpPrint *print,
   g_print("Quality-retry proxy enabled FOR THIS VERIFICATION ONLY.\n"
           "The first genuine captured frame will be discarded and replaced\n"
           "with RETRY QUALITY. Lift fully, then touch again when prompted.\n");
-  handler = g_log_set_handler("libfprint-focaltech_5955", G_LOG_LEVEL_MESSAGE,
+  handler = g_log_set_handler("libfprint", G_LOG_LEVEL_MESSAGE,
                               on_quality_log, &p);
   if (!ask("Finger OFF. Enter, touch ONCE, lift after the retry message, then touch again: ")) {
-    g_log_remove_handler("libfprint-focaltech_5955", handler);
+    g_log_remove_handler("libfprint", handler);
     g_setenv("FT5955_ENGINE_GATEWAY", original_path, TRUE);
     g_unsetenv("FT5955_QUALITY_PROBE_ENABLE");
     g_unsetenv("FT5955_ORIGINAL_ENGINE_GATEWAY");
@@ -184,7 +184,7 @@ static gboolean run_forced_quality(FpDevice *dev, FpPrint *print,
   }
   ok = fp_device_verify_sync(dev, print, NULL, on_quality_match, &p,
                               &match, NULL, &error);
-  g_log_remove_handler("libfprint-focaltech_5955", handler);
+  g_log_remove_handler("libfprint", handler);
   /* Restore gateway regardless of result, before any subsequent operation. */
   g_setenv("FT5955_ENGINE_GATEWAY", original_path, TRUE);
   g_unsetenv("FT5955_QUALITY_PROBE_ENABLE");
