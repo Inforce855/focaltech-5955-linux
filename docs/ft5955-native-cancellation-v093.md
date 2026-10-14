@@ -12,19 +12,23 @@ No production libfprint, fingerprint authentication, PAM, fprintd, system librar
 Start from the research Git worktree containing the feature branch (normally `~/Projects/focaltech-5955-moh-test`); **fetch only**, do not switch branches or pull into a worktree containing unrelated changes.
 
 ```bash
-cd ~/Projects/focaltech-5955-moh-test
-git fetch origin feature/ft5955-moh-engine-bridge
+(
+  set -e
+  cd ~/Projects/focaltech-5955-moh-test
+  git fetch origin feature/ft5955-moh-engine-bridge
 
-TARGET="$HOME/Projects/ft5955-native-validation-v0.9.1"
-test -d "$TARGET/tests" || { echo "Missing v0.9.1 validation directory"; exit 1; }
-test ! -e "$TARGET/tests/cancel_probe_v093.c" || { echo "Source already exists: review manually"; exit 1; }
-test ! -e "$TARGET/build_cancel_probe_v093.sh" || { echo "Build script already exists: review manually"; exit 1; }
-git show FETCH_HEAD:tools/ft5955_cancel_probe_v093.c > "$TARGET/tests/cancel_probe_v093.c"
-git show FETCH_HEAD:tools/build_ft5955_cancel_probe_v093.sh > "$TARGET/build_cancel_probe_v093.sh"
-cd "$TARGET"
-bash -n build_cancel_probe_v093.sh
-bash build_cancel_probe_v093.sh
+  TARGET="$HOME/Projects/ft5955-native-validation-v0.9.1"
+  test -d "$TARGET/tests"
+  test ! -e "$TARGET/tests/cancel_probe_v093.c"
+  test ! -e "$TARGET/build_cancel_probe_v093.sh"
+  git show FETCH_HEAD:tools/ft5955_cancel_probe_v093.c > "$TARGET/tests/cancel_probe_v093.c"
+  git show FETCH_HEAD:tools/build_ft5955_cancel_probe_v093.sh > "$TARGET/build_cancel_probe_v093.sh"
+  cd "$TARGET"
+  bash -n build_cancel_probe_v093.sh
+  bash build_cancel_probe_v093.sh
+)
 ```
+The subshell preserves the current interactive shell and refuses to overwrite previously copied v0.9.3 files.
 
 The build script refuses root, requires an existing **private** libfprint header/library and verifies the resulting binary links to the private library. It does not compile/reinstall the driver and never runs sudo.
 
