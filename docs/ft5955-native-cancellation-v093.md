@@ -63,3 +63,12 @@ Press Enter, touch once with a finger, then lift fully. The first accepted impre
 ### Limitations of offline validation
 
 The client and script have been prepared for the user's Nobara **private libfprint v1.94.100** environment. A live USB/device test and compilation against that local libfprint build must be performed on the user's machine; publishing code and running static checks elsewhere do not establish a pass.
+
+
+## Live result: idle cancellation — 14 October 2026
+
+The operator ran `./build-tests/cancel_probe_v093 --live-no-touch` on the private Nobara libfprint build (PID 67282). **PASS**: device enumerated and opened, sensor status ABSENT, `GCancellable` cancellation requested, libfprint enrolment finish returned `G_IO_ERROR_CANCELLED`, reader closed/reopened, and USB descriptor/handshake and ABSENT sensor state were observed again after reopening. The diagnostic printed `PASS: cancellation diagnostic completed; no persistent print.` No libfprint assertion or crash in the supplied log.
+
+The familiar warning `Failed to disable USB persist by writing to /sys/bus/usb/devices/3-4/power/persist` appeared before cancellation; it did not prevent the operation succeeding.
+
+**Scope:** verifies cancellation while waiting without touching the sensor and successful subsequent reader open. Does **not** yet prove cancellation after an accepted impression, cancellation during verification, absence of orphan gateway processes or deterministic quality-retry recovery. Those remain separate tests. Do not install into system libfprint/fprintd/PAM.
