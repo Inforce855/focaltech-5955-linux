@@ -72,3 +72,10 @@ The operator ran `./build-tests/cancel_probe_v093 --live-no-touch` on the privat
 The familiar warning `Failed to disable USB persist by writing to /sys/bus/usb/devices/3-4/power/persist` appeared before cancellation; it did not prevent the operation succeeding.
 
 **Scope:** verifies cancellation while waiting without touching the sensor and successful subsequent reader open. Does **not** yet prove cancellation after an accepted impression, cancellation during verification, absence of orphan gateway processes or deterministic quality-retry recovery. Those remain separate tests. Do not install into system libfprint/fprintd/PAM.
+
+
+## Live result: cancellation after first impression — 14 October 2026
+
+Operator ran `./build-tests/cancel_probe_v093 --live-after-one` with the private Nobara libfprint build. At 16:33:49, sensor reported ABSENT after a successful USB descriptor and handshake. One enrolment impression was accepted (`Accepted 1/12`) and the test requested cancellation via `GCancellable` from the progress-driven path. The libfprint operation returned `G_IO_ERROR_CANCELLED` as expected. At 16:34:08, the same reader was closed/reopened, USB descriptor and handshake succeeded, and sensor reported PRESENT. Final diagnostic lines: `PASS: reader closed and reopened after cancellation.` and `PASS: cancellation diagnostic completed; no persistent print.`
+
+**PASS**: cancellation of a partially completed enrolment after exactly one accepted impression; reader operation recovered. PRESENT during reopen is a sensor observation, not a failure. Together with the earlier idle-cancellation pass, both v0.9.3 enrolment cancellation modes have passed on the live device. Still untested: process orphan checks, verify-operation cancellation, and forced verification-stage quality retry. No driver source edits or system authentication integration were performed.
