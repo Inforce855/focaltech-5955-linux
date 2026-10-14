@@ -74,3 +74,27 @@ The patch's offline tests **passed** on a copy of the exact v0.8 integration sou
 ### v0.9.2 applied and built on Nobara
 
 The user fetched the `ft5955_fix_verify_retry_v092.py` script from GitHub, ran its offline self-test and exact-source `--check` successfully, applied the one-file patch to `/home/tim/Projects/libfprint-ft5955/libfprint/drivers/ft5955_fpi_action_bridge.c` (creating `.before-v092.bak`), and completed `ninja -C /home/tim/Projects/libfprint-ft5955/build-ft5955` without compilation errors. **Live 10-control regression after the fix remains pending**, so elimination of the repeated-report assertion is not yet verified with a physical low-quality touch. The v0.9.1 test client's existing executable dynamically links the isolated libfprint build; it should now exercise the rebuilt library when re-run with the explicit experimental opt-ins.
+
+
+## v0.9.2 native ten-control test completed — 14 October 2026
+
+The user reran the *v0.9.1* 10-control native real-FpPrint roundtrip program after successfully applying/building the **v0.9.2 internal-quality-retry reporting fix**. Enrolment completed with 12 accepted impressions (no rejections on this run). The real print serialised in RAM, the original libfprint context/device was closed, and the print deserialised successfully into a freshly opened context/device.
+
+All **10 labelled verification operations completed without the previous libfprint assertion or premature termination**, with these outcomes:
+
+| Scan | Actual finger | Expected | Observed | Result |
+| --- | --- | --- | --- | --- |
+| 1 | Enrolled A | MATCH | MATCH | PASS |
+| 2 | Different B | NO_MATCH | NO_MATCH | PASS |
+| 3 | Enrolled A | MATCH | NO_MATCH | **False rejection** |
+| 4 | Different C | NO_MATCH | NO_MATCH | PASS |
+| 5 | Enrolled A | MATCH | MATCH | PASS |
+| 6 | Different B | NO_MATCH | NO_MATCH | PASS |
+| 7 | Enrolled A | MATCH | MATCH | PASS |
+| 8 | Different C | NO_MATCH | NO_MATCH | PASS |
+| 9 | Enrolled A | MATCH | MATCH | PASS |
+| 10 | Enrolled A | MATCH | MATCH | PASS |
+
+**Summary:** 5/6 enrolled-finger matches (1 false rejection), 4/4 different-finger `NO_MATCH` (0 unexpected matches), **0 quality retry events**, 10/10 operations reached a terminal result. The user notes the sensor's physical positioning makes first-try recognition inherently difficult.
+
+This is **not** a 10/10 accuracy pass and is not authentication validation. It demonstrates useful repeatability and successful private libfprint print roundtrip. Because there were **zero actual quality-retry events**, this run cannot yet confirm that the v0.9.2 double-report fix handles a *real* intermediate rejected-quality capture, even though no assertion occurred. Test a naturally occurring quality retry with bounded capture/cancellation; do not fabricate an acceptance or weaken thresholds. No fprintd, PAM, stored templates or system libfprint installation was involved.
