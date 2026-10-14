@@ -122,9 +122,10 @@ This CLI keeps both templates only inside a disposable sandbox process. It uses 
 ```bash
 # From the feature-branch checkout as a normal user
 sudo -v
-python3 tools/live_finger_identify.py \
-  --archive /path/to/7_Fingerprint-module.zip --send
+python3 tools/live_finger_identify.py --send
 ```
+
+By default this uses `/usr/local/lib/focaltech-5955/ftWbioEngineAdapter.dll` after SHA-256/import checks. `--archive /path/to/7_Fingerprint-module.zip` and `--dll /path/to/ftWbioEngineAdapter.dll` remain supported for private fallback testing. The DLL is copied into the isolated runner, not loaded from the host filesystem in place.
 
 Follow prompts for **Finger 1**, **Finger 2**, then fresh identification touches. Each finger needs 12 accepted enrolment impressions; up to eight fresh touches are captured in each bounded helper session. Identification returns Finger 1, Finger 2, NONE, REJECTED or AMBIGUOUS, and engine errors abort the test rather than being interpreted as matches.
 
