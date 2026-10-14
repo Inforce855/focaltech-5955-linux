@@ -9,7 +9,7 @@ isolated engine process and are wiped at process exit.
 No libfprint, fprintd, KDE, PAM, or real biometric database changes.
 
 Run as a regular user with explicit --send after 'sudo -v'. Requires the
-matching privately held Windows driver archive. USB I/O is performed only
+verified installed MOH DLL (or optional private Windows driver ZIP). USB I/O is performed only
 by the existing 8-touch/240-poll bounded helper, not by the sandboxed DLL.
 """
 from __future__ import annotations
@@ -24,6 +24,7 @@ import threading
 
 from live_contact_viewer import read_record
 from raw_to_png import decode_samples, to_8bit
+from moh_engine_preflight import DEFAULT_MOH_DLL
 
 HERE = Path(__file__).resolve().parent
 ENGINE_SCRIPT = HERE / "test_moh_isolated_live_identify.sh"
@@ -256,7 +257,9 @@ def run_session(engine: IsolatedEngine) -> None:
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--archive", type=Path, required=True)
+    p.add_argument("--archive", "--dll", dest="archive", type=Path,
+                   default=DEFAULT_MOH_DLL,
+                   help="default: installed MOH DLL; alternatively a private driver ZIP/DLL")
     p.add_argument("--send", action="store_true",
                    help="Explicitly authorise bounded real USB sensor interaction")
     args = p.parse_args()
@@ -265,7 +268,7 @@ def main() -> int:
     if os.geteuid() == 0:
         p.error("Run as a regular desktop user; use sudo -v separately")
     if not args.archive.is_file():
-        p.error("FocalTech matching driver archive not found")
+        p.error(f"FocalTech DLL or driver ZIP not found: {args.archive}")
     if subprocess.run(["sudo", "-n", "true"], check=False,
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode != 0:
         p.error("USB helper needs cached sudo credentials: run sudo -v first")
