@@ -12,9 +12,9 @@ Five areas have different maturity levels:
 | --- | --- | --- |
 | USB protocol and capture | Real 2808:5955 contact/release, handshake, image reads and 64×80 processed frames work on Nobara | Experimental bounded helper; not a production driver |
 | Proprietary match-on-host (MOH) compatibility bridge | FocalTech Windows matching DLL executes under Linux in an isolated, USB-free bubblewrap process | Development reference with incomplete Windows API semantics; **not open source** |
-| Offline enrolment and matching | 12 successful enrolment updates, duplicate precheck and mock-storage commit; 4/4 held-out same-finger matches with matching polarity | Not a measured false-accept or false-reject rate; no true different-finger security control yet |
+| Offline enrolment and matching | 12 successful enrolment updates, duplicate precheck and mock-storage commit; 4/4 held-out same-finger matches with matching polarity | Not a measured false-accept or false-reject rate; separately, an informal live different-finger check now succeeded |
 | Live experimental enrolment GUI | One full physical-sensor session completed with 12 usable impressions, 4 rejected, and a temporary in-memory template commit | Template wiped when session ends; **live verification has not yet been demonstrated** |
-| Two-finger identification test | New terminal tool enrols two numbered fingers into isolated RAM and tests fresh impressions against both | **Not yet exercised on the physical reader**; does not retain enrolments across runs |
+| Two-finger identification test | **Tested on physical reader (14 October 2026)**: Finger 1 and Finger 2 were correctly identified; all other fingers tried were not identified as either. Both enrolments used batch 2; two rejection messages reported across enrolment. | Informal, limited real-finger control; no persistent templates and no quantified security/reliability assessment |
 | Native C image/matching research | Independent image conversion and several components have synthetic tests | No validated, fully native open-source fingerprint matcher or libfprint driver yet |
 
 **No working `fprintd`, PAM, KDE or system-login fingerprint integration exists yet.** Password login is unaffected.
@@ -28,19 +28,19 @@ The working *reference* approach, which must be kept intact during tidy-up:
 3. **Invert the 8-bit image in memory** for Windows-like polarity and generally better vendor quality scores. The vendor engine also matched 4/4 held-out captures when *both* enrolment and verification used the original polarity; mixed polarities yielded 0/4 matches in the tested same-finger captures.
 4. Call `SetEnrollmentParameters` (unknown subfactor), `QuerySampleHint` (12 samples), then `CreateEnrollment`/`AcceptSampleData`/`UpdateEnrollment` for new impressions. The 12th valid `UpdateEnrollment` returned `S_OK`. **Do not use the independent `GetEnrollmentStatus` result to override that completion in this tested workflow.**
 5. Before `CommitEnrollment`, call `CheckForDuplicate`; the mock empty-database storage adapter implements `QueryByContent`. Commit to **temporary mock in-memory storage**. The temporary template is wiped at the end of the isolated session.
-6. For held-out offline verification, `VerifyFeatureSet` returned `S_OK` on 4/4 same-finger captures with matched polarity. `0x80098005` is `WINBIO_E_NO_MATCH` (seen in the polarity-mismatch control). A genuine **different-finger** control is still required.
+6. For held-out offline verification, `VerifyFeatureSet` returned `S_OK` on 4/4 same-finger captures with matched polarity. `0x80098005` is `WINBIO_E_NO_MATCH` (seen in the polarity-mismatch control). A **limited live different-finger control** has now been reported successful: other fingers tried did not match either of two newly enrolled fingers. A systematic, repeated and documented genuine/impostor evaluation is still required.
 
 This sequence is **not** an instruction to store templates persistently or enable system authentication.
 
 ## Current entry points (feature branch)
 
-For the complete, categorised inventory of all 58 tools without moving or deleting them, see the [tool and test index](tool-index.md). For a concise list of open milestones, use the [roadmap](roadmap.md). The original long-form [README](archive/readme-research-log-2026-10-14.md) and [roadmap](archive/roadmap-research-log-2026-10-14.md) remain archived for historical reproducibility.
+For the complete, categorised inventory of all 61 tools without moving or deleting them, see the [tool and test index](tool-index.md). For a concise list of open milestones, use the [roadmap](roadmap.md). The original long-form [README](archive/readme-research-log-2026-10-14.md) and [roadmap](archive/roadmap-research-log-2026-10-14.md) remain archived for historical reproducibility.
 
 
 | Purpose | Entry point | Type |
 | --- | --- | --- |
 | Experimental live enrolment | `tools/interactive_enroll_gui.py` | GUI with bounded USB helper and isolated engine |
-| Two-finger identification (**unvalidated**) | `tools/live_finger_identify.py` | Terminal test: two RAM-only templates, fresh touch against each; no login changes |
+| Two-finger identification (**tested experimentally**) | `tools/live_finger_identify.py` | Terminal test: two RAM-only templates, fresh touch against each; no login changes |
 | Fresh-touch USB acquisition | `tools/auto_contact_capture.py` | Privileged bounded helper; used by GUI |
 | Isolated live GUI engine runner | `tools/test_moh_isolated_interactive_enroll.sh` | Builds and runs isolated MOH process |
 | Reproduce offline enrol/commit/verification | `tools/replay_moh_enrollment.py` | Reads existing **local private** PGMs; no USB |
@@ -71,7 +71,7 @@ python3 tools/interactive_enroll_gui.py --archive /path/to/7_Fingerprint-module.
 
 Run the GUI as a **normal user**, not root; the USB helper alone uses `sudo -n`. Lift and press between captures. The helper is bounded to eight fresh touches per run; the GUI has a Continue button for the next bounded batch. The engine sandbox has **no USB or network access** and no persistent biometric storage.
 
-### Two-finger test (new; hardware validation pending)
+### Two-finger test (first live hardware run successful)
 
 ```bash
 sudo -v
@@ -79,7 +79,7 @@ python3 tools/live_finger_identify.py \
   --archive /path/to/7_Fingerprint-module.zip --send
 ```
 
-Enrol Finger 1 and Finger 2 in sequence, making 12 usable impressions for each, then test additional fingers. Each helper batch is bounded to eight fresh touches and 240 status checks. The test reports Finger 1, Finger 2, NONE, REJECTED, AMBIGUOUS or an engine error. Both templates are destroyed on exit; the scanner cannot recognise enrolments from past sessions. **No physical test has yet confirmed this new multi-template engine state path.**
+Enrol Finger 1 and Finger 2 in sequence, making 12 usable impressions for each, then test additional fingers. Each helper batch is bounded to eight fresh touches and 240 status checks. The test reports Finger 1, Finger 2, NONE, REJECTED, AMBIGUOUS or an engine error. Both templates are destroyed on exit; the scanner cannot recognise enrolments from past sessions. **First user-reported physical test completed successfully:** both enrolled labels recognised; none of the other fingers tried were recognised. Two rejected impressions were reported during enrolment. The second batch was expected because 12 successful impressions exceed the helper's eight-touch limit. Longer-term cross-session and repeated different-finger tests remain necessary.
 
 ## Data protection
 
