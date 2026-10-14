@@ -40,3 +40,16 @@ Daemon logged two **nonfatal, expected** warnings:
 Read D-Bus device properties `name`, `scan-type`, `num-enroll-stages`, `finger-present`, and `finger-needed` on the same disposable private bus. Upstream fprintd 1.94.5 documents these properties; `num-enroll-stages` may be `-1` before the device is claimed.
 
 Before private-bus enrolment, independently confirm file storage path selection and PolicyKit authorisation design; normal fprintd Claim and Enroll methods use PolicyKit on the system bus. Do not expose the experimental daemon on the user's real system bus, change installed units, write to `/var/lib/fprint`, or enable PAM yet.
+
+
+## Live D-Bus GetAll property check — 14 October 2026
+
+The operator repeated the isolated private-bus `fprintd` run with the private FT5955-enabled libfprint and queried `org.freedesktop.DBus.Properties.GetAll('net.reactivated.Fprint.Device')` on `/net/reactivated/Fprint/Device/0`. **Success**:
+
+```text
+({'name': <'FocalTech 5955 (experimental)'>, 'num-enroll-stages': <12>, 'scan-type': <'press'>, 'finger-present': <false>, 'finger-needed': <false>},)
+```
+
+This establishes successful propagation of the driver name, 12-stage enrolment count, press-type sensor and idle finger-state properties through stock fprintd over the private bus. It does not exercise Claim, authorisation, enrolment, or verification.
+
+Upstream fprintd 1.94.5 `src/file_storage.c` `get_storage_path()` selects the `STATE_DIRECTORY` environment variable if present/nonempty, falling back to `/var/lib/fprint` otherwise. Enrolment writes a serialised `FpPrint` to the computed per-user/per-driver/per-device file path. Therefore never omit `STATE_DIRECTORY` in live private-bus enrolment experiments; continue with a dedicated temporary path. Upstream `device.c` runs PolicyKit authorisation for claimed and enrol/verify methods; a private D-Bus service without a PolicyKit authority may fail such requests. No privilege or system configuration changes are warranted solely to bypass the failure.
