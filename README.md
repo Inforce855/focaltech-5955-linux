@@ -62,7 +62,7 @@ make -C native test
 
 ```bash
 # Requires a supported Linux desktop/Tkinter, bubblewrap, GCC, binutils
-# and your own legally obtained matching FocalTech driver ZIP.
+# and the locally installed, SHA-verified FocalTech MOH DLL
 sudo -v
 .venv/bin/python tools/interactive_enroll_gui.py --send
 ```
