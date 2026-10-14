@@ -1,0 +1,122 @@
+# FT5955 native libfprint driver integration v0.8 — 14 October 2026
+
+**Status: development source patch, awaiting compilation against user's isolated Nobara libfprint tree. No fprintd/PAM/system installation.**
+
+The user's two actual local source files were supplied: `libfprint/drivers/focaltech_5955.c` (5,545 bytes) and `libfprint/meson.build` (11,280 bytes). The original USB descriptor, open/close, claim/release, audited handshake `0x34`, and first status `0x82` logic were preserved.
+
+A separate standalone source bundle `ft5955-driver-integration-v0.8.tar.gz` has been created with an exact-file-hash, reversible patch (`apply.py --check`, `--apply`, `restore.py --restore`). It appends asynchronous `FpDevice.enroll` / `FpDevice.verify` vfuncs, GLib worker acquisition with audited status/readiness/image commands, 64x80 inverted contrast-processed frame conversion, versioned `FPI_PRINT_RAW` MOH template and isolated engine gateway using the existing pinned-DLL `bubblewrap` runner. Two environment opt-ins (`FT5955_EXPERIMENTAL_ENABLE=1` and explicit absolute `FT5955_ENGINE_GATEWAY`) prevent accidental use. The source remains proprietary-matcher-backed, not a fully open-source algorithm.
+
+**Local development checks passed:** C action-state regression (12 accepted stages, retries, verify, cancellation), four synthetic codec tests (including C/Python compatibility), two engine-gateway synthetic protocol tests, Python syntax, and applying/restoring the source patch on a temporary copy of the exact uploaded files. Real compilation against the user's private libfprint 1.94.100 headers/runtime **has not yet occurred**. Native live USB enrolment, verification, cancellation/unplug stress, serialization through actual device operations and persistent fprintd integration **must not be called complete**.
+
+The earlier v0.6.1 `FpPrint` synthetic serialization harness and v0.7 callback header bridge *did* pass on the user's Nobara private build; the new combined v0.8 driver must compile and be tested separately. Do not mix those claims.
+
+No private biometric images, user templates or proprietary DLL were uploaded or committed. The existing MOH feature worktree and running GUI remain unchanged.
+
+## Confirmed private native driver build — 14 October 2026
+
+The user applied the exact v0.8 source patch to `/home/tim/Projects/libfprint-ft5955` and ran `ninja -C build-ft5955` on Nobara (libfprint 1.94.100, GCC 16.2.1, gusb 0.4.9). Meson regenerated with `drivers: virtual_device,focaltech_5955` and the build **completed successfully**, including `drivers_ft5955_native_capture.c.o` and final target generation. The only visible warning was `-Wmisleading-indentation` at `libfprint/drivers/ft5955_native_capture.c:71` for two adjacent `if` statements on one line. The v0.8 offline action-state, codec and gateway tests passed, and the exact source hashes and backup/patch checks passed. The binary `native_enroll_verify` is a separate private-libfprint public-API probe, and **has not yet been compiled/run by the user**. No claim of native real-hardware enrolment or verification is warranted yet. No system installation or PAM/fprintd change was made.
+
+## Private libfprint test-client linkage + v0.8 cleanup correction — 14 October 2026
+
+After removing the `-Wmisleading-indentation` in `ft5955_native_capture.c`, the user rebuilt successfully and ran `bash build_private_test.sh`. The standalone `native_enroll_verify` client compiled, and `ldd` explicitly resolved `libfprint-2.so.2` to **`/home/tim/Projects/libfprint-ft5955/build-ft5955/libfprint/libfprint-2.so.2`**, not the system copy. No real libfprint enrol/verify was attempted yet.
+
+A static source review then found a **genuine v0.8 process-cleanup bug**: five uses of `g_subprocess_get_if_exited(child)` inside the worker's wait loop before any `g_subprocess_wait()`. GLib explicitly documents this as invalid; it checks exit **type**, not process liveness. The v0.8.1 in-place source correction replaces these with `(g_subprocess_get_identifier(child) == NULL)` — the public API defined to return `NULL` once the subprocess has terminated — retaining the existing bounded SIGTERM/force-exit fallback and later `g_subprocess_wait()`. A tiny patch script `ft5955-v0.8.1-fix-cleanup.py` is supplied separately; it requires exactly five old occurrences, refuses unknown source versions, makes a backup, and passes apply/reapply and byte-exact backup/restore checks on a copy of the actual v0.8 source. **Compilation and live test of the corrected driver are pending on Nobara.** Do not claim the original v0.8 cleanup was safe for real use.
+
+GLib documentation: https://gnome.pages.gitlab.gnome.org/gtk/gio/method.Subprocess.get_if_exited.html and https://gnome.pages.gitlab.gnome.org/gtk/gio/method.Subprocess.get_identifier.html.
+
+## FIRST NATIVE LIBFPRINT LIVE SUCCESS — 14 October 2026
+
+The user executed `./build-tests/native_enroll_verify --live` with `FT5955_EXPERIMENTAL_ENABLE=1` and the separate sandboxed `FT5955_ENGINE_GATEWAY`, linked to the **private** libfprint 1.94.100 build. The program opened the physical FocalTech 2808:5955 USB reader, validated the 18-byte descriptor, completed the `0x34` handshake and reported finger status `ABSENT`. It then progressed through **12 accepted** real samples while rejecting **4 low-quality** samples without advancing the counter. It reported `Enrol complete`; the next fresh verification returned **`MATCH`**, and the client exited normally with the in-memory print discarded. No fprintd/PAM/system library was installed or modified. A nonfatal warning about inability to change USB persist had no apparent effect on this test.
+
+**This is verified experimental native libfprint USB capture → asynchronous `FpDevice.enroll` → isolated proprietary-MOH template → `FpDevice.verify` success.** It does not yet demonstrate different-finger rejection within this native-driver path, real-template `FpPrint` serialization/deserialization across a device/context restart, device unplug/cancel safety, multi-session/reboot persistence, secure template-at-rest storage, identity/false-accept robustness, fprintd or PAM readiness. The MOH matcher remains proprietary; it is not an open-source replacement. The user previously proved other-finger `NO_MATCH` in standalone v0.4, and synthetic libfprint serialization in v0.6.1, but these must not be conflated with native-driver validation.
+
+The standalone v0.8.1 GLib subprocess cleanup correction was recommended before this first live test; the user's latest terminal output did **not** explicitly confirm whether that particular fix had been applied. Do not assume so. Do not perform destructive cleanup or system installation.
+
+## v0.9 private-client validation plan (no driver changes) — 14 October 2026
+
+After the first successful native enrolment + same-finger verification, a separate `ft5955-native-validation-v0.9` standalone source package was prepared. It **does not patch** the compiled, working native driver. The opt-in test client will enrol one finger, call the actual public `fp_print_serialize()` on its real driver-returned `FpPrint`, release the original print, **close and discard its first `FpDevice` / `FpContext`**, deserialize in process memory and create a new libfprint context/device. It will then run four operator-labelled physical controls: enrolled finger MATCH, different finger NO_MATCH, another different finger NO_MATCH, enrolled finger MATCH. Each verify exercises a fresh isolated engine gateway. It saves no biometric file and deliberately does not claim disk/reboot persistence. Unexpected results are reported, not silently accepted. The source has passed three local static safety/design checks and shell syntax validation; compilation against private 1.94.100 and real-hardware tests are **pending**. The environment preparing this package lacked GLib/libfprint build dependencies, so no local C compile claim is made.
+
+The native v0.8.1 subprocess cleanup fix's application status is still unconfirmed by the user's latest terminal output; verify that independently before further stress tests. No login/PAM/fprintd enabled.
+
+## v0.9 real native print restart: 3/4 labelled verifications — 14 October 2026
+
+The user's actual private-libfprint `native_print_roundtrip --live` completed 12 accepted enrolment stages, real `FpPrint` serialisation in RAM, destruction of the original print and `FpContext`, reopening the USB device in a new `FpContext`, and deserialisation of the print. The second native open/handshake succeeded; finger status initially reported `PRESENT`. Four fresh labelled checks then reported:
+
+1. Enrolled finger: **MATCH** (expected).
+2. Different finger: **NO_MATCH** (expected).
+3. Another different finger: **NO_MATCH** (expected).
+4. Enrolled finger again: **NO_MATCH** (**unexpected**, apparent false rejection).
+
+The test correctly exited with `ATTENTION: 1 unexpected verification result(s); not validated for authentication`. Do not claim all four checks passed, or classify this as a stored-template failure—the first same-finger verification **after** restore matched, demonstrating that the restored real template could be consumed by the fresh device and sandbox. The final no-match could reflect acquisition/contact variation, comparison variability or an unobserved operator difference; evidence does not isolate the cause. The driver requires an observed finger OFF followed by a fresh ON before accepting each scan. The nonfatal USB persist warning appeared during opening.
+
+### v0.9.1 repeatability diagnostic (standalone test client only)
+
+A separate source archive `ft5955-native-validation-v0.9.1` was prepared, retaining the real native `FpPrint` RAM roundtrip and driver/device restart while running **10 operator-labelled verification operations** in A/B/A/C/A/B/A/C/A/A order: 6 enrolled-finger A checks, 2 other-finger B and 2 other-finger C controls. The public `FpMatchCb` reports retry-quality events; the summary separately accounts for enrolled-finger missed matches, different-finger unexpected matches and retry events. A later success does not erase an earlier failure, and cancellation is not reported as PASS. Four local source checks and a lexical structural check pass; **Nobara private-libfprint C compilation and live testing are pending.** It does not write template/sample files or modify the working driver. Even a passing 10-sample diagnostic does not establish secure authentication or an empirically measured false-accept rate.
+
+**Next priorities:** repeated same-finger reliability and negative controls, clean cancellation/unplug stress testing, addressing both proprietary matcher isolation and secure at-rest template storage. Leave fprintd/PAM disabled. Do not silently retry NO_MATCH until MATCH.
+
+## v0.9.1 source/build confirmed on Nobara — 14 October 2026
+
+The user fetched the actual v0.9.1 tarball from `packages/ft5955-native-validation-v0.9.1.tar.gz` on the existing feature branch (without changing worktrees), extracted it and ran `bash run_source_tests.sh` and `bash build_private_test.sh`. All **four static source checks passed** (context reset, accounting for failures, no disk serialization, private-only). The standalone client **compiled successfully** and `ldd` resolved `libfprint-2.so.2` to `/home/tim/Projects/libfprint-ft5955/build-ft5955/libfprint/libfprint-2.so.2`. Neither USB nor biometrics were accessed during these tests. **The ten-scan real-hardware diagnostic has not yet run**; don't report a live pass. Continue to keep the known-good driver and system authentication unchanged.
+
+
+## v0.9.1 ten-scan repeatability run — 14 October 2026
+
+The user's physical native libfprint 1.94.100 roundtrip successfully enrolled 12 accepted impressions and restored a real serialized `FpPrint` into a fresh device/context. The test results through control 7 were: A MATCH, B NO_MATCH, A NO_MATCH (unexpected), C NO_MATCH, A MATCH, B NO_MATCH, A MATCH. At control 8 (another C finger), the MOH engine rejected the fresh image for scan quality. The **original** driver then emitted a libfprint verify retry report before continuing to scan. The log showed a fatal callback contract violation: `fpi_device_verify_report: assertion 'data->result_reported == FALSE' failed`, followed by `Verification operation failed: Please try again`. The 10-test session was **incomplete**, not a 10/10 pass or a secure authentication test. Four enrolled-finger probes were attempted before the crash: three MATCH, one NO_MATCH. The user emphasised that this front-mounted sensor is difficult to hit consistently, so some positioning-related false rejections are expected; we should distinguish that from the independent repeat-report software error.
+
+### v0.9.2 corrective source patch
+
+The exact cause is in `ft5955_fpi_action_bridge.c`: the verify RETRY handler calls `fpi_device_verify_report(FPI_MATCH_ERROR, retry)` but the worker continues scanning and later calls `fpi_device_verify_report` again for MATCH/NO_MATCH. The libfprint 1.94.100 API allows a single reported verification result per operation. The surgical patch `tools/ft5955_fix_verify_retry_v092.py` changes only the intermediate retry handler to keep scanning internally, emit a visible `g_message` prompting lift/reposition, and allow only the terminal match/no-match to report. The v0.9.1 test client's `quality retries` callback counter will not include these newly internal retries; the console's GLib messages show them instead. It keeps the existing 16-attempt bound and full release-press acquisition protocol; it does **not** weaken or overwrite matching results, change enrollment or install fprintd/PAM. The script enforces the exact v0.8 retry-block content, supports read-only `--check`, makes a backup on `--apply`, supports re-running idempotently, and contains `--self-test` offline fixture coverage.
+
+The patch's offline tests **passed** on a copy of the exact v0.8 integration source (including single remaining terminal call site, source mismatch refusal, backup and idempotency). **Applying and compiling it in the user's Nobara source tree, and re-testing the physical sensor, remain pending.** The patch provides no guarantee of an exact same-finger match on every physical placement. Never store proprietary vendor templates or enable authentication based on these tests alone.
+
+
+### v0.9.2 applied and built on Nobara
+
+The user fetched the `ft5955_fix_verify_retry_v092.py` script from GitHub, ran its offline self-test and exact-source `--check` successfully, applied the one-file patch to `/home/tim/Projects/libfprint-ft5955/libfprint/drivers/ft5955_fpi_action_bridge.c` (creating `.before-v092.bak`), and completed `ninja -C /home/tim/Projects/libfprint-ft5955/build-ft5955` without compilation errors. **Live 10-control regression after the fix remains pending**, so elimination of the repeated-report assertion is not yet verified with a physical low-quality touch. The v0.9.1 test client's existing executable dynamically links the isolated libfprint build; it should now exercise the rebuilt library when re-run with the explicit experimental opt-ins.
+
+
+## v0.9.2 native ten-control test completed — 14 October 2026
+
+The user reran the *v0.9.1* 10-control native real-FpPrint roundtrip program after successfully applying/building the **v0.9.2 internal-quality-retry reporting fix**. Enrolment completed with 12 accepted impressions (no rejections on this run). The real print serialised in RAM, the original libfprint context/device was closed, and the print deserialised successfully into a freshly opened context/device.
+
+All **10 labelled verification operations completed without the previous libfprint assertion or premature termination**, with these outcomes:
+
+| Scan | Actual finger | Expected | Observed | Result |
+| --- | --- | --- | --- | --- |
+| 1 | Enrolled A | MATCH | MATCH | PASS |
+| 2 | Different B | NO_MATCH | NO_MATCH | PASS |
+| 3 | Enrolled A | MATCH | NO_MATCH | **False rejection** |
+| 4 | Different C | NO_MATCH | NO_MATCH | PASS |
+| 5 | Enrolled A | MATCH | MATCH | PASS |
+| 6 | Different B | NO_MATCH | NO_MATCH | PASS |
+| 7 | Enrolled A | MATCH | MATCH | PASS |
+| 8 | Different C | NO_MATCH | NO_MATCH | PASS |
+| 9 | Enrolled A | MATCH | MATCH | PASS |
+| 10 | Enrolled A | MATCH | MATCH | PASS |
+
+**Summary:** 5/6 enrolled-finger matches (1 false rejection), 4/4 different-finger `NO_MATCH` (0 unexpected matches), **0 quality retry events**, 10/10 operations reached a terminal result. The user notes the sensor's physical positioning makes first-try recognition inherently difficult.
+
+This is **not** a 10/10 accuracy pass and is not authentication validation. It demonstrates useful repeatability and successful private libfprint print roundtrip. Because there were **zero actual quality-retry events**, this run cannot yet confirm that the v0.9.2 double-report fix handles a *real* intermediate rejected-quality capture, even though no assertion occurred. Test a naturally occurring quality retry with bounded capture/cancellation; do not fabricate an acceptance or weaken thresholds. No fprintd, PAM, stored templates or system libfprint installation was involved.
+
+
+## Follow-up 10-control experiment with proposed Sellotape interference — 14 October 2026
+
+The user supplied the full ten labelled verification outcomes after discussion of covering part of the enrolled finger with narrow Sellotape strips. The pasted log **does not specify exactly which scans had tape**, so causality and the interfered capture subset cannot be inferred from these results. The results are A:NO_MATCH, B:NO_MATCH, A:MATCH, C:NO_MATCH, A:MATCH, B:NO_MATCH, A:NO_MATCH, C:NO_MATCH, A:NO_MATCH, A:NO_MATCH. Of **6 enrolled-finger A tests, 2 MATCH and 4 NO_MATCH**; all **4 other-finger B/C tests were NO_MATCH**; all 10 supplied operations reached terminal results without a visible assertion. This is 6/10 outcomes meeting the label expectations (2/6 genuine accepted, 4/4 negative controls), **not** 10/10 recognition accuracy.
+
+The stdout quality-retry counter showed zero for each operation, but after v0.9.2 rejects intermediate quality errors internally, that libfprint callback counter no longer measures such internal retries. No `FT5955 scan rejected; lift and reposition finger` messages are present in the pasted excerpt. Consequently the logs do **not establish** that the v0.9.2 retry-recovery path was actually exercised. Deliberately withholding verification reports for an intermediate rejection is intentional; it avoids double-report but the retry count needs independent instrumentation if precise metrics are desired.
+
+Do not tune matching thresholds or claim Sellotape caused the additional false rejections without knowing which scans had tape. A small, test-only deterministic quality-rejection injection at the native action layer would be a safer and more decisive way to validate recovery, distinct from matching performance. Cancellation remains untested. No fprintd/PAM/system installation.
+
+
+## Operator-labelled Sellotape verification run — 14 October 2026
+
+The user repeated the live native-libfprint v0.9.1 ten-control roundtrip using the v0.9.2 patched driver, this time clarifying **only the first enrolled-finger verification (A1) was without Sellotape; all subsequent enrolled-finger verifications A2–A6 used tape covering part of the fingertip**. The log shows 12 accepted enrolment stages, with four quality rejects during enrolment (three while at 5/12 and one while at 8/12); those were correctly not counted as accepted. The print was serialised in RAM, restored into a fresh libfprint context/device, and all ten verification controls reached terminal results without a crash.
+
+- Enrolled finger A1, no tape: **MATCH**, 1/1.
+- Enrolled finger A2–A6, Sellotape: **NO_MATCH, MATCH, NO_MATCH, NO_MATCH, MATCH**; 2/5 matched and 3/5 false rejections for the intentionally obstructed finger.
+- Different fingers B/C: 4/4 **NO_MATCH**; no unexpected matches in this run.
+- Aggregate A: 3/6 MATCH; 3/6 false rejection; 0 quality retries *reported via the test-client callback*.
+- The log contains no verification-stage `FT5955 scan rejected; lift and reposition finger` messages. After the v0.9.2 change, the test-client's reported quality-retry counter does not measure internal driver retries, so this run does **not prove** recovery from a quality rejection during verification.
+
+The tape result demonstrates recognition can sometimes succeed despite partial obstruction, but the five taped samples are far too few to estimate a reliable false-reject rate or quantify the tape's causal effect separately from difficult sensor positioning. The four **enrolment** quality rejects confirm the enrolment retry path works; they do **not** exercise the fixed **verification** retry-report path. No system libfprint, fprintd, PAM or stored biometric files were changed.
