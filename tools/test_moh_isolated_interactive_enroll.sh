@@ -5,8 +5,12 @@
 # API shims are incomplete. Run only after reviewing and accepting the risk.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-if (( $# != 1 )) || [[ ! -f "$1" ]]; then
-  echo "Usage: bash tools/test_moh_isolated_interactive_enroll.sh /path/to/7_Fingerprint-module.zip" >&2
+# Defaults to the root-owned, SHA-pinned installed DLL; explicit ZIP/DLL
+# is still supported for backwards-compatible diagnostics.
+source_file="${1:-/usr/local/lib/focaltech-5955/ftWbioEngineAdapter.dll}"
+if (( $# > 1 )) || [[ ! -f "$source_file" ]]; then
+  echo "Usage: bash tools/test_moh_isolated_interactive_enroll.sh [installed.dll | 7_Fingerprint-module.zip]" >&2
+  echo "Missing input: $source_file" >&2
   exit 2
 fi
 for command in bwrap gcc python3 objdump timeout; do
@@ -15,17 +19,17 @@ done
 root="$(mktemp -d /tmp/ft5955-isolated.XXXXXXXX)"
 trap 'rm -rf -- "$root"' EXIT
 chmod 700 "$root"
-export FT5955_TEST_ARCHIVE="$(realpath "$1")"
+export FT5955_TEST_SOURCE="$(realpath "$source_file")"
 export FT5955_TEST_DLL="$root/engine.dll"
 python3 - <<'PY'
 import os
 from pathlib import Path
 import tempfile
 import tools.moh_engine_preflight as p
-archive=Path(os.environ["FT5955_TEST_ARCHIVE"])
+source=Path(os.environ["FT5955_TEST_SOURCE"])
 dest=Path(os.environ["FT5955_TEST_DLL"])
 with tempfile.TemporaryDirectory() as scratch:
-    candidate=p.archive_engine(archive,Path(scratch)) if archive.suffix.lower()==".zip" else archive
+    candidate=p.archive_engine(source,Path(scratch)) if source.suffix.lower()==".zip" else source
     total,libs,registered,missing=p.audit(candidate,Path("engine/ft_engine.c"))
     if total!=110 or missing:
         raise SystemExit(f"Import audit FAILED: {total} imports, {len(missing)} missing")
