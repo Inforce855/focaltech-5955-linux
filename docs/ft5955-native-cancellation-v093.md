@@ -79,3 +79,14 @@ The familiar warning `Failed to disable USB persist by writing to /sys/bus/usb/d
 Operator ran `./build-tests/cancel_probe_v093 --live-after-one` with the private Nobara libfprint build. At 16:33:49, sensor reported ABSENT after a successful USB descriptor and handshake. One enrolment impression was accepted (`Accepted 1/12`) and the test requested cancellation via `GCancellable` from the progress-driven path. The libfprint operation returned `G_IO_ERROR_CANCELLED` as expected. At 16:34:08, the same reader was closed/reopened, USB descriptor and handshake succeeded, and sensor reported PRESENT. Final diagnostic lines: `PASS: reader closed and reopened after cancellation.` and `PASS: cancellation diagnostic completed; no persistent print.`
 
 **PASS**: cancellation of a partially completed enrolment after exactly one accepted impression; reader operation recovered. PRESENT during reopen is a sensor observation, not a failure. Together with the earlier idle-cancellation pass, both v0.9.3 enrolment cancellation modes have passed on the live device. Still untested: process orphan checks, verify-operation cancellation, and forced verification-stage quality retry. No driver source edits or system authentication integration were performed.
+
+
+## Post-cancellation process check — 14 October 2026
+
+After both live v0.9.3 cancellation tests passed, the operator ran:
+
+```bash
+pgrep -af 'engine_gateway.py|bwrap|ft_engine' || true
+```
+
+**No output.** At the time of this check, no processes matching those three command-line patterns remained. This corroborates clean engine/sandbox process shutdown after the tests, but cannot rule out processes under unrelated names or validate other untested lifecycle paths. The native driver's idle and partial-enrolment cancellation tests require no corrective driver modifications based on these results.
