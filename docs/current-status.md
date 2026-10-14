@@ -19,6 +19,8 @@ Five areas have different maturity levels:
 
 **No working `fprintd`, PAM, KDE or system-login fingerprint integration exists yet.** Password login is unaffected.
 
+**Integration decision:** future production enrolment should use the standard **libfprint driver API** and **fprintd**, not the experimental standalone GUI or RAM-only two-finger tool. We have documented the [planned driver, `FpPrint` storage, test and isolation stages](libfprint-integration.md). This is a design choice; no system package or login configuration has been changed.
+
 ## Known-good experimental sequence
 
 The working *reference* approach, which must be kept intact during tidy-up:
@@ -94,7 +96,7 @@ Enrol Finger 1 and Finger 2 in sequence, making 12 usable impressions for each, 
 2. Keep old evidence and superseded native prototypes discoverable; identify them as historical rather than deleting them during early cleanup.
 3. Treat the Windows DLL bridge as a reference-only stage while independently developing native, freely distributable image processing, feature extraction and matching.
 4. Validate **live same-finger verification**, then **real different-finger rejection**, repeated across sessions, before introducing protected persistent template storage.
-5. When security and reliability are proven, add a proper `libfprint` integration and test `fprintd` before any PAM/KDE authentication changes.
+5. Develop and test a **libfprint `FpDevice` driver** and standard **fprintd** enrolment/verification next. The research GUI and terminal tools remain diagnostics, not a new enrolment system. See [integration plan](libfprint-integration.md). No PAM/KDE change until security and reliability are validated.
 6. Only reorganise the many scripts after a dependency/import audit and a saved, passing baseline; then consider advancing the experimental branch toward `main`.
 
 This page supersedes stale **status summaries**, not the dated technical findings.
