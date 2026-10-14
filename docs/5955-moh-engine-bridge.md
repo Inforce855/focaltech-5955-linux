@@ -1,5 +1,8 @@
 # FT5955 MOH engine bridge — experimental baseline
 
+> **Historical engineering log.** This document starts from the early non-working compatibility baseline and keeps those findings for reproducibility. It does **not** describe the latest state: by 14 October 2026, the isolated vendor engine supports working offline enrolment, mock-storage commit and held-out verification; a live GUI completed an experimental enrolment session. See [current status](current-status.md) before following earlier test instructions.
+
+
 ## Goal
 
 Run the actual **FocalTech 2808:5955** match-on-host Windows engine under
