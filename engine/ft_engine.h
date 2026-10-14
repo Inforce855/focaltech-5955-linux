@@ -30,8 +30,9 @@ int  ft_engine_enroll_update (void);
  * the caller must free. Returns 0 on success. */
 int  ft_engine_enroll_commit (uint8_t **out, size_t *outlen);
 
-/* Verify: load a previously committed template, then match it against the
- * most recently accepted frame. Returns 1 = match, 0 = no match. */
+/* Verify (test-only): load an in-memory previously committed template,
+ * then match against the most recently accepted frame. Returns 1=match,
+ * 0=NO_MATCH, -1=unavailable/engine error (never treat as positive). */
 int  ft_engine_verify (const uint8_t *tmpl, size_t tmpllen);
 
 #endif
