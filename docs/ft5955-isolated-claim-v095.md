@@ -35,3 +35,11 @@ bash ~/Projects/ft5955-native-validation-v0.9.1/tests/ft5955_private_claim_v095.
 Expected: a device object path from GetDevices and a successful Claim result (normally the empty tuple), with log entries from the private test policy helper. Failures must be investigated from the output: compilation and live Claim have not yet been tested on Nobara. The one-off gdbus Claim client disconnects after the call; longer enrol/verification tests will require a persistent connection and independent checking of private template storage.
 
 No enrolment and no login authentication are attempted by this v0.9.5 script.
+
+## First live run and startup race fix (14 October 2026)
+
+The initial user run compiled and started the private test setup but failed immediately at GetDevices with `GDBus.Error:org.freedesktop.DBus.Error.ServiceUnknown: The name net.reactivated.Fprint was not provided by any .service files`. The previous private-bus device enumeration had succeeded with a two-second wait after launching fprintd. The first v0.9.5 runner had accidentally omitted all readiness waiting and issued GetDevices immediately after starting fprintd in the background.
+
+**Likely race, not established:** the error also occurs if fprintd crashes or cannot acquire its D-Bus name. There was no daemon log from the failed v0.9.5 run, because the runner's `set -e` exited immediately and its cleanup removed the temp files.
+
+GitHub commit `dfd0868341988e71ac7a69ac6e1e5cd2c5665ee5` adds bounded polling for the daemon's `net.reactivated.Fprint` ownership using the private bus before GetDevices, checks for early daemon exit, and prints both logs before cleanup on startup/enumeration failure. This is a script-only update: no native driver, private library, test PolicyKit C helper, system unit, permissions or authentication changes. Retry with the new script and report the full output if Claim still fails. Passing compilation and Claim has not been claimed in advance.
