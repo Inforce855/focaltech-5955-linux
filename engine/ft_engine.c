@@ -1116,6 +1116,16 @@ void ft_engine_probe_wipe_offline(void){
   g_rec_subfactor=0;
   g_have_record=0;
 }
+
+/* Match the subfactor stored by the actual mock AddRecord callback, instead
+ * of assuming the unknown-finger enrollment parameter equals the commit
+ * subfactor. These accessors exist only in sandboxed research builds. */
+uint8_t ft_engine_probe_record_subfactor_offline(void){
+  return g_have_record ? g_rec_subfactor : 0;
+}
+void ft_engine_probe_select_subfactor_offline(uint8_t subtype){
+  g_rec_subfactor=subtype;
+}
 #endif
 
 int ft_engine_enroll_commit(uint8_t **out,size_t *outlen){
@@ -1145,14 +1155,16 @@ int ft_engine_verify(const uint8_t *tmpl,size_t tmpllen){
   u8 id[76]; fill_identity(id);
   memcpy(g_rec_identity,id,sizeof id);
 #if defined(FT5955_OFFLINE_VERIFY_AFTER_COMMIT)
-  g_rec_subfactor=1;  /* matches the temporary CommitEnrollment subfactor */
+  const u8 verify_subfactor=g_rec_subfactor;
+#else
+  const u8 verify_subfactor=1;
 #endif
   u8 match=0, *payload=NULL, *hash=NULL;
   size_t payload_size=0, hash_size=0;
   u32 reject=0;
   u64 (MS *Verify)(void*,const void*,u8,u8*,u8**,size_t*,u8**,size_t*,u32*)=
       *(void**)((u8*)g_iface+32+10*8);
-  u32 hr=(u32)Verify(&pipeline,id,1,&match,&payload,&payload_size,
+  u32 hr=(u32)Verify(&pipeline,id,verify_subfactor,&match,&payload,&payload_size,
                      &hash,&hash_size,&reject);
   fprintf(stderr,"[5955] IDENTIFY_VERIFY hr=0x%08x match=%u reject=%u\n",
           hr,(unsigned)(match!=0),reject);
