@@ -43,3 +43,8 @@ A separate first live run had already produced `MATCH` after the forced quality 
 GitHub commit `9713a8190b397ddbcb41046a509050230e898c11` updates **only** `tools/native_verify_safety_v094.c`: it now requires exactly one internal retry, exactly one terminal callback, no callback error and a completed verification, independently of the terminal match decision. A final `NO_MATCH` produces a conspicuous ATTENTION message identifying a false rejection; no matching thresholds, device driver, gateway, vendor engine or system authentication components changed.
 
 **Still required before real authentication:** test a protected template store and reversible isolated `fprintd` setup, evaluate genuine-finger acceptance reliability, check process cleanup for this run, and independently assess privileges and sandbox boundaries. A repeat of the 12-impression enrolment is **not** necessary just to prove the already observed retry path.
+
+
+## Post-test process cleanup — 14 October 2026
+
+After the second v0.9.4 live test (verification cancellation followed by a forced quality retry ending in NO_MATCH), the operator ran `pgrep -af 'engine_gateway.py|bwrap|ft_engine|ft5955_quality_proxy' || true` and reported **no output**. Thus no running processes matching the gateway, bubblewrap, engine or test proxy command-line patterns remained at check time. This supports successful diagnostic-process cleanup but is not a comprehensive proof against differently named background processes. The driver remains isolated; no fprintd/PAM integration has yet been attempted.
