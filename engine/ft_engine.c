@@ -1132,12 +1132,32 @@ int ft_engine_enroll_commit(uint8_t **out,size_t *outlen){
 }
 
 int ft_engine_verify(const uint8_t *tmpl,size_t tmpllen){
-  if(set_engine_gs_current()!=0) return 0;
-  if(tmpllen==0 || tmpllen>sizeof g_rec_template) return 0;
-  memcpy(g_rec_template, tmpl, tmpllen); g_rec_tsize=tmpllen; g_have_record=1;
+  /* TEST-ONLY: the previous wrapper passed ULONG pointers in 64-bit
+   * SIZE_T output positions. Use the ABI proven by the 12+4 replay.
+   * A no-match HRESULT is a normal, distinct outcome; any unexpected
+   * vendor error must NOT be turned into a positive identification. */
+  if(set_engine_gs_current()!=0 || !g_iface || !tmpl ||
+     tmpllen==0 || tmpllen>sizeof g_rec_template) return -1;
+  memset(g_rec_template,0,sizeof g_rec_template);
+  memcpy(g_rec_template,tmpl,tmpllen);
+  g_rec_tsize=tmpllen;
+  g_have_record=1;
   u8 id[76]; fill_identity(id);
-  u8 m=0; u32 ps=0,hs=0,vr=0; void*plp=0,*hp=0;
-  u64 (MS *Verify)(void*,void*,u8,void*,void*,void*,void*,void*,void*)=*(void**)((u8*)g_iface+32+10*8);
-  Verify(&pipeline, id, 1, &m, &ps, &plp, &hs, &hp, &vr);
-  return m?1:0;
+  memcpy(g_rec_identity,id,sizeof id);
+#if defined(FT5955_OFFLINE_VERIFY_AFTER_COMMIT)
+  g_rec_subfactor=1;  /* matches the temporary CommitEnrollment subfactor */
+#endif
+  u8 match=0, *payload=NULL, *hash=NULL;
+  size_t payload_size=0, hash_size=0;
+  u32 reject=0;
+  u64 (MS *Verify)(void*,const void*,u8,u8*,u8**,size_t*,u8**,size_t*,u32*)=
+      *(void**)((u8*)g_iface+32+10*8);
+  u32 hr=(u32)Verify(&pipeline,id,1,&match,&payload,&payload_size,
+                     &hash,&hash_size,&reject);
+  fprintf(stderr,"[5955] IDENTIFY_VERIFY hr=0x%08x match=%u reject=%u\n",
+          hr,(unsigned)(match!=0),reject);
+  memset(id,0,sizeof id);
+  if(hr==0 && match!=0) return 1;
+  if(hr==UINT32_C(0x80098005) || (hr==0 && match==0)) return 0;
+  return -1;
 }
