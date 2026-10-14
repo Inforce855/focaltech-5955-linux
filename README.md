@@ -4,7 +4,7 @@
 
 The long-term goal is a **fully open-source driver and native matcher** with standard Linux `libfprint` / `fprintd` integration. The code and findings are organised so that other developers can investigate additional FocalTech USB readers—and potentially SPI models—without assuming they use the same protocol.
 
-> **Project status — 14 October 2026:** Live USB image capture and experimental fingerprint enrolment **work** on the original `2808:5955` under Nobara. An isolated FocalTech Windows matching-engine bridge has also successfully enrolled 12 captures, temporarily committed a template to mock storage, and matched **4/4 held-out same-finger images offline**. A GUI completed live enrolment with **12 usable and 4 rejected touches**. **Live verification, real different-finger rejection, secure persistent storage and system login/unlock are not yet implemented.** The Windows DLL is a **temporary research dependency**, not the intended final driver.
+> **Project status — 14 October 2026:** Live USB image capture and experimental fingerprint enrolment **work** on the original `2808:5955` under Nobara. An isolated FocalTech Windows matching-engine bridge has also successfully enrolled 12 captures, temporarily committed a template to mock storage, and matched **4/4 held-out same-finger images offline**. A GUI completed live enrolment with **12 usable and 4 rejected touches**. **Live two-finger identification and testing against other unenrolled fingers have now succeeded experimentally; secure persistent storage and system login/unlock are not yet implemented.** The Windows DLL is a **temporary research dependency**, not the intended final driver.
 
 For the precise current capabilities and known-good call sequence, read **[Current status and safety boundaries](docs/current-status.md)**.
 
@@ -17,11 +17,11 @@ For the precise current capabilities and known-good call sequence, read **[Curre
 | Windows match-on-host engine via isolated Linux compatibility bridge | **Working research reference**, requires an external proprietary DLL |
 | Offline same-finger template verification | **4/4 held-out matches** with consistent image polarity |
 | Offline polarity-mismatch rejection | **4/4 no-match outcomes** when the verification polarity differed |
-| Real different-finger security test | **Still required** |
+| Live two-finger identification / unenrolled-finger control | **Reported working on physical reader**: both enrolled fingers identified, all other tested fingers returned no match; small informal test, not security certification |
 | Fully native/open-source feature extraction, matching and template engine | **Under development**; several independent image components and synthetic tests exist |
 | `libfprint`, `fprintd`, KDE screen unlock, PAM login or `sudo` | **Not available** |
 
-The offline results are a proof of the processing path, **not a measured false-accept rate**. The original and inverted grayscale representations both matched when used consistently; the inverted one generally yielded higher quality scores and is the present GUI default.
+The offline and limited live results demonstrate the processing path, **not a measured false-accept rate**. The original and inverted grayscale representations both matched when used consistently; the inverted one generally yielded higher quality scores and is the present GUI default.
 
 ## Hardware tested
 
@@ -68,7 +68,7 @@ sudo -v
 
 Run the GUI as a **regular user**, not as root. Only its short-lived USB capture helper requests `sudo -n`. Lift your finger fully between touches. Each capture batch is bounded to eight images; use **Continue** for another batch. The engine executes in a separate bubblewrap sandbox with no direct USB or network access; template storage is temporary and cleared on exit. The experimental workflow does **not** enrol a system-login fingerprint.
 
-### Optional: identify two fingers (new, not hardware-validated)
+### Identify two fingers (first live test successful)
 
 There is also a terminal experiment that temporarily enrols **Finger 1** and **Finger 2** and identifies fresh impressions against both. It uses the same bounded live USB helper and an isolated vendor engine, with no saved biometric database:
 
@@ -78,7 +78,7 @@ sudo -v
   --archive /path/to/7_Fingerprint-module.zip --send
 ```
 
-The test is **new and unvalidated on real hardware**; the second enrolment or repeated verification may expose additional vendor-state issues. Both temporary templates are discarded when you exit. It does not identify fingerprints enrolled in earlier GUI sessions or support Linux login. See [tool and test index](docs/tool-index.md).
+**First physical-sensor test successful (14 October 2026):** both labelled enrolled fingers were recognised and all other fingers the tester tried were rejected. Both enrolments required a second capture batch, as expected: the USB helper is bounded to eight touches while the engine requires 12 accepted impressions per finger. Two impression-rejection messages were observed across the enrolments. The experiment is still not sufficiently tested for real authentication reliability. Both temporary templates are discarded when you exit. It does not identify fingerprints enrolled in earlier GUI sessions or support Linux login. See [tool and test index](docs/tool-index.md).
 
 For individual utilities and which ones are only historical experiments, see **[Tool and test index](docs/tool-index.md)**. For the guarded Windows-engine bridge and supported local tests, see [MOH bridge engineering notes](docs/5955-moh-engine-bridge.md).
 
