@@ -70,3 +70,24 @@ The user executed the guarded importer in a dedicated Git worktree at `~/Project
 Observed terminal output: `17/21 archives recognised; 4 other archives ignored`, `135 versioned source files validated`, `Commit: 135 newly staged historical source files`, `PUSHED: 0f6e826`. Two Python cache binaries were skipped. The duplicate v0.9.4 archive was enumerated twice; **16 distinct versioned archive directories** were uploaded, verified in the GitHub tree. The earlier 138 count was an inaccurate pre-import estimate for the archive contents (the GitHub history tree also includes a root README and two previously committed repair scripts, making 138 total files in that history subtree).
 
 The historical files are now preserved in GitHub. **This does not yet mean that the live, uncommitted `~/Projects/libfprint-ft5955` driver and its build changes are backed up or reproducibly built from GitHub.** Continue with a read-only local Git inventory and reconcile the live driver separately. Do not overwrite local work with old snapshots.
+
+## Confirmed live-driver snapshot — 16 October 2026
+
+The user ran the non-destructive source snapshot and pushed commit [`77db7f5`](https://github.com/Inforce855/focaltech-5955-linux/commit/77db7f5) to `feature/ft5955-source-history`. The GitHub tree was independently verified to contain exactly **18 snapshot files** at [`driver/live-snapshot-2026-10-16/`](../driver/live-snapshot-2026-10-16/):
+
+- **13 active** C/header driver files (including the modified `focaltech_5955.c` and all FT5955 native action/capture, codec and callback bridge files).
+- **Three** current engine source files (`engine_gateway.py`, `template_runner.py`, `template_session.c`).
+- One `local-libfprint-changes.patch` recording tracked libfprint Meson/main-driver modifications.
+- A `README.md` manifest with individual SHA-256 file hashes and exact base libfprint Git commit `c8e01dc26cedb2d97779a314a7260f1c33e02bfa`.
+
+This is the actual then-live source, distinct from the v0.8 historical archive; no original files were changed or backed-up `.bak` files imported. **The snapshot has not yet been rebuilt or regression-tested from GitHub; it is a source-preservation milestone, not an assertion of production readiness.**
+
+### Saved-template investigation from the committed snapshot
+
+- `ft5955_native_action.c` receives a `TEMPLATE <size> <subfactor>` export on completion, then forwards it to `ft5955_fpi_action_bridge.c`.
+- The callback bridge packs the vendor template with `ft5955_print_pack()` and calls `ft5955_fpprint_assign()` to store it as a `FPI_PRINT_RAW` byte-array `GVariant`.
+- On verification `ft5955_fpprint_extract()` validates the `FT5955P1` envelope and SHA-256 digest; the native worker sends its bytes in `MODE V` to `engine_gateway.py`.
+- The gateway explicitly invokes `engine.imported(template,subfactor)` and waits for `IMPORTED` before reporting `READY 1`. The C worker requires `READY 1` before scanning a finger. A terminal `verify-no-match` therefore indicates that execution normally proceeded past the driver envelope check and gateway import acknowledgement, rather than merely observing a saved finger name.
+- A successful import acknowledgement **does not prove the template was the intended finger, preserved byte-for-byte through fprintd storage, or consistently recognised by the matcher**. These are still hypotheses to test. Earlier no-matches occurred even without restarting fprintd.
+
+Next tests should ideally be offline template-envelope codec/serialization checks and a controlled same-session-vs-post-restart verification plan, avoiding repeated 12-impression enrolments until a discriminating diagnostic is prepared.
