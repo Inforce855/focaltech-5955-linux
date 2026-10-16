@@ -4,7 +4,7 @@ This folder preserves the individual **text source files** recovered from the de
 
 ## Scope
 
-The source import recognises 17 previously uploaded archives by exact SHA-256 and retains 138 UTF-8 source files. Its validated dry run excluded two compiled Python cache (`.pyc`) files and intentionally excluded all separately uploaded proprietary/system binaries (`.so`, `.deb`, `.install`), raw biometric data and vendor disassembly. Identical files across historical versions are retained under their individual version labels to preserve provenance.
+The source importer recognises 17 previously uploaded archives by exact SHA-256; its isolated dry-run validated 138 UTF-8 source files. **These archive files are not yet present on GitHub until the import is published from the local source archives.** Its validated dry run excluded two compiled Python cache (`.pyc`) files and intentionally excluded all separately uploaded proprietary/system binaries (`.so`, `.deb`, `.install`), raw biometric data and vendor disassembly. Identical files across historical versions are retained under their individual version labels to preserve provenance.
 
 - **v0.1–v0.3:** MOH IPC and early real-capture integration.
 - **v0.4–v0.7:** template restart, FpPrint codec, libfprint serialization and callback tests.
