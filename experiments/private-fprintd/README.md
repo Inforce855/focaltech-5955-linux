@@ -97,6 +97,8 @@ each session. The fixed confirmation prompt uses `/dev/tty` rather than stdin,
 avoiding the EOF caused by launching from a heredoc.
 
 
+**16 October first physical `--roundtrip` result:** PARTIAL PASS / OVERALL FAIL. Enrolment completed; `ListEnrolledFingers` returned `right-index-finger` on both private daemon processes, but all **three** new real right-index verification attempts returned terminal `verify-no-match`. The disposable RAM-backed directory was removed. This demonstrates fprintd record discovery, **not** successful restoration of matching state. There was no verification baseline immediately before daemon restart in this experiment. Review local driver/gateway template serialisation and MOH import before repeating the 12-stage enrolment.
+
 ## Saved-template restart test (new, compile/live test pending)
 
 A new optional `--roundtrip` test is committed on the private-fprintd feature branch. It **has not yet been compiled or tested on Nobara**. It is intended to reduce repeated physical enrolments while answering a key storage question.
