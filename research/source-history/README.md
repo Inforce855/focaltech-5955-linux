@@ -4,13 +4,13 @@ This folder preserves the individual **text source files** recovered from the de
 
 ## Scope
 
-The source importer recognises 17 previously uploaded archives by exact SHA-256; its isolated dry-run validated 138 UTF-8 source files. **These archive files are not yet present on GitHub until the import is published from the local source archives.** Its validated dry run excluded two compiled Python cache (`.pyc`) files and intentionally excluded all separately uploaded proprietary/system binaries (`.so`, `.deb`, `.install`), raw biometric data and vendor disassembly. Identical files across historical versions are retained under their individual version labels to preserve provenance.
+**Imported and verified on GitHub, 16 October 2026:** Commit [`0f6e826`](https://github.com/Inforce855/focaltech-5955-linux/commit/0f6e826) added **135 historical source files across 16 version-specific directories**. The user-side importer recognised 17 archive copies (one v0.9.4 archive was duplicated), ignored four other archives, and skipped two compiled Python cache (`.pyc`) files. The repository's versioned source directories were independently confirmed through the GitHub tree listing. Proprietary/system binaries (`.so`, `.deb`, `.install`), raw biometric data and vendor disassembly were not part of this source-only import. Earlier versions remain separated by their source-history directory.
 
 - **v0.1–v0.3:** MOH IPC and early real-capture integration.
 - **v0.4–v0.7:** template restart, FpPrint codec, libfprint serialization and callback tests.
 - **v0.8:** native driver components, MOH gateway and standalone integration tests.
 - **v0.9–v0.9.4:** verification, cancellation, repeatability and quality-control tests.
-- **v0.9.6:** initial isolated private-fprintd test harness (the actively maintained harness is in `experiments/private-fprintd/` on the other feature branch).
+- **Private-fprintd v0.9.6:** maintained independently in `experiments/private-fprintd/` (not part of the 135 imported archive source files).
 - **Other:** live libfprint image-bridge prototypes, NBIS diagnostic, and an older Meson/driver source snapshot.
 
 Old installer and patch scripts inside these history folders must **not** be run against the live `~/Projects/libfprint-ft5955` checkout. The old source alone is **not proof of a reproducible working current driver**.
