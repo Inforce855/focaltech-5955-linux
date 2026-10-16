@@ -186,6 +186,11 @@ dbus-run-session -- bash -c '
         echo "=== PRIVATE FPRINTD DIAGNOSTICS ==="
         grep -Ei "error|warning|failed|focaltech|ft5955" \
             "$TEST_DIR/fprintd.log" | tail -n 35 || true
+        if [[ -f "$TEST_DIR/fprintd-restarted.log" ]]; then
+            echo "=== PRIVATE RESTARTED FPRINTD DIAGNOSTICS ==="
+            grep -Ei "error|warning|failed|focaltech|ft5955" \
+                "$TEST_DIR/fprintd-restarted.log" | tail -n 35 || true
+        fi
     fi
     echo "Removing disposable template directory and logs."
     exit "$status"
