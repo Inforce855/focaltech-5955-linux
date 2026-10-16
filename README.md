@@ -2,7 +2,7 @@
 
 Reverse-engineering and Linux userspace support for the **FocalTech USB fingerprint reader, VID:PID `2808:5955`**.
 
-**Project status: First physical fingerprint image captures working under Nobara (11 October 2026)!** USB communication, contact detection, image geometry, handshake, readiness and image-sized transfers have been demonstrated. Distinct fingers produce visibly different images; repeated captures of the first finger look similar. **Visual observations are not automated identity matching, and no functional `libfprint` driver exists yet.** The device is visible on Linux but was not recognised by `libfprint 1.94.100` and `fprintd 1.94.5` on Nobara (Fedora 44 base).
+**Current status (16 October 2026): Experimental Linux integration is active.** Verified USB acquisition, finger detection and local matching experiments have progressed to an experimental native libfprint driver. On 14 October, an isolated **private fprintd** enumerated and successfully claimed the FocalTech 2808:5955 device using a private PolicyKit authority. **End-to-end fprintd enrolment and verification, persistent storage and Linux login remain unverified.** See the [dated project status](docs/status-2026-10-16.md), [development roadmap](docs/roadmap.md) and [v0.9.6 private enrol/verify harness](experiments/private-fprintd/README.md).
 
 
 ### Windows MOH image-conversion disassembly (12 October 2026)
