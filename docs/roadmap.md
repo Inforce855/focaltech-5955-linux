@@ -28,8 +28,9 @@
 - [x] Prototype the FocalTech 5955 as an experimental `libfprint` device driver.
 - [x] **14 October:** disposable private `fprintd` recognised and claimed the sensor using private PolicyKit.
 - [x] **16 October:** v0.9.6 private D-Bus enrolment/verification test **compiled successfully** (`--check`, no scan).
-- [ ] Resolve v0.9.6 non-root private-daemon USB permissions: 16 October first live run reached enumeration and PolicyKit `ALLOW` but `Claim` failed with libusb `-3` (`errno=13`, access denied), before any fingerprint scan.
-- [ ] Run v0.9.6 private `fprintd` 12-impression enrolment and fresh verification.
+- [x] **16 October:** confirm USB access failure cause (missing write permission); grant narrowly scoped temporary ACL only on the identified `2808:5955` device node; next non-root `Claim` succeeded. Permanent udev handling pending.
+- [x] **16 October:** complete genuine 12-stage private-`fprintd` enrolment: 11 intermediate passes plus `enroll-completed (done=true)` from the physical sensor.
+- [ ] **Next:** fetch and compile the `/dev/tty` confirmation fix, repeat enrolment, and perform **fresh verification** (previous test stopped on stdin EOF because it was launched from a Bash heredoc).
 - [ ] Repeat enrol/verify with independent fresh-touch trials and different-finger controls.
 - [ ] Verify persistent storage and reload behaviour, error propagation and privacy boundaries.
 - [ ] Only after sufficient evidence, review optional KDE/PAM integration with password fallback.
