@@ -99,8 +99,9 @@ def main():
         raise SystemExit('No hash-recognised source archives found; nothing changed')
     for relative, data in planned.items():
         target = root / relative
-        if target.is_symlink():
-            raise SystemExit(f'Refusing symlink target: {target}')
+        if any((root.joinpath(*relative.parts[:i])).is_symlink()
+               for i in range(1, len(relative.parts) + 1)):
+            raise SystemExit(f'Refusing symlink in destination path: {target}')
         if target.exists() and target.read_bytes() != data:
             raise SystemExit(f'Existing source differs; refusing overwrite: {target}')
     print(f'{len(planned)} historical text files validated; mode={"stage" if a.stage else "DRY RUN"}.')
