@@ -119,6 +119,12 @@ The updated C client now provides **up to 3 manually confirmed attempts per enro
 
 All operations run in the existing private test stack, with the original temporary RAM-backed storage cleanup and **no PAM/KDE/system fprintd changes**. Non-root USB read/write permission is still required (the earlier device-specific ACL may reset after a reconnect). Never run the launcher with `sudo`.
 
+### Repeat controls: first full 4/4 success (16 October 2026)
+
+The tester repeated `--controls` without changing the comparison order: after one complete right-index enrolment, verification results were **right index = `verify-match`**, **right middle = `verify-no-match`**, **left index = `verify-no-match`**, **right index again = `verify-match`**. All outcomes arrived as terminal D-Bus signals with `done=true`. The client printed `PASS: controls completed (2 genuine matches, 2 different-finger rejections, 0 genuine no-matches)` and the matching per-category counts, followed by private PolicyKit ALLOW messages and cleanup of the disposable state. Both enrolled-finger matches succeeded on their first attempt.
+
+This is the **first complete successful four-step run**, following an earlier failed 4-step run and a failed bounded-retry run where the final genuine attempt repeatedly returned no-match. The successful sequence proves a negative check does **not inevitably** break later matching; it does not identify why earlier genuine comparisons failed. Placement and capture variability remain possible, as does intermittent software behaviour. This is not a measured false-accept/false-reject rate. A separate `--diagnose` mode now exists in GitHub to interleave extra genuine attempts; that newer mode has not yet been compiled or run on Nobara.
+
 ## Confirmed physical result — 16 October 2026
 
 The updated C client ran against the real `2808:5955` fingerprint reader on Nobara using a disposable private `fprintd` bus and RAM-backed state directory:
