@@ -20,7 +20,7 @@ The v0.9.1 `native_print_roundtrip.c` genuinely extends the v0.9 test rather tha
 
 On the repository's three branches examined (`main`, `feature/ft5955-moh-engine-bridge`, `feature/ft5955-private-fprintd-v096`), the original `ft5955_native_action.[ch]` and the private driver `focaltech_5955.c` were **not present**. v0.9.4-related testing sources do already appear on the older MOH branch; compare before publishing duplicates.
 
-These historical archives are **not yet imported as source files on this branch**. The live local driver, Meson changes and gateway may have additional modifications beyond the recovered snapshots. Before declaring a reproducible driver, inventory and review the dirty checkout with `git status`/`git diff` and reconcile those files; never overwrite the local working source or apply the old v0.8 installer/patch blindly.
+This historical inventory predates the completed source import; see the final import result below. The live local driver, Meson changes and gateway may have additional modifications beyond the recovered snapshots. Before declaring a reproducible driver, inventory and review the dirty checkout with `git status`/`git diff` and reconcile those files; never overwrite the local working source or apply the old v0.8 installer/patch blindly.
 
 Publish extracted, reviewed **text-only** historical sources in a separate source-history directory or feature branch. Never commit biometric images, real templates, raw samples, personal log dumps, proprietary vendor DLLs, compiled programs or archive duplicates. Avoid `git clean`, `git reset --hard`, forced pushes and destructive checkout operations.
 
@@ -45,7 +45,7 @@ The real source of the historical v0.8.1 process-cleanup change is now preserved
 
 ## Source consolidation gate
 
-Before marking the repository as the **authoritative rebuildable native driver**, the original **local** `~/Projects/libfprint-ft5955` driver files, private Meson registrations, `~/Projects/ft5955-driver-integration-v0.8/engine` gateway and dependency manifests must be compared with these historical archives and imported under reviewed version control. Preserve active development work, prefer source files over gz archive copies, and avoid storing biometric or proprietary vendor materials. Current source archives are inventoried but **not yet completely imported**. The two standalone Python patch scripts above were committed; no hardware files or auth setup were changed.
+Before marking the repository as the **authoritative rebuildable native driver**, the original **local** `~/Projects/libfprint-ft5955` driver files, private Meson registrations, `~/Projects/ft5955-driver-integration-v0.8/engine` gateway and dependency manifests must be compared with these historical archives and imported under reviewed version control. Preserve active development work, prefer source files over gz archive copies, and avoid storing biometric or proprietary vendor materials. The 16 distinct versioned historical source archives have now been imported on the dedicated source-history branch; the live driver is still pending reconciliation. The two standalone Python patch scripts above were committed; no hardware files or auth setup were changed.
 
 
 ## Non-destructive import helper (committed; not run on user's PC)
@@ -60,5 +60,13 @@ Example **read-only** use from any checked-out copy of the repository, after fet
 python3 tools/import_ft5955_history.py "$HOME/Downloads"
 ```
 
-Opt-in `--stage` should only follow review of the worktree and branch. The user must inspect the staged source and explicitly commit/push the imported files separately. **A full historical source import is not yet confirmed on GitHub.**
+Opt-in `--stage` should only follow review of the worktree and branch. The user must inspect the staged source and explicitly commit/push the imported files separately. **Historical source import was subsequently confirmed on the dedicated source-history branch; the former dry-run-only instructions above are retained as a record of the earlier step.**
 
+
+## Completed source-history import — 16 October 2026
+
+The user executed the guarded importer in a dedicated Git worktree at `~/Projects/ft5955-source-history` and pushed commit [`0f6e826`](https://github.com/Inforce855/focaltech-5955-linux/commit/0f6e826) to [`feature/ft5955-source-history`](https://github.com/Inforce855/focaltech-5955-linux/tree/feature/ft5955-source-history).
+
+Observed terminal output: `17/21 archives recognised; 4 other archives ignored`, `135 versioned source files validated`, `Commit: 135 newly staged historical source files`, `PUSHED: 0f6e826`. Two Python cache binaries were skipped. The duplicate v0.9.4 archive was enumerated twice; **16 distinct versioned archive directories** were uploaded, verified in the GitHub tree. The earlier 138 count was an inaccurate pre-import estimate for the archive contents (the GitHub history tree also includes a root README and two previously committed repair scripts, making 138 total files in that history subtree).
+
+The historical files are now preserved in GitHub. **This does not yet mean that the live, uncommitted `~/Projects/libfprint-ft5955` driver and its build changes are backed up or reproducibly built from GitHub.** Continue with a read-only local Git inventory and reconcile the live driver separately. Do not overwrite local work with old snapshots.
