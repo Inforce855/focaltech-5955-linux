@@ -1,6 +1,30 @@
 # Rebuild the preserved FT5955 driver without enrolment
 
-**State: tool committed on 16 October 2026; clean-source hardware-independent build not yet executed on Nobara.** This is a preparation and compile test, not a verified native matcher or system integration. The source is pinned to the real private driver snapshot [live-snapshot-2026-10-16](../driver/live-snapshot-2026-10-16/README.md), preserved in commit [77db7f5](https://github.com/Inforce855/focaltech-5955-linux/commit/77db7f5).
+**State: PASS on Nobara, 16 October 2026.** The isolated GitHub-snapshot source build completed successfully; hardware operation with the newly built copy was **not** tested. This is a preparation and compile test, not a verified native matcher or system integration. The source is pinned to the real private driver snapshot [live-snapshot-2026-10-16](../driver/live-snapshot-2026-10-16/README.md), preserved in commit [77db7f5](https://github.com/Inforce855/focaltech-5955-linux/commit/77db7f5).
+
+## Confirmed Nobara build result — 16 October 2026
+
+The user executed `python3 "$HISTORY/tools/verify_ft5955_rebuild.py" --build` after updating the source-history worktree from GitHub. The final terminal output showed:
+
+```text
+Build targets in project: 27
+libfprint 1.94.100
+Drivers: focaltech_5955
+doc: false
+drivers: focaltech_5955
+introspection: false
+Found ninja-1.13.2 at /usr/bin/ninja
+RUN: meson compile -C /tmp/ft5955-rebuild-jd8r121t/build
+[109/109] Linking target tests/test-fpi-device
+PASS: isolated libfprint build completed using GitHub snapshot
+PASS: temporary rebuild removed; live checkout, system auth and USB device untouched
+```
+
+**PASS criteria met:** Manifest-verified preserved driver/header sources and Meson patch reproduced the then-live main source on the pinned historical libfprint base, Meson configured the FocalTech-only driver, and the disposable source tree compiled to completion. The script reported removing the disposable build tree. The result was obtained **without fingerprint contact, enrolment, a hardware test, installation or modifying the existing active libfprint checkout**.
+
+**Boundaries:** This test used the user's locally available upstream libfprint Git object at pinned commit; it does not independently test network clean-clone checkout, build across arbitrary machines, MOH matching gateway runtime, nor the binary against USB hardware. It proves a successful **source rebuild**, not that 109 test cases executed; `109/109` is Ninja's compiled build step count. The separate private-`fprintd` hardware trials established actual enrol/verify and template reuse on the earlier live build.
+
+**Next no-enrolment work:** Assess a controlled use of the newly reproduced library for **device discovery/Claim only** on the already-proven private D-Bus stack, without touching enrolled templates, enrolling a finger or altering system PAM/fprintd. Before attempting such a test, the temporary build-cleanup workflow needs an opt-in way to preserve a testable build outside the live checkout and a bounded, clean-stop private test harness. Do not run an enrolment mode under any proposed new test.
 
 ## Purpose
 
@@ -42,7 +66,7 @@ python3 "$HISTORY/tools/verify_ft5955_rebuild.py" --build
 
 The latter is a **source rebuild only**, not a device test. It requires Python 3.12+, Git, Meson, Ninja and normal libfprint/OpenSSL C build dependencies on Nobara. It intentionally does not run `meson install`, `sudo`, `fprintd` or any program that scans fingerprints.
 
-**Pass criteria:** all recorded source SHA-256 values match; exact original libfprint commit is present; patch applies cleanly and reproduces the captured main driver; Meson configures and compiles a libfprint shared library in the temporary directory. The live driver remains unchanged.
+**Pass criteria (met on Nobara, 16 October 2026):** all recorded source SHA-256 values match; exact original libfprint commit is present; patch applies cleanly and reproduces the captured main driver; Meson configures and compiles a libfprint shared library in the temporary directory. The live driver remains unchanged.
 
 **If it fails:** paste only the command output and compiler errors, not any fingerprint recordings, templates, /dev/shm files, or vendor binaries. A compile failure is a useful reproducibility finding, not proof that the previously tested live driver was broken.
 
