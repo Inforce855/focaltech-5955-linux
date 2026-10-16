@@ -79,6 +79,23 @@ bash ~/Projects/ft5955-v096-github-test/experiments/private-fprintd/ft5955_priva
 
 The live test explicitly asks for **one right-index finger**, expects 12 accepted impressions, then requires lifting the finger and pressing Enter before verifying. It regards `NO_MATCH`, timeout, D-Bus method errors and incomplete enrolment as failure. **Latest `--live` run passed Claim and enrolment. Fresh verification is pending: fetch the updated C client before retesting.**
 
+## Next test: update existing C client
+
+Because v0.9.6 files already exist in the local validation tests directory, fetch
+the corrected C client rather than creating another folder or re-running the
+initial two-file download (which refuses existing files).
+
+```bash
+git -C ~/Projects/focaltech-5955-linux fetch origin feature/ft5955-private-fprintd-v096
+git -C ~/Projects/focaltech-5955-linux show origin/feature/ft5955-private-fprintd-v096:experiments/private-fprintd/ft5955_private_enroll_v096.c > ~/Projects/ft5955-native-validation-v0.9.1/tests/ft5955_private_enroll_v096.c
+bash ~/Projects/ft5955-native-validation-v0.9.1/tests/ft5955_private_enroll_v096.sh --check
+```
+
+Then run `bash ~/Projects/ft5955-native-validation-v0.9.1/tests/ft5955_private_enroll_v096.sh --live` directly in a terminal, without `sudo`.
+This will **enrol the finger again** because temporary test storage is deleted after
+each session. The fixed confirmation prompt uses `/dev/tty` rather than stdin,
+avoiding the EOF caused by launching from a heredoc.
+
 ## Safety and cleanup
 
 - **Do not use sudo** and do not run against the real system bus.
