@@ -24,7 +24,8 @@ successful v0.9.5 `ft5955_private_polkit_v095.c` is **already there** and will
 not be overwritten.
 
 ```bash
-set -e
+bash <<'BASH'
+set -euo pipefail
 REPO="$HOME/Projects/focaltech-5955-linux"
 TESTS="$HOME/Projects/ft5955-native-validation-v0.9.1/tests"
 BRANCH="origin/feature/ft5955-private-fprintd-v096"
@@ -41,6 +42,7 @@ for name in ft5955_private_enroll_v096.c ft5955_private_enroll_v096.sh; do
 done
 
 bash "$TESTS/ft5955_private_enroll_v096.sh" --check
+BASH
 ```
 
 This does **not** check out or merge another branch into your existing Git working tree. It
