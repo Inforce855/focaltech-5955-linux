@@ -180,8 +180,17 @@ int main(int argc, char **argv)
     g_print("PASS: enrolment completed.\n");
     g_print("Lift your finger fully, then press ENTER to begin fresh verification.\n");
     fflush(stdout);
-    if (getchar() == EOF) {
-        g_printerr("STOP: no interactive confirmation for fresh verification.\n");
+    /* Do not use stdin: callers may launch this test through a shell heredoc,
+     * which leaves standard input at EOF even though a real terminal exists. */
+    FILE *tty = fopen("/dev/tty", "r");
+    if (!tty) {
+        g_printerr("STOP: no interactive terminal for verification.\n");
+        goto out;
+    }
+    int key = fgetc(tty);
+    fclose(tty);
+    if (key != '\n') {
+        g_printerr("STOP: verification requires a fresh ENTER keypress.\n");
         goto out;
     }
     if (!perform(&c, TRUE)) {
