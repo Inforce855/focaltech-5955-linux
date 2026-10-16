@@ -22,7 +22,7 @@ A limited two-finger experimental matching test succeeded previously; this **doe
 
 ## Try the current private fprintd test
 
-The v0.9.6 experiment is on **[`feature/ft5955-private-fprintd-v096`](../../tree/feature/ft5955-private-fprintd-v096)**, in a [draft pull request](../../pull/2). It requires the existing *local* experimental libfprint build and integration gateway; a fresh clone alone is **not yet sufficient**.
+The v0.9.6 experiment is on **[`feature/ft5955-private-fprintd-v096`](https://github.com/Inforce855/focaltech-5955-linux/tree/feature/ft5955-private-fprintd-v096)**, in a [draft pull request](https://github.com/Inforce855/focaltech-5955-linux/pull/2). It requires the existing *local* experimental libfprint build and integration gateway; a fresh clone alone is **not yet sufficient**.
 
 On the existing Nobara machine, after fetching the [test sources](experiments/private-fprintd/README.md) into the validation directory:
 
@@ -39,7 +39,7 @@ bash ~/Projects/ft5955-native-validation-v0.9.1/tests/ft5955_private_enroll_v096
 - [Private fprintd v0.9.6 test instructions](experiments/private-fprintd/README.md)
 - [Hardware and USB protocol](docs/hardware.md)
 - [Historical experimental README](docs/archive/readme-research-log-2026-10-16.md) and [detailed research roadmap](docs/archive/roadmap-research-log-2026-10-16.md)
-- [MOH engine bridge development branch](../../tree/feature/ft5955-moh-engine-bridge) — additional code and documentation developed before the v0.9.6 private-fprintd branch; not yet consolidated
+- [MOH engine bridge development branch](https://github.com/Inforce855/focaltech-5955-linux/tree/feature/ft5955-moh-engine-bridge) — additional code and documentation developed before the v0.9.6 private-fprintd branch; not yet consolidated
 
 ## Security and contributions
 
