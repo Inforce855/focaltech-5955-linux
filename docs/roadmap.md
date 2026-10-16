@@ -28,6 +28,7 @@
 - [x] Prototype the FocalTech 5955 as an experimental `libfprint` device driver.
 - [x] **14 October:** disposable private `fprintd` recognised and claimed the sensor using private PolicyKit.
 - [x] **16 October:** v0.9.6 private D-Bus enrolment/verification test **compiled successfully** (`--check`, no scan).
+- [ ] Resolve v0.9.6 non-root private-daemon USB permissions: 16 October first live run reached enumeration and PolicyKit `ALLOW` but `Claim` failed with libusb `-3` (`errno=13`, access denied), before any fingerprint scan.
 - [ ] Run v0.9.6 private `fprintd` 12-impression enrolment and fresh verification.
 - [ ] Repeat enrol/verify with independent fresh-touch trials and different-finger controls.
 - [ ] Verify persistent storage and reload behaviour, error propagation and privacy boundaries.
