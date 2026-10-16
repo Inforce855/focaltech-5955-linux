@@ -78,6 +78,9 @@ See [protocol research notes](protocol-research.md) and [image acquisition findi
 
 - [ ] Implement a stable `libfprint` driver or documented alternative.
 - [ ] Test through `fprintd` independently of production authentication.
+- [x] Confirm experimental native libfprint device enumerates and Claim succeeds through disposable private fprintd/PolicyKit (14 October 2026); **not** an enrolment/verification result.
+- [ ] Compile and test v0.9.6 private `fprintd` enrolment and fresh verification (12 accepted impressions, then separate verification); pending Nobara hardware test.
+- [ ] Validate repeated genuine/impostor results and template storage before considering production login.
 - [ ] Evaluate reliability, privacy and access controls.
 - [ ] Optionally enable KDE / PAM integration once proven safe.
 
