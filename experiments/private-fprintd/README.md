@@ -1,6 +1,6 @@
 # Private fprintd enrolment / verification (FT5955 v0.9.6)
 
-**Status (16 October 2026): compile-only test PASSED on Nobara. First live test reached device enumeration and PolicyKit `ALLOW` but FAILED at USB-open permission (`LIBUSB_ERROR_ACCESS [-3]`), before enrolment.** Source and documentation are versioned on a separate GitHub branch. The previous **v0.9.5** experiment confirmed that a private `fprintd` process can enumerate and Claim the FocalTech 2808:5955 reader; it did not enrol or verify a finger.
+**Status (16 October 2026): physical fprintd enrolment PASSED after granting per-device USB write permission. Verification did not begin because the first completed enrolment was launched through a heredoc and the old client read EOF from stdin. GitHub now has a `/dev/tty` confirmation fix, pending a Nobara test.** Source and documentation are versioned on a separate GitHub branch. The previous **v0.9.5** experiment confirmed that a private `fprintd` process can enumerate and Claim the FocalTech 2808:5955 reader; it did not enrol or verify a finger.
 
 ## Scope
 
@@ -69,7 +69,7 @@ git worktree add --detach ../ft5955-v096-github-test origin/feature/ft5955-priva
 bash ../ft5955-v096-github-test/experiments/private-fprintd/ft5955_private_enroll_v096.sh --check
 ```
 
-`--check` **only compiles** both C programmes; there are **no live fingerprint scans or authentication changes**. The user's Nobara run on **16 October 2026** printed `PASS: test programmes compiled. No fingerprint scanned.` The first live attempt is **blocked by host USB device-node permissions**, not by compilation. No enrolment or matching was exercised.
+`--check` **only compiles** both C programmes; there are **no live fingerprint scans or authentication changes**. The user's Nobara run on **16 October 2026** printed `PASS: test programmes compiled. No fingerprint scanned.` The first live attempt was blocked by USB permissions. A subsequent run after a per-device ACL grant successfully completed enrolment; fresh verification has not yet been attempted.
 
 Only after a successful check and review of the code:
 
@@ -77,7 +77,7 @@ Only after a successful check and review of the code:
 bash ~/Projects/ft5955-v096-github-test/experiments/private-fprintd/ft5955_private_enroll_v096.sh --live
 ```
 
-The live test explicitly asks for **one right-index finger**, expects 12 accepted impressions, then requires lifting the finger and pressing Enter before verifying. It regards `NO_MATCH`, timeout, D-Bus method errors and incomplete enrolment as failure. **First `--live` run failed at `Claim` with `errno=13` (`/dev/bus/usb/003/003`); do not interpret it as an enrolment or matching result.**
+The live test explicitly asks for **one right-index finger**, expects 12 accepted impressions, then requires lifting the finger and pressing Enter before verifying. It regards `NO_MATCH`, timeout, D-Bus method errors and incomplete enrolment as failure. **Latest `--live` run passed Claim and enrolment. Fresh verification is pending: fetch the updated C client before retesting.**
 
 ## Safety and cleanup
 
