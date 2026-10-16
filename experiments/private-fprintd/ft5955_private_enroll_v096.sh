@@ -5,8 +5,8 @@
 set -euo pipefail
 umask 077
 
-if [[ $# -ne 1 || ( "${1:-}" != "--check" && "${1:-}" != "--live" && "${1:-}" != "--controls" && "${1:-}" != "--diagnose" ) ]]; then
-    echo "Usage: $0 --check | --live | --controls | --diagnose" >&2
+if [[ $# -ne 1 || ( "${1:-}" != "--check" && "${1:-}" != "--live" && "${1:-}" != "--controls" && "${1:-}" != "--diagnose" && "${1:-}" != "--roundtrip" ) ]]; then
+    echo "Usage: $0 --check | --live | --controls | --diagnose | --roundtrip" >&2
     exit 2
 fi
 if [[ $EUID -eq 0 ]]; then
@@ -126,32 +126,59 @@ dbus-run-session -- bash -c '
         exit 4
     fi
 
-    /usr/libexec/fprintd >"$TEST_DIR/fprintd.log" 2>&1 &
-    fp_pid=$!
-    ready=false
-    for _ in {1..50}; do
-        if [[ "$(timeout 2s gdbus call --address "$DBUS_SYSTEM_BUS_ADDRESS" \
-                --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus \
-                --method org.freedesktop.DBus.NameHasOwner \
-                net.reactivated.Fprint 2>/dev/null || true)" == "(true,)" ]]; then
-            ready=true
-            break
+    launch_fprintd() {
+        local log_file="$1"
+        local ready=false
+        /usr/libexec/fprintd >"$log_file" 2>&1 &
+        fp_pid=$!
+        for _ in {1..50}; do
+            if [[ "$(timeout 2s gdbus call --address "$DBUS_SYSTEM_BUS_ADDRESS" \
+                    --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus \
+                    --method org.freedesktop.DBus.NameHasOwner \
+                    net.reactivated.Fprint 2>/dev/null || true)" == "(true,)" ]]; then
+                ready=true
+                break
+            fi
+            if ! kill -0 "$fp_pid" 2>/dev/null; then
+                break
+            fi
+            sleep 0.2
+        done
+        if [[ "$ready" != true ]]; then
+            echo "FAIL: private fprintd did not acquire its D-Bus name." >&2
+            tail -n 35 "$log_file" >&2
+            return 5
         fi
-        if ! kill -0 "$fp_pid" 2>/dev/null; then
-            break
-        fi
-        sleep 0.2
-    done
-    if [[ "$ready" != true ]]; then
-        echo "FAIL: private fprintd did not acquire its D-Bus name." >&2
-        tail -n 35 "$TEST_DIR/fprintd.log" >&2
-        exit 5
-    fi
+    }
+
+    launch_fprintd "$TEST_DIR/fprintd.log" || exit 5
 
     echo "Private fprintd ready. Storage is on disposable /dev/shm."
     echo "Use the SAME right index finger for all enrolment touches."
     status=0
-    "$FT5955_V096_PRIVATE_CLIENT" "$FT5955_V096_PRIVATE_MODE" || status=$?
+    if [[ "$FT5955_V096_PRIVATE_MODE" == "--roundtrip" ]]; then
+        echo "PHASE 1: Enrol once and confirm fprintd lists the finger."
+        "$FT5955_V096_PRIVATE_CLIENT" --enroll-only || status=$?
+        if [[ $status -eq 0 ]]; then
+            echo "Restarting ONLY private fprintd; retaining disposable RAM storage."
+            kill "$fp_pid" 2>/dev/null || true
+            wait "$fp_pid" 2>/dev/null || true
+            fp_pid=""
+            if launch_fprintd "$TEST_DIR/fprintd-restarted.log"; then
+                echo "PHASE 2: New fprintd process, new client, same RAM storage."
+                "$FT5955_V096_PRIVATE_CLIENT" --verify-saved || status=$?
+            else
+                status=5
+            fi
+        fi
+        if [[ $status -eq 0 ]]; then
+            echo "PASS: enrolment survived a private daemon restart."
+        else
+            echo "FAIL: cross-daemon saved-template roundtrip." >&2
+        fi
+    else
+        "$FT5955_V096_PRIVATE_CLIENT" "$FT5955_V096_PRIVATE_MODE" || status=$?
+    fi
 
     echo "=== PRIVATE POLICYKIT RESULTS ==="
     grep "PRIVATE BUS TEST PolicyKit:" "$TEST_DIR/polkit.log" || true
