@@ -35,6 +35,7 @@
 - [x] **16 October:** bounded-retry controls ran on hardware: one genuine match, two distinct-finger rejections and **three terminal genuine no-matches** when returning to the enrolled finger. Overall control sequence FAIL; no different-finger false matches observed in this limited test.
 - [x] **16 October:** subsequent `--controls` run completed **4/4** first-attempt expectations: two enrolled right-index matches, two different-finger `verify-no-match` rejections, and zero genuine no-matches. This shows that negative comparisons do **not invariably** prevent later genuine matches; earlier failed runs remain relevant.
 - [ ] **Optional diagnostic on Nobara:** the committed `--diagnose` mode alternates A, A, B, A, C, A to help localise intermittent genuine no-matches. It is not yet hardware-tested and is less urgent than collecting repeatability data.
+- [ ] **New `--roundtrip` (commit 16 October):** run compile and physical test to determine whether a newly enrolled fingerprint can be listed and verified after restarting the *private fprintd* with unchanged RAM-backed storage; NOT YET RUN on Nobara.
 - [ ] Repeat enrol/verify across separate sessions; confirm consistent positive and negative outcomes.
 - [ ] Verify persistent storage and reload behaviour, error propagation and privacy boundaries.
 - [ ] Only after sufficient evidence, review optional KDE/PAM integration with password fallback.
