@@ -5,8 +5,8 @@
 set -euo pipefail
 umask 077
 
-if [[ $# -ne 1 || ( "${1:-}" != "--check" && "${1:-}" != "--live" && "${1:-}" != "--controls" ) ]]; then
-    echo "Usage: $0 --check | --live | --controls" >&2
+if [[ $# -ne 1 || ( "${1:-}" != "--check" && "${1:-}" != "--live" && "${1:-}" != "--controls" && "${1:-}" != "--diagnose" ) ]]; then
+    echo "Usage: $0 --check | --live | --controls | --diagnose" >&2
     exit 2
 fi
 if [[ $EUID -eq 0 ]]; then
