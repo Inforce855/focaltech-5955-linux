@@ -96,7 +96,7 @@ This will **enrol the finger again** because temporary test storage is deleted a
 each session. The fixed confirmation prompt uses `/dev/tty` rather than stdin,
 avoiding the EOF caused by launching from a heredoc.
 
-## Multi-finger positive and negative controls (new; not yet hardware-tested)
+## Multi-finger positive and negative controls (real test 16 October; retry revision pending)
 
 The same existing v0.9.6 test client and launcher now provide `--controls`:
 
@@ -113,7 +113,9 @@ The controls enrol the **right index finger only once** and then perform four se
 3. **Left index** (unenrolled) — expected `verify-no-match`.
 4. **Right index again** — expected `verify-match`.
 
-The `VerifyStart` argument remains `right-index-finger` for all four checks because that is the **enrolled template**; physically touch the actual finger stated by the prompt, not an alternative print slot. The programme waits for a fresh Enter after the sensor is clear before **each** new verification. Keep the sensor untouched until `Verification started` appears. Quality retries are **not** counted as a negative rejection or success. Only a terminal `verify-no-match` qualifies as a successful negative control; any unexpected positive match, negative mismatch, timeout, error, or incomplete enrolment stops the test. This remains one small experiment, not a false-accept-rate measurement.
+The `VerifyStart` argument stays `right-index-finger` for all comparisons because it identifies the **enrolled template**, not the finger physically placed on the sensor. Lift the finger before pressing Enter and touch only after `Verification started`. The first real control run passed checks 1–3 (one genuine `verify-match` and two distinct-finger `verify-no-match` results), but check 4 returned `verify-no-match` on the enrolled finger. The user reported a poor final placement; the precise cause was not established. **Overall first control test: FAIL (3/4 expectations met).**
+
+The updated C client now provides **up to 3 manually confirmed attempts per enrolled-finger check**. Every terminal genuine `verify-no-match` is counted and displayed even if a later attempt matches. Results are labelled `PASS WITH RETRIES` when recovery is needed. For different fingers, only terminal `verify-no-match` counts as a successful rejection; an unexpected match aborts immediately without a retry. Timeouts, quality errors and unexpected terminal results still fail. The new retry revision is **pending compilation and live testing on Nobara**. This small experiment does not measure a security-grade false-accept rate.
 
 All operations run in the existing private test stack, with the original temporary RAM-backed storage cleanup and **no PAM/KDE/system fprintd changes**. Non-root USB read/write permission is still required (the earlier device-specific ACL may reset after a reconnect). Never run the launcher with `sudo`.
 
