@@ -96,6 +96,27 @@ This will **enrol the finger again** because temporary test storage is deleted a
 each session. The fixed confirmation prompt uses `/dev/tty` rather than stdin,
 avoiding the EOF caused by launching from a heredoc.
 
+## Multi-finger positive and negative controls (new; not yet hardware-tested)
+
+The same existing v0.9.6 test client and launcher now provide `--controls`:
+
+```bash
+bash ~/Projects/ft5955-native-validation-v0.9.1/tests/ft5955_private_enroll_v096.sh --controls
+```
+
+**Update BOTH files from the existing GitHub feature branch first**: `ft5955_private_enroll_v096.c` **and** `ft5955_private_enroll_v096.sh`. The existing `--check` still compiles both programmes without touching the sensor. Previous `--live` behaviour is preserved.
+
+The controls enrol the **right index finger only once** and then perform four separate comparisons on the same held open D-Bus connection and the same disposable private state:
+
+1. **Right index** (enrolled) — expected `verify-match`.
+2. **Right middle** (unenrolled) — expected `verify-no-match`.
+3. **Left index** (unenrolled) — expected `verify-no-match`.
+4. **Right index again** — expected `verify-match`.
+
+The `VerifyStart` argument remains `right-index-finger` for all four checks because that is the **enrolled template**; physically touch the actual finger stated by the prompt, not an alternative print slot. The programme waits for a fresh Enter after the sensor is clear before **each** new verification. Keep the sensor untouched until `Verification started` appears. Quality retries are **not** counted as a negative rejection or success. Only a terminal `verify-no-match` qualifies as a successful negative control; any unexpected positive match, negative mismatch, timeout, error, or incomplete enrolment stops the test. This remains one small experiment, not a false-accept-rate measurement.
+
+All operations run in the existing private test stack, with the original temporary RAM-backed storage cleanup and **no PAM/KDE/system fprintd changes**. Non-root USB read/write permission is still required (the earlier device-specific ACL may reset after a reconnect). Never run the launcher with `sudo`.
+
 ## Confirmed physical result — 16 October 2026
 
 The updated C client ran against the real `2808:5955` fingerprint reader on Nobara using a disposable private `fprintd` bus and RAM-backed state directory:
@@ -105,7 +126,7 @@ The updated C client ran against the real `2808:5955` fingerprint reader on Noba
 - With the finger lifted and a new verification started by Enter, `VerifyStatus` returned **`verify-match (done=true)`**.
 - Both enrolment and verification received private PolicyKit authorisation; the private state directory/logs were removed at exit.
 
-**Only one verified fresh genuine match has been demonstrated through fprintd.** Tests of different fingers (negative controls), repeated matches, separate sessions, template reload and production PAM/KDE integration have not yet been completed. Historical earlier failure diagnoses below are retained for context, not current blockers.
+**One verified fresh genuine match has been demonstrated through fprintd; the new multi-finger controls are still pending a Nobara run.** Tests of different fingers (negative controls), repeated matches, separate sessions, template reload and production PAM/KDE integration have not yet been completed. Historical earlier failure diagnoses below are retained for context, not current blockers.
 
 ## Safety and cleanup
 
