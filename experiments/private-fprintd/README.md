@@ -18,6 +18,38 @@ The libfprint driver and gateway **remain local experimental work**; this GitHub
 
 ## Download via Git (no archive needed)
 
+**Simplest on the existing Nobara setup — do not create another project directory.**
+Fetch the two new files from GitHub into the existing validation tests folder. The
+successful v0.9.5 `ft5955_private_polkit_v095.c` is **already there** and will
+not be overwritten.
+
+```bash
+set -e
+REPO="$HOME/Projects/focaltech-5955-linux"
+TESTS="$HOME/Projects/ft5955-native-validation-v0.9.1/tests"
+BRANCH="origin/feature/ft5955-private-fprintd-v096"
+
+git -C "$REPO" fetch origin feature/ft5955-private-fprintd-v096
+
+for name in ft5955_private_enroll_v096.c ft5955_private_enroll_v096.sh; do
+    destination="$TESTS/$name"
+    if [[ -e "$destination" ]]; then
+        echo "STOP: file already exists: $destination"
+        exit 2
+    fi
+    git -C "$REPO" show "$BRANCH:experiments/private-fprintd/$name" > "$destination"
+done
+
+bash "$TESTS/ft5955_private_enroll_v096.sh" --check
+```
+
+This does **not** check out or merge another branch into your existing Git working tree. It
+leaves all uncommitted driver changes alone. If `--check` fails, **stop there** and
+report the compiler error.
+
+**Alternative:** for independent review of the complete GitHub branch without
+copying individual files, use a separate detachable Git worktree:
+
 From the existing local Git checkout:
 
 ```bash
