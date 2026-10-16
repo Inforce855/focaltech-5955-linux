@@ -30,8 +30,9 @@
 - [x] **16 October:** v0.9.6 private D-Bus enrolment/verification test **compiled successfully** (`--check`, no scan).
 - [x] **16 October:** confirm USB access failure cause (missing write permission); grant narrowly scoped temporary ACL only on the identified `2808:5955` device node; next non-root `Claim` succeeded. Permanent udev handling pending.
 - [x] **16 October:** complete genuine 12-stage private-`fprintd` enrolment: 11 intermediate passes plus `enroll-completed (done=true)` from the physical sensor.
-- [ ] **Next:** fetch and compile the `/dev/tty` confirmation fix, repeat enrolment, and perform **fresh verification** (previous test stopped on stdin EOF because it was launched from a Bash heredoc).
-- [ ] Repeat enrol/verify with independent fresh-touch trials and different-finger controls.
+- [x] **16 October:** `/dev/tty` confirmation fix tested successfully on Nobara; complete a new physical enrolment, recover from one `enroll-retry-scan`, and receive `VerifyStatus: verify-match (done=true)` on a fresh touch through private `fprintd`. One positive verification only; not a reliability estimate.
+- [ ] Test un-enrolled fingers against the template (negative controls), then repeat genuine verification across varied finger placements.
+- [ ] Repeat enrol/verify across separate sessions; confirm consistent positive and negative outcomes.
 - [ ] Verify persistent storage and reload behaviour, error propagation and privacy boundaries.
 - [ ] Only after sufficient evidence, review optional KDE/PAM integration with password fallback.
 
