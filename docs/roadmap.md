@@ -36,7 +36,10 @@
 - [x] **16 October:** subsequent `--controls` run completed **4/4** first-attempt expectations: two enrolled right-index matches, two different-finger `verify-no-match` rejections, and zero genuine no-matches. This shows that negative comparisons do **not invariably** prevent later genuine matches; earlier failed runs remain relevant.
 - [ ] **Optional diagnostic on Nobara:** the committed `--diagnose` mode alternates A, A, B, A, C, A to help localise intermittent genuine no-matches. It is not yet hardware-tested and is less urgent than collecting repeatability data.
 - [x] **16 October `--roundtrip` physical test: PARTIAL PASS / OVERALL FAIL.** Enrolled fingerprint name appeared in private fprintd both before and after restart with the same RAM state; all three genuine post-restart checks returned terminal `verify-no-match`. Not a successful reusable biometric template. No same-session baseline was run in this test.
-- [ ] Inspect the **local libfprint driver ↔ MOH engine integration** for host-template payload export/import and reconstructed matching state across daemon lifetimes (v0.4 real-engine export/import and v0.6.1 synthetic FpPrint serialisation were demonstrated earlier).
+- [x] **16 October controlled `--roundtrip`: FULL PASS.** Physical right-index print successfully enrolled and listed; a fresh client on the original private `fprintd` matched the saved template on genuine attempt **2/3** (one preceding terminal genuine `NO_MATCH`); after restarting only private `fprintd` with the same RAM state, another fresh client listed and MATCHED it on the **first** genuine attempt. This disproves *inevitable* restart-induced loss, **not** intermittent failures or security/reliability limitations. No different-finger check in this particular test. See [verified status](status-2026-10-16.md).
+- [x] Inspect the **then-live private libfprint driver ↔ MOH gateway** path: committed live-source snapshot confirms FpPrint RAW envelope pack/extract, SHA-256 integrity check, and acknowledgement of MOH template import before scanning. This is source inspection, not byte-level persistence validation.
+- [ ] Identify causes of intermittent genuine terminal `NO_MATCH`: correlate deliberate touch placement, capture quality, engine return code and repeated verified saves in the *private* test harness; do not publish biometric samples or template fingerprints.
+- [ ] Repeat successful before/after daemon restarts across multiple **bounded**, separately documented trials; negative controls and error rates are still insufficient.
 - [ ] Repeat enrol/verify across separate sessions; confirm consistent positive and negative outcomes.
 - [ ] Verify persistent storage and reload behaviour, error propagation and privacy boundaries.
 - [ ] Only after sufficient evidence, review optional KDE/PAM integration with password fallback.
@@ -45,8 +48,8 @@
 
 ## 5. Source control and reproducible builds
 
-- [ ] Inventory all local `ft5955-*` source snapshots and compare with GitHub; [issue #3](https://github.com/Inforce855/focaltech-5955-linux/issues/3).
-- [ ] Commit/review uncommitted local libfprint driver and gateway code without losing changes.
+- [x] Recover and inventory the uploaded historical archives; **135 source files** from 16 versioned directories imported to [`feature/ft5955-source-history`](https://github.com/Inforce855/focaltech-5955-linux/tree/feature/ft5955-source-history/research/source-history). Inventory of further *local* snapshots may remain; [issue #3](https://github.com/Inforce855/focaltech-5955-linux/issues/3).
+- [x] **Preserve** the then-live private libfprint driver and gateway in commit [`77db7f5`](https://github.com/Inforce855/focaltech-5955-linux/commit/77db7f5): 13 driver/header sources, 3 gateway files, tracked Meson/driver patch and hashes. Original dirty checkout was not modified. **Still needed:** reconcile it into a clean-clone reproducible development build.
 - [ ] Reconcile earlier MOH development branch with current private-fprintd work.
 - [ ] Establish a clean-clone build and test path, keeping biometric data and proprietary binaries out of GitHub.
 - [ ] Maintain this roadmap and [dated current status](status-2026-10-16.md) alongside each tested change.
