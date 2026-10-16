@@ -1,6 +1,6 @@
 # Private fprintd enrolment / verification (FT5955 v0.9.6)
 
-**Status (16 October 2026): physical fprintd enrolment PASSED after granting per-device USB write permission. Verification did not begin because the first completed enrolment was launched through a heredoc and the old client read EOF from stdin. GitHub now has a `/dev/tty` confirmation fix, pending a Nobara test.** Source and documentation are versioned on a separate GitHub branch. The previous **v0.9.5** experiment confirmed that a private `fprintd` process can enumerate and Claim the FocalTech 2808:5955 reader; it did not enrol or verify a finger.
+**Status (16 October 2026): physical enrolment and one fresh `verify-match` through private `fprintd` PASSED on Nobara.** The updated `/dev/tty` confirmation client was used; one `enroll-retry-scan` was handled before successful enrolment. Further genuine/impostor and persistence tests are still required. Source and documentation are versioned on a separate GitHub branch. The previous **v0.9.5** experiment confirmed that a private `fprintd` process can enumerate and Claim the FocalTech 2808:5955 reader; it did not enrol or verify a finger.
 
 ## Scope
 
@@ -69,7 +69,7 @@ git worktree add --detach ../ft5955-v096-github-test origin/feature/ft5955-priva
 bash ../ft5955-v096-github-test/experiments/private-fprintd/ft5955_private_enroll_v096.sh --check
 ```
 
-`--check` **only compiles** both C programmes; there are **no live fingerprint scans or authentication changes**. The user's Nobara run on **16 October 2026** printed `PASS: test programmes compiled. No fingerprint scanned.` The first live attempt was blocked by USB permissions. A subsequent run after a per-device ACL grant successfully completed enrolment; fresh verification has not yet been attempted.
+`--check` **only compiles** both C programmes; there are **no live fingerprint scans or authentication changes**. The user's Nobara run on **16 October 2026** printed `PASS: test programmes compiled. No fingerprint scanned.` The first live attempt was blocked by USB permissions; a subsequent run after a per-device ACL grant completed enrolment but ended at the stdin EOF prompt. A later corrected `/dev/tty` run **completed enrolment and returned a fresh `verify-match`**.
 
 Only after a successful check and review of the code:
 
@@ -77,7 +77,7 @@ Only after a successful check and review of the code:
 bash ~/Projects/ft5955-v096-github-test/experiments/private-fprintd/ft5955_private_enroll_v096.sh --live
 ```
 
-The live test explicitly asks for **one right-index finger**, expects 12 accepted impressions, then requires lifting the finger and pressing Enter before verifying. It regards `NO_MATCH`, timeout, D-Bus method errors and incomplete enrolment as failure. **Latest `--live` run passed Claim and enrolment. Fresh verification is pending: fetch the updated C client before retesting.**
+The live test explicitly asks for **one right-index finger**, expects 12 accepted impressions, then requires lifting the finger and pressing Enter before verifying. It regards `NO_MATCH`, timeout, D-Bus method errors and incomplete enrolment as failure. **Most recent `--live` run passed Claim, enrolment and a fresh `VerifyStatus: verify-match (done=true)`. The test remains experimental and is not enabled for Linux login.**
 
 ## Next test: update existing C client
 
@@ -95,6 +95,17 @@ Then run `bash ~/Projects/ft5955-native-validation-v0.9.1/tests/ft5955_private_e
 This will **enrol the finger again** because temporary test storage is deleted after
 each session. The fixed confirmation prompt uses `/dev/tty` rather than stdin,
 avoiding the EOF caused by launching from a heredoc.
+
+## Confirmed physical result — 16 October 2026
+
+The updated C client ran against the real `2808:5955` fingerprint reader on Nobara using a disposable private `fprintd` bus and RAM-backed state directory:
+
+- Device enumerated; non-root `Claim` succeeded with temporary per-device ACL permission.
+- Enrolment returned 11 intermediate `enroll-stage-passed` notifications, **one recoverable `enroll-retry-scan`** and finally `enroll-completed (done=true)`.
+- With the finger lifted and a new verification started by Enter, `VerifyStatus` returned **`verify-match (done=true)`**.
+- Both enrolment and verification received private PolicyKit authorisation; the private state directory/logs were removed at exit.
+
+**Only one verified fresh genuine match has been demonstrated through fprintd.** Tests of different fingers (negative controls), repeated matches, separate sessions, template reload and production PAM/KDE integration have not yet been completed. Historical earlier failure diagnoses below are retained for context, not current blockers.
 
 ## Safety and cleanup
 
@@ -117,7 +128,7 @@ This is **not** approval for enabling login/PAM. Next steps require several fres
 
 See [project status, 16 October 2026](../../docs/status-2026-10-16.md).
 
-## 16 October 2026 — first live result and next diagnostic
+## Historical troubleshooting: earlier USB permission failure (resolved temporarily)
 
 The private fprintd enumerated the device and obtained an `ALLOW` response for `net.reactivated.fprint.device.verify`, but the driver could not open its physical USB device node. The log included `libusb requires write access to USB device nodes`, `errno=13` and `LIBUSB_ERROR_ACCESS [-3]`. This occurred **before** `EnrollStart`; no biometric data was captured. The missing private-bus `login1` service and USB-persist warning were not the immediate cause.
 
@@ -136,4 +147,4 @@ sudo setfacl -m "u:$(id -un):rw" "$DEVICE"
 getfacl -p "$DEVICE"
 ```
 
-This is **not** a permanent fix: the numeric node and ACL may change on replug/reboot. Do not execute if the USB IDs do not match, do not use `sudo` to run the private fprintd harness, and do not apply `chmod 666` or global USB rules. A dedicated udev `TAG+="uaccess"` rule can be investigated only once the live test works with a narrow ACL. Proposed workaround currently **untested**.
+This is **not** a permanent fix: the numeric node and ACL may change on replug/reboot. Do not execute if the USB IDs do not match, do not use `sudo` to run the private fprintd harness, and do not apply `chmod 666` or global USB rules. A dedicated udev `TAG+="uaccess"` rule can be investigated only once the live test works with a narrow ACL. Temporary device-specific ACL was subsequently tested and permitted successful enrolment plus a fresh verification match. It is not a permanent udev solution.
