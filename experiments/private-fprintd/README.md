@@ -3,7 +3,7 @@
 **Status (16 October 2026): physical enrolment and one fresh `verify-match` through private `fprintd` PASSED on Nobara.** The updated `/dev/tty` confirmation client was used; one `enroll-retry-scan` was handled before successful enrolment. Further genuine/impostor and persistence tests are still required. Source and documentation are versioned on a separate GitHub branch. The previous **v0.9.5** experiment confirmed that a private `fprintd` process can enumerate and Claim the FocalTech 2808:5955 reader; it did not enrol or verify a finger.
 
 
-## Updated controlled roundtrip — 16 October 2026 (new code; real test pending)
+## Controlled roundtrip — 16 October 2026 (code now compiled and tested on real hardware)
 
 **Reason for change:** The first hardware `--roundtrip` listed the saved fingerprint across a restart but returned three genuine `NO_MATCH` results. It did not verify that this *same saved print* matched even once **before** restarting fprintd. Earlier controls also occasionally produced genuine `NO_MATCH` without restarting. A restart-specific failure was therefore not established.
 
@@ -17,7 +17,7 @@ The `--roundtrip` mode now uses **one enrolment**, followed by these strictly or
 
 If baseline verification fails three times, the launcher **skips restart** and reports `BASELINE FAIL`. That distinguishes failure present before restart from a *potential* restart-specific change. Even a post-restart failure after a successful baseline is not conclusive without repeated controlled trials because genuine matching was previously intermittent.
 
-The two updated files are `ft5955_private_enroll_v096.c` (new internal `--verify-baseline` mode) and `ft5955_private_enroll_v096.sh` (modified `--roundtrip`). Both are in the **GitHub feature branch** `feature/ft5955-private-fprintd-v096`; source is committed but the amended mode still requires a Nobara compile and real-device test.
+The two updated files are `ft5955_private_enroll_v096.c` (new internal `--verify-baseline` mode) and `ft5955_private_enroll_v096.sh` (modified `--roundtrip`). Both are in the **GitHub feature branch** `feature/ft5955-private-fprintd-v096`; source was committed before testing; subsequent Nobara compile-only and real-device controlled `--roundtrip` both passed as documented above.
 
 Recommended **no-overwrite** preparation using the already-created source-history worktree (the GitHub root has other user worktrees):
 
@@ -35,6 +35,8 @@ diff -u "$TESTS/ft5955_private_enroll_v096.sh" /tmp/ft5955_private_enroll_v096.s
 ```
 
 After reviewing the changes, do not run against real fprintd. Run `--check` first (compile-only), then a single `--roundtrip` in the isolated private environment. Don't upload templates/images from temporary `/dev/shm` state.
+
+**LATEST HARDWARE RESULT (16 October 2026): controlled `--roundtrip` PASS — a saved enrolled print matched from a NEW client before restarting private `fprintd` (first genuine `NO_MATCH`, then genuine `MATCH`), and matched on the FIRST attempt from another NEW client after restarting private `fprintd` with the same disposable RAM-backed state.** Enrolment and both `ListEnrolledFingers` checks passed. This demonstrates actual reusable template matching across the daemon restart, but genuine false rejection also occurred without any restart. One successful controlled test is not a reliability or production-login claim. See [current status](../../docs/status-2026-10-16.md) for precise results. Prior failed roundtrip remains historically valid.
 
 ## Scope
 
