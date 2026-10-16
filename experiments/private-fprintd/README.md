@@ -105,3 +105,18 @@ See [project status, 16 October 2026](../../docs/status-2026-10-16.md).
 The private fprintd enumerated the device and obtained an `ALLOW` response for `net.reactivated.fprint.device.verify`, but the driver could not open its physical USB device node. The log included `libusb requires write access to USB device nodes`, `errno=13` and `LIBUSB_ERROR_ACCESS [-3]`. This occurred **before** `EnrollStart`; no biometric data was captured. The missing private-bus `login1` service and USB-persist warning were not the immediate cause.
 
 Next: read-only inspection of `/sys/bus/usb/devices/*/{idVendor,idProduct,busnum,devnum}`, the resulting `/dev/bus/usb/BBB/DDD` node, `stat`, `getfacl`, and `udevadm info`; do not assume the previous numeric path survives replug/reboot. Avoid `chmod 666` or launching the private PolicyKit test as root. A narrowly scoped USB permission arrangement can be considered after inspecting ACL/udev state. 
+
+### Confirmed USB permissions and proposed non-root test
+
+On 16 October the local device `/dev/bus/usb/003/003` was `root:root crw-rw-r--` with no user ACL: the current user could **read** but could not **write**. SELinux was disabled. This explains the libusb `errno=13` at `Claim`; it is independent of private PolicyKit's `ALLOW` decision.
+
+For a single test, only after checking that the device node **still belongs to VID:PID 2808:5955**, one may grant the existing user a *temporary, per-device* ACL:
+
+```bash
+DEVICE=/dev/bus/usb/003/003
+udevadm info --query=property --name="$DEVICE" | grep -E '^ID_(VENDOR|MODEL)_ID='
+sudo setfacl -m "u:$(id -un):rw" "$DEVICE"
+getfacl -p "$DEVICE"
+```
+
+This is **not** a permanent fix: the numeric node and ACL may change on replug/reboot. Do not execute if the USB IDs do not match, do not use `sudo` to run the private fprintd harness, and do not apply `chmod 666` or global USB rules. A dedicated udev `TAG+="uaccess"` rule can be investigated only once the live test works with a narrow ACL. Proposed workaround currently **untested**.
