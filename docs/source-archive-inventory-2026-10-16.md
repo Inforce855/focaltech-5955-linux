@@ -25,3 +25,24 @@ These historical archives are **not yet imported as source files on this branch*
 Publish extracted, reviewed **text-only** historical sources in a separate source-history directory or feature branch. Never commit biometric images, real templates, raw samples, personal log dumps, proprietary vendor DLLs, compiled programs or archive duplicates. Avoid `git clean`, `git reset --hard`, forced pushes and destructive checkout operations.
 
 See [current status](status-2026-10-16.md), [development roadmap](roadmap.md) and [source inventory issue #3](https://github.com/Inforce855/focaltech-5955-linux/issues/3).
+
+
+## Additional recovered files (final batch, 16 October 2026)
+
+These are additional **historical inputs**, not proposed replacements for the current native driver.
+
+| Recovered upload | Contents | SHA-256 of upload | Assessment |
+| --- | --- | --- | --- |
+| `ft5955-moh-ipc-v0.1.tar.gz` | `moh_ipc.py`, README (2 source files) | `0a9d00af12acd8899b84e1ce94af80e619f413a802cc01003c8ed8a038334a01` | Earliest **synthetic/mock** IPC protocol; preserve as provenance, superseded by v0.2/v0.3 |
+| `ft5955-moh-ipc-v0.2.tar.gz` | `moh_adapter.py`, fake vendor runner, test, README (4 files) | `4b8e91a4627a08631868520e915213d59836969472b755a8598cb5034b877db5` | Isolated MOH adapter boundary with synthetic regression tests; historical reference, not production driver |
+| `focaltech-5955-live-libfprint.tar.gz` | Live bridge, isolated build/enrol scripts, test, docs (5 files) | `f349b6c311bc4f6b69173a1a98b39b114e1c54c9afa3b8fbbb37830343f14c3e` | Early virtual-image live bridge at 10×; superseded in part by scale fix |
+| `focaltech-5955-libfprint-scale-fix.tar.gz` | Revised live bridge, test and docs (3 files) | `13d0ed22fc07116bad31b6375605f67ceb67fe6caf145370d0be88a34ba1bf5b` | Newer 2× interpolation default; preserve later bridge variant instead of silently overwriting earlier one |
+| `focaltech-nbis-one-touch.tar.gz` | NBIS probe, one-touch diagnostic, tests, docs (5 files) | `0aeef7ab90fc57e0582cdc47b02a2381c75393892ac978ef091e128bc5d3a450` | Distinct minutiae-extraction diagnostic; useful to understand why generic libfprint NBIS path struggled |
+| `fix_focaltech_5955_scaffold.py` | Early libfprint 1.94.100 registration and discovery-only stub | `92cb5358aaad44044b4dc3f9469637598a1e470f2bf39253f3868eaf0a70eedb` | **Obsolete as an installer**; source preserved at [scaffold repair](../research/source-history/scaffold/fix_focaltech_5955_scaffold.py). Do **not run** on live tree |
+| `moh-attach-disassembly.txt` | Audited vendor Attach disassembly research note | `7072f6470f5c3b6aeddf49d08b51db414b12fbcc4e939057b95e61536143cc43` | Historical analysis only; proprietary-derived disassembly not imported as repository source without licensing review |
+
+The real source of the historical v0.8.1 process-cleanup change is now preserved separately at [v0.8.1 patch script](../research/source-history/v0.8.1/ft5955-v0.8.1-fix-cleanup.py). It is **not** an instruction to reapply a patch to the currently working local driver.
+
+## Source consolidation gate
+
+Before marking the repository as the **authoritative rebuildable native driver**, the original **local** `~/Projects/libfprint-ft5955` driver files, private Meson registrations, `~/Projects/ft5955-driver-integration-v0.8/engine` gateway and dependency manifests must be compared with these historical archives and imported under reviewed version control. Preserve active development work, prefer source files over gz archive copies, and avoid storing biometric or proprietary vendor materials. Current source archives are inventoried but **not yet completely imported**. The two standalone Python patch scripts above were committed; no hardware files or auth setup were changed.
