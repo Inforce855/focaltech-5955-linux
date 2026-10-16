@@ -14,7 +14,7 @@ Experimental Linux support for the **FocalTech USB fingerprint reader `2808:5955
 | Private `fprintd` enumeration and device Claim | **Passed on 14 October** |
 | v0.9.6 enrol/verify test compilation | **Passed on 16 October** (no scan) |
 | Private `fprintd` fingerprint enrolment | **Passed 16 October** (real sensor; temporary isolated storage) |
-| Fresh `fprintd` fingerprint verification | **MATCH confirmed 16 October** (one isolated fresh-touch test) |
+| Private `fprintd` verification controls | **4/4 PASS** in one session (2 genuine matches, 2 different-finger rejections); earlier genuine no-matches remain under investigation |
 | KDE unlock, PAM login, persistent biometric database | **Not available** |
 
 A limited two-finger experimental matching test succeeded previously; this **does not establish reliable or secure authentication**. The fully native open-source matcher remains unfinished.
@@ -31,7 +31,7 @@ On the existing Nobara machine, after fetching the [test sources](experiments/pr
 bash ~/Projects/ft5955-native-validation-v0.9.1/tests/ft5955_private_enroll_v096.sh --check
 ```
 
-**Physical enrolment and one fresh verification: PASS.** The corrected client handled a rejected impression, completed enrolment and reported `verify-match`. Repeated genuine/impostor tests and persistent storage checks are still pending. See the [isolated test instructions](experiments/private-fprintd/README.md); no system authentication was changed.
+**Physical enrolment and a full four-check control sequence: PASS in one session.** Earlier control runs had genuine no-matches, so repeatability and protected persistent storage remain unverified. See the [isolated test instructions](experiments/private-fprintd/README.md); no system authentication was changed.
 
 ## Project documentation
 
