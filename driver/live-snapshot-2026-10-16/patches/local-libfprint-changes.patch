@@ -1,0 +1,181 @@
+diff --git a/libfprint/drivers/focaltech_5955.c b/libfprint/drivers/focaltech_5955.c
+index e676a6f..8afe37c 100644
+--- a/libfprint/drivers/focaltech_5955.c
++++ b/libfprint/drivers/focaltech_5955.c
+@@ -3,6 +3,8 @@
+ 
+ #define FP_COMPONENT "focaltech_5955"
+ #include "drivers_api.h"
++#include "ft5955_native_action.h"
++#include <string.h>
+ 
+ typedef struct _FpiDeviceFocaltech5955 {
+   FpDevice parent;
+@@ -27,6 +29,9 @@ dev_open (FpDevice *dev)
+ {
+   GUsbDevice *usb = fpi_device_get_usb_device (dev);
+   g_autoptr(GError) error = NULL;
++  g_autoptr(FpiUsbTransfer) rx = NULL;
++  g_autoptr(FpiUsbTransfer) status_tx = NULL;
++  g_autoptr(FpiUsbTransfer) status_rx = NULL;
+   guint8 descriptor[18] = { 0 };
+   gsize received = 0;
+ 
+@@ -53,13 +58,114 @@ dev_open (FpDevice *dev)
+ 
+   g_message ("FT5955 USB descriptor OK: %zu bytes, VID=2808 PID=5955",
+              received);
++  /* The libfprint core has already opened the USB device. */
++  if (!g_usb_device_claim_interface (usb, 0, 0, &error))
++    {
++      fpi_device_open_complete (dev, g_steal_pointer (&error));
++      return;
++    }
++
++  /* Audited FocalTech handshake: command 0x34. */
++  static const guint8 command[] = {
++    0x02, 0x00, 0x01, 0x34, 0x35
++  };
++
++  /* Expected 0xAA55 response, plus optional 0x00 trailer. */
++  static const guint8 expected[] = {
++    0x02, 0x00, 0x03, 0x04, 0x55, 0xaa, 0xf8
++  };
++
++  g_autoptr(FpiUsbTransfer) tx = fpi_usb_transfer_new (dev);
++  fpi_usb_transfer_fill_bulk (tx, 0x01, sizeof command);
++  memcpy (tx->buffer, command, sizeof command);
++
++  if (!fpi_usb_transfer_submit_sync (tx, 1000, &error))
++    goto failed;
++
++  if (tx->actual_length != sizeof command)
++    {
++      error = fpi_device_error_new (FP_DEVICE_ERROR_PROTO);
++      goto failed;
++    }
++
++  rx = fpi_usb_transfer_new (dev);
++  fpi_usb_transfer_fill_bulk (rx, 0x82, 64);
++
++  if (!fpi_usb_transfer_submit_sync (rx, 2000, &error))
++    goto failed;
++
++  if (!((rx->actual_length == sizeof expected) ||
++        (rx->actual_length == sizeof expected + 1 &&
++         rx->buffer[sizeof expected] == 0)) ||
++      memcmp (rx->buffer, expected, sizeof expected) != 0)
++    {
++      error = fpi_device_error_new (FP_DEVICE_ERROR_PROTO);
++      goto failed;
++    }
++
++  g_message ("FT5955 handshake OK: command 0x34, marker 0xAA55");
++
++  /* Previously validated 0x82 finger-presence request. */
++  static const guint8 status_request[] = {
++    0x02, 0x00, 0x03, 0x82, 0x73, 0x01, 0xf3
++  };
++
++  status_tx = fpi_usb_transfer_new (dev);
++  fpi_usb_transfer_fill_bulk (
++      status_tx, 0x01, sizeof status_request);
++  memcpy (status_tx->buffer, status_request,
++          sizeof status_request);
++
++  if (!fpi_usb_transfer_submit_sync (status_tx, 1000, &error))
++    goto failed;
++
++  if (status_tx->actual_length != sizeof status_request)
++    {
++      error = fpi_device_error_new (FP_DEVICE_ERROR_PROTO);
++      goto failed;
++    }
++
++  status_rx = fpi_usb_transfer_new (dev);
++  fpi_usb_transfer_fill_bulk (status_rx, 0x82, 64);
++
++  if (!fpi_usb_transfer_submit_sync (status_rx, 2000, &error))
++    goto failed;
++
++  /* Framed response: prefix, length, type, status, XOR.
++   * Permit the single observed optional zero trailer. */
++  const guint8 *b = status_rx->buffer;
++  gssize n = status_rx->actual_length;
++
++  if ((n != 6 && n != 7) ||
++      (n == 7 && b[6] != 0) ||
++      b[0] != 0x02 ||
++      b[1] != 0x00 || b[2] != 0x02 ||
++      b[3] != 0x04 ||
++      (b[4] != 0x05 && b[4] != 0x06) ||
++      b[5] != (b[1] ^ b[2] ^ b[3] ^ b[4]))
++    {
++      error = fpi_device_error_new (FP_DEVICE_ERROR_PROTO);
++      goto failed;
++    }
++
++  g_message ("FT5955 finger status: %s",
++             b[4] == 0x05 ? "PRESENT" : "ABSENT");
++
+   fpi_device_open_complete (dev, NULL);
++  return;
++
++failed:
++  g_usb_device_release_interface (usb, 0, 0, NULL);
++  fpi_device_open_complete (dev, g_steal_pointer (&error));
+ }
+ 
+ static void
+ dev_close (FpDevice *dev)
+ {
+-  fpi_device_close_complete (dev, NULL);
++  GError *error = NULL;
++  g_usb_device_release_interface (
++      fpi_device_get_usb_device (dev), 0, 0, &error);
++  fpi_device_close_complete (dev, error);
+ }
+ 
+ static void
+@@ -83,6 +189,8 @@ fpi_device_focaltech_5955_class_init (
+   dev_class->temp_hot_seconds = -1;
+   dev_class->open = dev_open;
+   dev_class->close = dev_close;
++  dev_class->enroll = ft5955_native_enroll;
++  dev_class->verify = ft5955_native_verify;
+ 
+   fpi_device_class_auto_initialize_features (dev_class);
+ }
+diff --git a/libfprint/meson.build b/libfprint/meson.build
+index 3c7974f..8f04195 100644
+--- a/libfprint/meson.build
++++ b/libfprint/meson.build
+@@ -88,7 +88,15 @@ nbis_sources = [
+ ]
+ 
+ driver_sources = {
+-    'focaltech_5955' : files('drivers/focaltech_5955.c'),
++    'focaltech_5955' : files(
++        'drivers/focaltech_5955.c',
++        'drivers/ft5955_action_core.c',
++        'drivers/ft5955_fpi_action_bridge.c',
++        'drivers/ft5955_fpi_print_bridge.c',
++        'drivers/ft5955_native_action.c',
++        'drivers/ft5955_native_capture.c',
++        'drivers/ft5955_print_codec.c',
++    ),
+     'upekts' : files(
+         'drivers/upekts.c',
+         'drivers/upek_proto.c',
+@@ -219,6 +227,11 @@ deps = [
+     mathlib_dep,
+ ] + optional_deps
+ 
++# The MOH host template codec uses OpenSSL SHA-256.
++if 'focaltech_5955' in drivers
++    deps += dependency('openssl')
++endif
++
+ # These are empty and only exist so that the include directories are created
+ # in the build tree. This silences a build time warning.
+ subdir('nbis/include')
