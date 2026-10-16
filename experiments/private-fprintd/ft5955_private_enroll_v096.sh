@@ -5,8 +5,8 @@
 set -euo pipefail
 umask 077
 
-if [[ $# -ne 1 || ( "${1:-}" != "--check" && "${1:-}" != "--live" ) ]]; then
-    echo "Usage: $0 --check | --live" >&2
+if [[ $# -ne 1 || ( "${1:-}" != "--check" && "${1:-}" != "--live" && "${1:-}" != "--controls" ) ]]; then
+    echo "Usage: $0 --check | --live | --controls" >&2
     exit 2
 fi
 if [[ $EUID -eq 0 ]]; then
@@ -69,6 +69,7 @@ if [[ "$1" == "--check" ]]; then
 fi
 
 export FT5955_V096_PRIVATE_CLIENT="$BUILD/private_enroll"
+export FT5955_V096_PRIVATE_MODE="$1"
 export FT5955_V096_PRIVATE_POLICY="$BUILD/private_polkit"
 export FT5955_V096_PRIVATE_LIB="$LIB"
 export FT5955_V096_PRIVATE_GATEWAY="$GATEWAY"
@@ -150,7 +151,7 @@ dbus-run-session -- bash -c '
     echo "Private fprintd ready. Storage is on disposable /dev/shm."
     echo "Use the SAME right index finger for all enrolment touches."
     status=0
-    "$FT5955_V096_PRIVATE_CLIENT" --live || status=$?
+    "$FT5955_V096_PRIVATE_CLIENT" "$FT5955_V096_PRIVATE_MODE" || status=$?
 
     echo "=== PRIVATE POLICYKIT RESULTS ==="
     grep "PRIVATE BUS TEST PolicyKit:" "$TEST_DIR/polkit.log" || true
