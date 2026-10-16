@@ -1,6 +1,6 @@
 # Private fprintd enrolment / verification (FT5955 v0.9.6)
 
-**Status: proposed experiment, NOT yet compiled or validated on Nobara.** Source and documentation are versioned on a separate GitHub branch. The previous **v0.9.5** experiment confirmed that a private `fprintd` process can enumerate and Claim the FocalTech 2808:5955 reader; it did not enrol or verify a finger.
+**Status (16 October 2026): compile-only test PASSED on Nobara; live device enrolment/verification NOT yet tested.** Source and documentation are versioned on a separate GitHub branch. The previous **v0.9.5** experiment confirmed that a private `fprintd` process can enumerate and Claim the FocalTech 2808:5955 reader; it did not enrol or verify a finger.
 
 ## Scope
 
@@ -69,7 +69,7 @@ git worktree add --detach ../ft5955-v096-github-test origin/feature/ft5955-priva
 bash ../ft5955-v096-github-test/experiments/private-fprintd/ft5955_private_enroll_v096.sh --check
 ```
 
-`--check` **only compiles** both C programmes; there are **no live fingerprint scans or authentication changes**. If compilation fails, retain the output and stop.
+`--check` **only compiles** both C programmes; there are **no live fingerprint scans or authentication changes**. The user's Nobara run on **16 October 2026** printed `PASS: test programmes compiled. No fingerprint scanned.` The live test remains unverified.
 
 Only after a successful check and review of the code:
 
