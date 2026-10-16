@@ -27,6 +27,10 @@ typedef struct {
     gboolean matched;
     gboolean no_match;
     gboolean claimed;
+    guint genuine_matches;
+    guint genuine_no_matches;
+    guint different_rejections;
+    guint unexpected_different_matches;
 } Client;
 
 static gboolean private_environment_ok(void)
@@ -140,9 +144,13 @@ static gboolean perform(Client *c, gboolean verify)
 /* Each comparison gets one freshly selected finger. Do not use stdin because
  * a surrounding shell heredoc might have exhausted it. Never auto-scan a finger
  * left resting on the sensor after the preceding comparison. */
-static gboolean confirm_finger(const gchar *finger, guint index, guint count)
+/* Each comparison uses a deliberate new finger touch. Never auto-start
+ * a scan when an old finger could still be on the sensor. */
+static gboolean confirm_finger(const gchar *finger, guint index, guint count,
+                               guint attempt, guint max_attempts)
 {
-    g_print("\nVerification %u/%u — %s.\n", index, count, finger);
+    g_print("\nVerification %u/%u - %s (attempt %u/%u).\n",
+            index, count, finger, attempt, max_attempts);
     g_print("Lift any finger OFF the sensor, then press ENTER. "
             "Touch the requested finger only after Verification started.\n");
     fflush(stdout);
@@ -162,32 +170,59 @@ static gboolean confirm_finger(const gchar *finger, guint index, guint count)
 }
 
 static gboolean compare_finger(Client *c, const gchar *finger,
-                               gboolean expect_match, guint index, guint count)
+                               gboolean expect_match, guint index, guint count,
+                               guint max_attempts)
 {
-    if (!confirm_finger(finger, index, count))
+    if (max_attempts < 1)
         return FALSE;
 
-    if (!perform(c, TRUE)) {
-        g_printerr("FAIL: no terminal match/no-match result for %s.\n", finger);
-        return FALSE;
+    for (guint attempt = 1; attempt <= max_attempts; ++attempt) {
+        if (!confirm_finger(finger, index, count, attempt, max_attempts))
+            return FALSE;
+
+        /* A completed verify-no-match is a real negative comparison. It is
+         * NOT verify-retry-scan, and must be counted as an unsuccessful
+         * genuine attempt even when a later manual retry matches. */
+        if (!perform(c, TRUE)) {
+            g_printerr("FAIL: no terminal match/no-match result for %s.\n",
+                       finger);
+            return FALSE;
+        }
+
+        if (!expect_match) {
+            if (c->matched) {
+                ++c->unexpected_different_matches;
+                g_printerr("FAIL: UNEXPECTED MATCH on different finger (%s). "
+                           "Aborting controls.\n", finger);
+                return FALSE;
+            }
+            ++c->different_rejections;
+            g_print("PASS: different finger REJECTED with verify-no-match "
+                    "(%s).\n", finger);
+            return TRUE;
+        }
+
+        if (c->matched) {
+            ++c->genuine_matches;
+            g_print("PASS: enrolled finger MATCHED (%s), attempt %u/%u.\n",
+                    finger, attempt, max_attempts);
+            return TRUE;
+        }
+
+        ++c->genuine_no_matches;
+        g_printerr("NO MATCH: enrolled finger (%s), attempt %u/%u. "
+                   "Counted as a genuine no-match.\n",
+                   finger, attempt, max_attempts);
+        if (attempt < max_attempts)
+            g_print("RETRY AVAILABLE: reposition the enrolled finger. "
+                    "Lift fully before the next ENTER prompt.\n");
     }
 
-    if (c->matched != expect_match) {
-        if (c->matched)
-            g_printerr("FAIL: UNEXPECTED MATCH on the unenrolled finger (%s). "
-                       "Aborting controls.\n", finger);
-        else
-            g_printerr("FAIL: enrolled finger was NOT recognised (%s). "
-                       "Aborting controls.\n", finger);
-        return FALSE;
-    }
-    if (c->matched)
-        g_print("PASS: enrolled finger MATCHED (%s).\n", finger);
-    else
-        g_print("PASS: different finger REJECTED with verify-no-match (%s).\n",
-                finger);
-    return TRUE;
+    g_printerr("FAIL: enrolled finger not recognised after %u attempts "
+               "(%s).\n", max_attempts, finger);
+    return FALSE;
 }
+
 
 int main(int argc, char **argv)
 {
@@ -246,27 +281,36 @@ int main(int argc, char **argv)
     }
     g_print("PASS: enrolment completed.\n");
     if (!controls) {
-        if (!compare_finger(&c, "ENROLLED right index finger", TRUE, 1, 1))
+        if (!compare_finger(&c, "ENROLLED right index finger", TRUE, 1, 1, 1))
             goto out;
         g_print("PASS: fresh verification MATCH through private fprintd.\n");
     } else {
         /* The VerifyStart record is always right-index-finger; the tester must
          * physically use the displayed finger for each controlled comparison.
          * Negative controls must produce verify-no-match, not a quality error. */
-        if (!compare_finger(&c, "ENROLLED right index finger", TRUE, 1, 4))
+        if (!compare_finger(&c, "ENROLLED right index finger", TRUE, 1, 4, 3))
             goto out;
-        if (!compare_finger(&c, "DIFFERENT right middle finger", FALSE, 2, 4))
+        if (!compare_finger(&c, "DIFFERENT right middle finger", FALSE, 2, 4, 1))
             goto out;
-        if (!compare_finger(&c, "DIFFERENT left index finger", FALSE, 3, 4))
+        if (!compare_finger(&c, "DIFFERENT left index finger", FALSE, 3, 4, 1))
             goto out;
-        if (!compare_finger(&c, "ENROLLED right index finger again", TRUE, 4, 4))
+        if (!compare_finger(&c, "ENROLLED right index finger again", TRUE, 4, 4, 3))
             goto out;
-        g_print("PASS: controls completed (2 genuine matches, "
-                "2 different-finger rejections).\n");
+        g_print("%s: controls completed (2 genuine matches, "
+                "2 different-finger rejections, %u genuine no-matches).\n",
+                c.genuine_no_matches ? "PASS WITH RETRIES" : "PASS",
+                c.genuine_no_matches);
     }
     result = 0;
 
 out:
+    if (c.genuine_matches || c.genuine_no_matches ||
+        c.different_rejections || c.unexpected_different_matches) {
+        g_print("RESULT COUNTS: genuine_match=%u genuine_no_match=%u "
+                "different_no_match=%u unexpected_different_match=%u\n",
+                c.genuine_matches, c.genuine_no_matches,
+                c.different_rejections, c.unexpected_different_matches);
+    }
     if (c.sub_id) g_dbus_connection_signal_unsubscribe(c.bus, c.sub_id);
     if (c.claimed) {
         g_autoptr(GVariant) release = invoke(
