@@ -13,7 +13,7 @@ Experimental Linux support for the **FocalTech USB fingerprint reader `2808:5955
 | Linux libfprint driver | **Experimental**; active uncommitted source in local development tree |
 | Private `fprintd` enumeration and device Claim | **Passed on 14 October** |
 | v0.9.6 enrol/verify test compilation | **Passed on 16 October** (no scan) |
-| Actual `fprintd` enrolment and fresh verification | **Not yet tested** |
+| Actual `fprintd` enrolment and fresh verification | **Blocked at USB permissions** in first live run; no scan yet |
 | KDE unlock, PAM login, persistent biometric database | **Not available** |
 
 A limited two-finger experimental matching test succeeded previously; this **does not establish reliable or secure authentication**. The fully native open-source matcher remains unfinished.
