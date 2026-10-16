@@ -1,6 +1,6 @@
 # Private fprintd enrolment / verification (FT5955 v0.9.6)
 
-**Status (16 October 2026): compile-only test PASSED on Nobara; live device enrolment/verification NOT yet tested.** Source and documentation are versioned on a separate GitHub branch. The previous **v0.9.5** experiment confirmed that a private `fprintd` process can enumerate and Claim the FocalTech 2808:5955 reader; it did not enrol or verify a finger.
+**Status (16 October 2026): compile-only test PASSED on Nobara. First live test reached device enumeration and PolicyKit `ALLOW` but FAILED at USB-open permission (`LIBUSB_ERROR_ACCESS [-3]`), before enrolment.** Source and documentation are versioned on a separate GitHub branch. The previous **v0.9.5** experiment confirmed that a private `fprintd` process can enumerate and Claim the FocalTech 2808:5955 reader; it did not enrol or verify a finger.
 
 ## Scope
 
@@ -69,7 +69,7 @@ git worktree add --detach ../ft5955-v096-github-test origin/feature/ft5955-priva
 bash ../ft5955-v096-github-test/experiments/private-fprintd/ft5955_private_enroll_v096.sh --check
 ```
 
-`--check` **only compiles** both C programmes; there are **no live fingerprint scans or authentication changes**. The user's Nobara run on **16 October 2026** printed `PASS: test programmes compiled. No fingerprint scanned.` The live test remains unverified.
+`--check` **only compiles** both C programmes; there are **no live fingerprint scans or authentication changes**. The user's Nobara run on **16 October 2026** printed `PASS: test programmes compiled. No fingerprint scanned.` The first live attempt is **blocked by host USB device-node permissions**, not by compilation. No enrolment or matching was exercised.
 
 Only after a successful check and review of the code:
 
@@ -77,7 +77,7 @@ Only after a successful check and review of the code:
 bash ~/Projects/ft5955-v096-github-test/experiments/private-fprintd/ft5955_private_enroll_v096.sh --live
 ```
 
-The live test explicitly asks for **one right-index finger**, expects 12 accepted impressions, then requires lifting the finger and pressing Enter before verifying. It regards `NO_MATCH`, timeout, D-Bus method errors and incomplete enrolment as failure. **It has not yet been verified to succeed.**
+The live test explicitly asks for **one right-index finger**, expects 12 accepted impressions, then requires lifting the finger and pressing Enter before verifying. It regards `NO_MATCH`, timeout, D-Bus method errors and incomplete enrolment as failure. **First `--live` run failed at `Claim` with `errno=13` (`/dev/bus/usb/003/003`); do not interpret it as an enrolment or matching result.**
 
 ## Safety and cleanup
 
@@ -99,3 +99,9 @@ The live test explicitly asks for **one right-index finger**, expects 12 accepte
 This is **not** approval for enabling login/PAM. Next steps require several fresh genuine/impostor trials, repeatability checks, template storage review and documentation of known failures.
 
 See [project status, 16 October 2026](../../docs/status-2026-10-16.md).
+
+## 16 October 2026 — first live result and next diagnostic
+
+The private fprintd enumerated the device and obtained an `ALLOW` response for `net.reactivated.fprint.device.verify`, but the driver could not open its physical USB device node. The log included `libusb requires write access to USB device nodes`, `errno=13` and `LIBUSB_ERROR_ACCESS [-3]`. This occurred **before** `EnrollStart`; no biometric data was captured. The missing private-bus `login1` service and USB-persist warning were not the immediate cause.
+
+Next: read-only inspection of `/sys/bus/usb/devices/*/{idVendor,idProduct,busnum,devnum}`, the resulting `/dev/bus/usb/BBB/DDD` node, `stat`, `getfacl`, and `udevadm info`; do not assume the previous numeric path survives replug/reboot. Avoid `chmod 666` or launching the private PolicyKit test as root. A narrowly scoped USB permission arrangement can be considered after inspecting ACL/udev state. 
