@@ -46,3 +46,19 @@ The real source of the historical v0.8.1 process-cleanup change is now preserved
 ## Source consolidation gate
 
 Before marking the repository as the **authoritative rebuildable native driver**, the original **local** `~/Projects/libfprint-ft5955` driver files, private Meson registrations, `~/Projects/ft5955-driver-integration-v0.8/engine` gateway and dependency manifests must be compared with these historical archives and imported under reviewed version control. Preserve active development work, prefer source files over gz archive copies, and avoid storing biometric or proprietary vendor materials. Current source archives are inventoried but **not yet completely imported**. The two standalone Python patch scripts above were committed; no hardware files or auth setup were changed.
+
+
+## Non-destructive import helper (committed; not run on user's PC)
+
+The repository now contains [`tools/import_ft5955_history.py`](../tools/import_ft5955_history.py). It recognises the **10 listed historical source archives by SHA-256**, reads only bounded regular UTF-8 source files from those archives, rejects links/unsafe paths, and lays out their files in version-specific `research/source-history/` directories. This keeps overlapping versions separate and does not run old installers.
+
+The **dry-run was tested against all ten uploaded archives** in the assistant's isolated environment: **68 text source files** recognised. The importer has not been run on the user's Nobara checkout. It refuses to stage unless the checkout is clean and checked out on `feature/ft5955-private-fprintd-v096`; it refuses overwrites and does not make commits or push. It never touches `~/Projects/libfprint-ft5955`.
+
+Example **read-only** use from any checked-out copy of the repository, after fetching the current feature branch:
+
+```bash
+python3 tools/import_ft5955_history.py "$HOME/Downloads"
+```
+
+Opt-in `--stage` should only follow review of the worktree and branch. The user must inspect the staged source and explicitly commit/push the imported files separately. **A full historical source import is not yet confirmed on GitHub.**
+
