@@ -96,6 +96,28 @@ This will **enrol the finger again** because temporary test storage is deleted a
 each session. The fixed confirmation prompt uses `/dev/tty` rather than stdin,
 avoiding the EOF caused by launching from a heredoc.
 
+
+## Saved-template restart test (new, compile/live test pending)
+
+A new optional \`--roundtrip\` test is committed on the private-fprintd feature branch. It **has not yet been compiled or tested on Nobara**. It is intended to reduce repeated physical enrolments while answering a key storage question.
+
+The test:
+1. Starts the same **private** D-Bus and private fprintd with a fresh \`/dev/shm/ft5955-v096.*\` state directory.
+2. Enrols right index once with the existing 12-stage capture, then calls \`ListEnrolledFingers("")\` to check whether fprintd lists \`right-index-finger\`.
+3. Stops just the private fprintd process, preserving that test directory, and starts a **new private fprintd process** on the same private bus and state.
+4. Opens a **new client**, checks \`ListEnrolledFingers("")\` again and verifies the saved right-index print. A terminal \`verify-match\` is PASS; terminal genuine \`verify-no-match\` results are counted, with up to three manual attempts.
+5. Cleans up both private processes and the RAM-backed test directory on exit.
+
+Update **both** C and shell files from \`feature/ft5955-private-fprintd-v096\` before the test. First run the existing \`--check\` compilation, then:
+
+\`\`\`bash
+bash ~/Projects/ft5955-native-validation-v0.9.1/tests/ft5955_private_enroll_v096.sh --roundtrip
+\`\`\`
+
+This test needs non-root USB write access (the **verified, device-specific** ACL used for earlier experiments, if it has not expired). Do **not** run the launcher under sudo. A failure to list a print before restart, after restart, or to match after reload is diagnostically different; record which stage failed rather than making changes to the production fprintd service.
+
+**Boundary:** This is an *ephemeral cross-process reload test*, not durable on-disk biometric storage, a production-ready native matcher, or PAM/KDE login enablement. The underlying experimental MOH bridge may still have RAM-only engine state; a failed roundtrip could reveal that. Never publish raw templates, storage files or proprietary libraries.
+
 ## Multi-finger positive and negative controls (real test 16 October; retry revision pending)
 
 The same existing v0.9.6 test client and launcher now provide `--controls`:
