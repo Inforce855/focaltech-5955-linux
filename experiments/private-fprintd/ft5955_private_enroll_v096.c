@@ -228,14 +228,16 @@ int main(int argc, char **argv)
 {
     if (argc != 2 ||
         (g_strcmp0(argv[1], "--live") != 0 &&
-         g_strcmp0(argv[1], "--controls") != 0) ||
+         g_strcmp0(argv[1], "--controls") != 0 &&
+         g_strcmp0(argv[1], "--diagnose") != 0) ||
         !private_environment_ok()) {
-        g_printerr("STOP: requires --live or --controls, non-root user, "
-                   "private D-Bus and RAM-backed STATE_DIRECTORY "
-                   "from v0.9.6 launcher.\n");
+        g_printerr("STOP: requires --live, --controls or --diagnose; "
+                   "non-root user, private D-Bus and RAM-backed "
+                   "STATE_DIRECTORY from v0.9.6 launcher.\n");
         return 2;
     }
     const gboolean controls = g_strcmp0(argv[1], "--controls") == 0;
+    const gboolean diagnose = g_strcmp0(argv[1], "--diagnose") == 0;
 
     Client c = {0};
     int result = 1;
@@ -280,11 +282,11 @@ int main(int argc, char **argv)
         goto out;
     }
     g_print("PASS: enrolment completed.\n");
-    if (!controls) {
+    if (!controls && !diagnose) {
         if (!compare_finger(&c, "ENROLLED right index finger", TRUE, 1, 1, 1))
             goto out;
         g_print("PASS: fresh verification MATCH through private fprintd.\n");
-    } else {
+    } else if (controls) {
         /* The VerifyStart record is always right-index-finger; the tester must
          * physically use the displayed finger for each controlled comparison.
          * Negative controls must produce verify-no-match, not a quality error. */
@@ -298,6 +300,34 @@ int main(int argc, char **argv)
             goto out;
         g_print("%s: controls completed (2 genuine matches, "
                 "2 different-finger rejections, %u genuine no-matches).\n",
+                c.genuine_no_matches ? "PASS WITH RETRIES" : "PASS",
+                c.genuine_no_matches);
+    } else {
+        /* Diagnose whether a later genuine failure starts after ANY
+         * verification or specifically after a different-finger no-match.
+         * All six attempts compare against the same enrolled right-index
+         * template in the same private fprintd session. No source images
+         * or templates are printed, and no production state is modified. */
+        g_print("DIAGNOSTIC ORDER: enrolled, enrolled, right middle, "
+                "enrolled, left index, enrolled.\n");
+        if (!compare_finger(&c, "ENROLLED right index (baseline)", TRUE, 1, 6, 3))
+            goto out;
+        if (!compare_finger(&c, "ENROLLED right index (repeat before negatives)",
+                            TRUE, 2, 6, 3))
+            goto out;
+        if (!compare_finger(&c, "DIFFERENT right middle", FALSE, 3, 6, 1))
+            goto out;
+        if (!compare_finger(&c, "ENROLLED right index (after right middle)",
+                            TRUE, 4, 6, 3))
+            goto out;
+        if (!compare_finger(&c, "DIFFERENT left index", FALSE, 5, 6, 1))
+            goto out;
+        if (!compare_finger(&c, "ENROLLED right index (after left index)",
+                            TRUE, 6, 6, 3))
+            goto out;
+        g_print("%s: diagnostic sequence complete "
+                "(4 genuine matches, 2 different-finger rejections, "
+                "%u genuine no-matches).\n",
                 c.genuine_no_matches ? "PASS WITH RETRIES" : "PASS",
                 c.genuine_no_matches);
     }
