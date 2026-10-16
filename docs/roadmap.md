@@ -31,7 +31,7 @@
 - [x] **16 October:** confirm USB access failure cause (missing write permission); grant narrowly scoped temporary ACL only on the identified `2808:5955` device node; next non-root `Claim` succeeded. Permanent udev handling pending.
 - [x] **16 October:** complete genuine 12-stage private-`fprintd` enrolment: 11 intermediate passes plus `enroll-completed (done=true)` from the physical sensor.
 - [x] **16 October:** `/dev/tty` confirmation fix tested successfully on Nobara; complete a new physical enrolment, recover from one `enroll-retry-scan`, and receive `VerifyStatus: verify-match (done=true)` on a fresh touch through private `fprintd`. One positive verification only; not a reliability estimate.
-- [ ] Test un-enrolled fingers against the template (negative controls), then repeat genuine verification across varied finger placements.
+- [ ] **Next on Nobara:** compile and run new `--controls` mode, which enrols once and checks right-index match, right-middle no-match, left-index no-match, then right-index match again. Source is in the feature branch; this four-step hardware test is not yet performed.
 - [ ] Repeat enrol/verify across separate sessions; confirm consistent positive and negative outcomes.
 - [ ] Verify persistent storage and reload behaviour, error propagation and privacy boundaries.
 - [ ] Only after sufficient evidence, review optional KDE/PAM integration with password fallback.
