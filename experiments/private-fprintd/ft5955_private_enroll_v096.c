@@ -224,20 +224,50 @@ static gboolean compare_finger(Client *c, const gchar *finger,
 }
 
 
+/* List enrolled finger names only. Never inspect or print template bytes. */
+static gboolean right_index_listed(Client *c)
+{
+    g_autoptr(GVariant) reply = invoke(
+        c, c->path, DEVICE_IFACE, "ListEnrolledFingers",
+        g_variant_new("(s)", ""), G_VARIANT_TYPE("(as)"));
+    if (!reply) {
+        g_printerr("FAIL: fprintd could not list the enrolled template.\n");
+        return FALSE;
+    }
+    g_autoptr(GVariant) names = g_variant_get_child_value(reply, 0);
+    GVariantIter iter;
+    const gchar *name = NULL;
+    gboolean found = FALSE;
+    g_variant_iter_init(&iter, names);
+    while (g_variant_iter_next(&iter, "&s", &name)) {
+        if (g_strcmp0(name, "right-index-finger") == 0)
+            found = TRUE;
+    }
+    if (!found)
+        g_printerr("FAIL: saved right-index-finger is not listed.\n");
+    else
+        g_print("PASS: right-index-finger listed by private fprintd.\n");
+    return found;
+}
+
 int main(int argc, char **argv)
 {
     if (argc != 2 ||
         (g_strcmp0(argv[1], "--live") != 0 &&
          g_strcmp0(argv[1], "--controls") != 0 &&
-         g_strcmp0(argv[1], "--diagnose") != 0) ||
+         g_strcmp0(argv[1], "--diagnose") != 0 &&
+         g_strcmp0(argv[1], "--enroll-only") != 0 &&
+         g_strcmp0(argv[1], "--verify-saved") != 0) ||
         !private_environment_ok()) {
-        g_printerr("STOP: requires --live, --controls or --diagnose; "
+        g_printerr("STOP: requires an approved private launcher mode; "
                    "non-root user, private D-Bus and RAM-backed "
                    "STATE_DIRECTORY from v0.9.6 launcher.\n");
         return 2;
     }
     const gboolean controls = g_strcmp0(argv[1], "--controls") == 0;
     const gboolean diagnose = g_strcmp0(argv[1], "--diagnose") == 0;
+    const gboolean enroll_only = g_strcmp0(argv[1], "--enroll-only") == 0;
+    const gboolean verify_saved = g_strcmp0(argv[1], "--verify-saved") == 0;
 
     Client c = {0};
     int result = 1;
@@ -275,6 +305,18 @@ int main(int argc, char **argv)
         c.bus, DEST, DEVICE_IFACE, NULL, c.path, NULL,
         G_DBUS_SIGNAL_FLAGS_NONE, on_status, &c, NULL);
 
+    if (verify_saved) {
+        /* A new client after private fprintd restart, using the same
+         * isolated RAM-backed state directory. */
+        if (!right_index_listed(&c)) goto out;
+        if (!compare_finger(&c, "SAVED right index after daemon restart",
+                            TRUE, 1, 1, 3))
+            goto out;
+        g_print("PASS: SAVED TEMPLATE MATCH after private fprintd restart.\n");
+        result = 0;
+        goto out;
+    }
+
     g_print("Enrolling right-index-finger; use the SAME finger each time.\n");
     fflush(stdout);
     if (!perform(&c, FALSE)) {
@@ -282,6 +324,12 @@ int main(int argc, char **argv)
         goto out;
     }
     g_print("PASS: enrolment completed.\n");
+    if (enroll_only) {
+        if (!right_index_listed(&c)) goto out;
+        g_print("PASS: enrolled finger discoverable before daemon restart.\n");
+        result = 0;
+        goto out;
+    }
     if (!controls && !diagnose) {
         if (!compare_finger(&c, "ENROLLED right index finger", TRUE, 1, 1, 1))
             goto out;
