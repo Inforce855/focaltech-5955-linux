@@ -2,6 +2,40 @@
 
 **Status (16 October 2026): physical enrolment and one fresh `verify-match` through private `fprintd` PASSED on Nobara.** The updated `/dev/tty` confirmation client was used; one `enroll-retry-scan` was handled before successful enrolment. Further genuine/impostor and persistence tests are still required. Source and documentation are versioned on a separate GitHub branch. The previous **v0.9.5** experiment confirmed that a private `fprintd` process can enumerate and Claim the FocalTech 2808:5955 reader; it did not enrol or verify a finger.
 
+
+## Updated controlled roundtrip — 16 October 2026 (new code; real test pending)
+
+**Reason for change:** The first hardware `--roundtrip` listed the saved fingerprint across a restart but returned three genuine `NO_MATCH` results. It did not verify that this *same saved print* matched even once **before** restarting fprintd. Earlier controls also occasionally produced genuine `NO_MATCH` without restarting. A restart-specific failure was therefore not established.
+
+The `--roundtrip` mode now uses **one enrolment**, followed by these strictly ordered checks:
+
+1. **Phase 1A:** enrol the right index once through the private fprintd, then confirm `ListEnrolledFingers`.
+2. **Phase 1B:** exit the enrolment D-Bus client; start a **new client against the same still-running fprintd**; list the saved finger and verify it using 1–3 deliberate touches. This proves a matching saved print *before restart*, not just in the original enrolment client.
+3. Only if that baseline matches, restart **just the private fprintd** while retaining the RAM-backed state directory.
+4. **Phase 2:** start a **new client against the restarted private fprintd**, list the print and verify it with 1–3 deliberate touches. Record genuine matches/no-matches and which phase failed.
+5. Cleanup remains unchanged: private D-Bus, private PolicyKit, private fprintd and RAM-backed storage are disposed of without altering system login.
+
+If baseline verification fails three times, the launcher **skips restart** and reports `BASELINE FAIL`. That distinguishes failure present before restart from a *potential* restart-specific change. Even a post-restart failure after a successful baseline is not conclusive without repeated controlled trials because genuine matching was previously intermittent.
+
+The two updated files are `ft5955_private_enroll_v096.c` (new internal `--verify-baseline` mode) and `ft5955_private_enroll_v096.sh` (modified `--roundtrip`). Both are in the **GitHub feature branch** `feature/ft5955-private-fprintd-v096`; source is committed but the amended mode still requires a Nobara compile and real-device test.
+
+Recommended **no-overwrite** preparation using the already-created source-history worktree (the GitHub root has other user worktrees):
+
+```bash
+REPO="$HOME/Projects/focaltech-5955-linux"
+TESTS="$HOME/Projects/ft5955-native-validation-v0.9.1/tests"
+BRANCH=origin/feature/ft5955-private-fprintd-v096
+git -C "$REPO" fetch origin feature/ft5955-private-fprintd-v096
+for name in ft5955_private_enroll_v096.c ft5955_private_enroll_v096.sh; do
+    git -C "$REPO" show "$BRANCH:experiments/private-fprintd/$name" > "/tmp/$name.controlled-new"
+done
+# Inspect diff before replacing your local experimental copies:
+diff -u "$TESTS/ft5955_private_enroll_v096.c" /tmp/ft5955_private_enroll_v096.c.controlled-new || true
+diff -u "$TESTS/ft5955_private_enroll_v096.sh" /tmp/ft5955_private_enroll_v096.sh.controlled-new || true
+```
+
+After reviewing the changes, do not run against real fprintd. Run `--check` first (compile-only), then a single `--roundtrip` in the isolated private environment. Don't upload templates/images from temporary `/dev/shm` state.
+
 ## Scope
 
 - `ft5955_private_polkit_v095.c` — unchanged protocol logic from the successful local private-bus authorisation prototype; allows only the fingerprint `enroll` and `verify` actions, only to the local user on a disposable bus.
