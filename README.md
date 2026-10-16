@@ -13,7 +13,8 @@ Experimental Linux support for the **FocalTech USB fingerprint reader `2808:5955
 | Linux libfprint driver | **Experimental**; active uncommitted source in local development tree |
 | Private `fprintd` enumeration and device Claim | **Passed on 14 October** |
 | v0.9.6 enrol/verify test compilation | **Passed on 16 October** (no scan) |
-| Actual `fprintd` enrolment and fresh verification | **Blocked at USB permissions** in first live run; no scan yet |
+| Private `fprintd` fingerprint enrolment | **Passed 16 October** (real sensor; temporary isolated storage) |
+| Fresh `fprintd` fingerprint verification | **Pending**; terminal confirmation fix committed |
 | KDE unlock, PAM login, persistent biometric database | **Not available** |
 
 A limited two-finger experimental matching test succeeded previously; this **does not establish reliable or secure authentication**. The fully native open-source matcher remains unfinished.
@@ -30,7 +31,7 @@ On the existing Nobara machine, after fetching the [test sources](experiments/pr
 bash ~/Projects/ft5955-native-validation-v0.9.1/tests/ft5955_private_enroll_v096.sh --check
 ```
 
-**Compile-only test: PASS.** The separate `--live` mode has **not yet been validated**, and must be run only after reviewing the [isolation and safety instructions](experiments/private-fprintd/README.md). It uses a private D-Bus instance and RAM-backed test storage, not system authentication.
+**Compile and real enrolment: PASS.** Fresh verification is still pending: the last session ended before verification because of a client input bug. The corrected client is now on GitHub; review the [test instructions](experiments/private-fprintd/README.md) before repeating. It uses a private D-Bus instance and RAM-backed test storage, not system authentication.
 
 ## Project documentation
 
