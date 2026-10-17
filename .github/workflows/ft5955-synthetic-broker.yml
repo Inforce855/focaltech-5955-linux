@@ -1,0 +1,56 @@
+name: FT5955 broker synthetic transport
+
+on:
+  push:
+    branches:
+      - feature/ft5955-driver-consolidation-20261017
+    paths:
+      - "tools/ft5955_engine_broker.py"
+      - "tools/test_ft5955_engine_broker_synthetic.py"
+      - "tools/audit_ft5955_moh_relocation.py"
+      - "tools/smoke_ft5955_broker_systemd.sh"
+      - "README.md"
+      - "docs/**"
+      - "tools/check_ft5955_navigation.py"
+      - "tools/ft5955_kde_trial.sh"
+      - "tools/manage_ft5955_kde_trial.sh"
+      - ".github/workflows/ft5955-synthetic-broker.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-broker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Compile Python sources, no biometrics
+        run: |
+          python3 -m py_compile tools/ft5955_engine_broker.py tools/test_ft5955_engine_broker_synthetic.py tools/audit_ft5955_moh_relocation.py
+      - name: Check reversible service smoke script shell syntax (do not run)
+        run: bash -n tools/smoke_ft5955_broker_systemd.sh
+      - name: Syntax-check short-lived KDE lab experiment wrappers (NO execution)
+        run: |
+          bash -n tools/ft5955_kde_trial.sh
+          bash -n tools/manage_ft5955_kde_trial.sh
+      - name: Validate embedded mock gateway source syntax (never execute)
+        run: |
+          python3 - <<'CHECK_EMBEDDED'
+          from pathlib import Path
+          import re
+          source = Path("tools/smoke_ft5955_broker_systemd.sh").read_text()
+          match = re.search(r"""cat > "\$ROOT/mock_gateway.py" <<'PY'\n(.*?)\nPY\n""", source, re.S)
+          assert match, "Mock gateway source block missing"
+          compile(match.group(1), "ft5955_mock_gateway", "exec")
+          print("PASS: embedded fake gateway Python syntax")
+          CHECK_EMBEDDED
+      - name: Validate current repository Markdown links (offline only)
+        run: python3 tools/check_ft5955_navigation.py
+      - name: Non-root synthetic transport smoke test
+        run: |
+          test "$(id -u)" -ne 0
+          python3 tools/test_ft5955_engine_broker_synthetic.py

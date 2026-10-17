@@ -1,0 +1,50 @@
+--- a/libfprint/drivers/focaltech_5955.c
++++ b/libfprint/drivers/focaltech_5955.c
+@@ -3,6 +3,7 @@
+ 
+ #define FP_COMPONENT "focaltech_5955"
+ #include "drivers_api.h"
++#include "ft5955_native_action.h"
+ #include <string.h>
+ 
+ typedef struct _FpiDeviceFocaltech5955 {
+@@ -188,6 +189,8 @@
+   dev_class->temp_hot_seconds = -1;
+   dev_class->open = dev_open;
+   dev_class->close = dev_close;
++  dev_class->enroll = ft5955_native_enroll;
++  dev_class->verify = ft5955_native_verify;
+ 
+   fpi_device_class_auto_initialize_features (dev_class);
+ }
+--- a/libfprint/meson.build
++++ b/libfprint/meson.build
+@@ -88,7 +88,15 @@
+ ]
+ 
+ driver_sources = {
+-    'focaltech_5955' : files('drivers/focaltech_5955.c'),
++    'focaltech_5955' : files(
++        'drivers/focaltech_5955.c',
++        'drivers/ft5955_action_core.c',
++        'drivers/ft5955_fpi_action_bridge.c',
++        'drivers/ft5955_fpi_print_bridge.c',
++        'drivers/ft5955_native_action.c',
++        'drivers/ft5955_native_capture.c',
++        'drivers/ft5955_print_codec.c',
++    ),
+     'upekts' : files(
+         'drivers/upekts.c',
+         'drivers/upek_proto.c',
+@@ -218,6 +226,11 @@
+     gusb_dep,
+     mathlib_dep,
+ ] + optional_deps
++
++# The MOH host template codec uses OpenSSL SHA-256.
++if 'focaltech_5955' in drivers
++    deps += dependency('openssl')
++endif
+ 
+ # These are empty and only exist so that the include directories are created
+ # in the build tree. This silences a build time warning.

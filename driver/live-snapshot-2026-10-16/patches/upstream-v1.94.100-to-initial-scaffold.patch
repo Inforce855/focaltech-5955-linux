@@ -1,0 +1,92 @@
+diff --git a/libfprint/drivers/focaltech_5955.c b/libfprint/drivers/focaltech_5955.c
+new file mode 100644
+index 0000000..8f7f9a8
+--- /dev/null
++++ b/libfprint/drivers/focaltech_5955.c
+@@ -0,0 +1,61 @@
++/* SPDX-License-Identifier: LGPL-2.1-or-later */
++/* Experimental FocalTech 2808:5955 discovery-only driver. */
++
++#define FP_COMPONENT "focaltech_5955"
++#include "drivers_api.h"
++
++typedef struct _FpiDeviceFocaltech5955 {
++  FpDevice parent;
++} FpiDeviceFocaltech5955;
++
++typedef struct _FpiDeviceFocaltech5955Class {
++  FpDeviceClass parent_class;
++} FpiDeviceFocaltech5955Class;
++
++GType fpi_device_focaltech_5955_get_type (void);
++
++G_DEFINE_TYPE (FpiDeviceFocaltech5955,
++               fpi_device_focaltech_5955, FP_TYPE_DEVICE)
++
++static const FpIdEntry id_table[] = {
++  { .vid = 0x2808, .pid = 0x5955 },
++  { .vid = 0, .pid = 0 }
++};
++
++static void
++dev_open (FpDevice *dev)
++{
++  fpi_device_open_complete (
++      dev, fpi_device_error_new (FP_DEVICE_ERROR_NOT_SUPPORTED));
++}
++
++static void
++dev_close (FpDevice *dev)
++{
++  fpi_device_close_complete (dev, NULL);
++}
++
++static void
++fpi_device_focaltech_5955_init (FpiDeviceFocaltech5955 *self)
++{
++  (void) self;
++}
++
++static void
++fpi_device_focaltech_5955_class_init (
++    FpiDeviceFocaltech5955Class *klass)
++{
++  FpDeviceClass *dev_class = FP_DEVICE_CLASS (klass);
++
++  dev_class->id = FP_COMPONENT;
++  dev_class->full_name = "FocalTech 5955 (experimental)";
++  dev_class->type = FP_DEVICE_TYPE_USB;
++  dev_class->id_table = id_table;
++  dev_class->scan_type = FP_SCAN_TYPE_PRESS;
++  dev_class->nr_enroll_stages = 12;
++  dev_class->temp_hot_seconds = -1;
++  dev_class->open = dev_open;
++  dev_class->close = dev_close;
++
++  fpi_device_class_auto_initialize_features (dev_class);
++}
+diff --git a/libfprint/meson.build b/libfprint/meson.build
+index f11533c..3c7974f 100644
+--- a/libfprint/meson.build
++++ b/libfprint/meson.build
+@@ -88,6 +88,7 @@ nbis_sources = [
+ ]
+ 
+ driver_sources = {
++    'focaltech_5955' : files('drivers/focaltech_5955.c'),
+     'upekts' : files(
+         'drivers/upekts.c',
+         'drivers/upek_proto.c',
+diff --git a/tests/meson.build b/tests/meson.build
+index aad0675..eed1527 100644
+--- a/tests/meson.build
++++ b/tests/meson.build
+@@ -292,7 +292,7 @@ else
+         args: ['-c', 'exit 77']
+     )
+ 
+-    foreach driver_test: drivers_tests
++    foreach driver_test, driver_test_info: drivers_tests
+         test(driver_test,
+             sh,
+             args: ['-c', 'exit 77']

@@ -1,0 +1,93 @@
+# FT5955 local source archive inventory — 16 October 2026
+
+This is an **inventory**, not a source import or a claim that the current local libfprint tree has been committed. Archive inputs were shared in the conversation and inspected without executing installer scripts.
+
+## Source bundles recovered
+
+| Archive version | Source files | SHA-256 (uploaded archive) | Purpose |
+| --- | ---: | --- | --- |
+| `ft5955-driver-integration-v0.8.tar.gz` | 30 | `d3030d7ba0d26a3f167ffbfbdf4067eaf199905f7ee75de31a4e0674d6f55231` | Original libfprint native action/capture, FpPrint codec/bridge, MOH gateway, tests, guarded apply/restore |
+| `ft5955-v0.8.1-fix-cleanup.py` | 1 | `fc0608e5fe15abf244d7cb109e557caad5344737227e794be5dc6be39ef681f6` | Replaces five invalid process-cleanup status checks; guarded local patch |
+| `ft5955-native-validation-v0.9.tar.gz` | 5 | `b734dc99f60b1cbae18956d5138a392fe674fada5eab944fedc48374aa209e63` | Test-only real FpPrint RAM serialise/deserialize across a new libfprint device/context; A,B,C,A verification |
+| `ft5955-native-validation-v0.9.1.tar.gz` | 5 | `857d445ee7dc01e11a1aa7cec3bb9cdeb4685e859e0f2784631110877fb1979f` | Test-only 10-check A/B/A/C/A/B/A/C/A/A sequence with quality-retry counts |
+| `ft5955-v094-source.tar.gz` | 6 | `3762811926d28afd035241c649c27222d8ab7745f1591c4b8a84878243049a8d` | Separate v0.9.4 cancellation and forced quality retry tests, not replacement driver code |
+
+The observed `ft5955_native_action.c` pasted from the **currently modified local libfprint checkout** was compared with v0.8 `driver/ft5955_native_action.c` after all five v0.8.1 `g_subprocess_get_if_exited(child)` to `(g_subprocess_get_identifier(child) == NULL)` substitutions. The C source **matches line-for-line**. This establishes provenance for that individual file, **not** byte parity of every other locally modified source file.
+
+The v0.9.1 `native_print_roundtrip.c` genuinely extends the v0.9 test rather than changing the driver, adding 10 labelled comparisons, quality-retry callback and explicit counters. v0.9 results already documented a final genuine NO_MATCH after earlier expected matches and negatives. This matters when interpreting the 16 October private-fprintd restart trial: that test had a saved finger listing but three genuine terminal NO_MATCH results. The restart alone has **not** been established as the root cause, especially because no same-session verification was run immediately before restart.
+
+## Version control status / caution
+
+On the repository's three branches examined (`main`, `feature/ft5955-moh-engine-bridge`, `feature/ft5955-private-fprintd-v096`), the original `ft5955_native_action.[ch]` and the private driver `focaltech_5955.c` were **not present**. v0.9.4-related testing sources do already appear on the older MOH branch; compare before publishing duplicates.
+
+This historical inventory predates the completed source import; see the final import result below. The live local driver, Meson changes and gateway may have additional modifications beyond the recovered snapshots. Before declaring a reproducible driver, inventory and review the dirty checkout with `git status`/`git diff` and reconcile those files; never overwrite the local working source or apply the old v0.8 installer/patch blindly.
+
+Publish extracted, reviewed **text-only** historical sources in a separate source-history directory or feature branch. Never commit biometric images, real templates, raw samples, personal log dumps, proprietary vendor DLLs, compiled programs or archive duplicates. Avoid `git clean`, `git reset --hard`, forced pushes and destructive checkout operations.
+
+See [current status](status-2026-10-16.md), [development roadmap](roadmap.md) and [source inventory issue #3](https://github.com/Inforce855/focaltech-5955-linux/issues/3).
+
+
+## Additional recovered files (final batch, 16 October 2026)
+
+These are additional **historical inputs**, not proposed replacements for the current native driver.
+
+| Recovered upload | Contents | SHA-256 of upload | Assessment |
+| --- | --- | --- | --- |
+| `ft5955-moh-ipc-v0.1.tar.gz` | `moh_ipc.py`, README (2 source files) | `0a9d00af12acd8899b84e1ce94af80e619f413a802cc01003c8ed8a038334a01` | Earliest **synthetic/mock** IPC protocol; preserve as provenance, superseded by v0.2/v0.3 |
+| `ft5955-moh-ipc-v0.2.tar.gz` | `moh_adapter.py`, fake vendor runner, test, README (4 files) | `4b8e91a4627a08631868520e915213d59836969472b755a8598cb5034b877db5` | Isolated MOH adapter boundary with synthetic regression tests; historical reference, not production driver |
+| `focaltech-5955-live-libfprint.tar.gz` | Live bridge, isolated build/enrol scripts, test, docs (5 files) | `f349b6c311bc4f6b69173a1a98b39b114e1c54c9afa3b8fbbb37830343f14c3e` | Early virtual-image live bridge at 10×; superseded in part by scale fix |
+| `focaltech-5955-libfprint-scale-fix.tar.gz` | Revised live bridge, test and docs (3 files) | `13d0ed22fc07116bad31b6375605f67ceb67fe6caf145370d0be88a34ba1bf5b` | Newer 2× interpolation default; preserve later bridge variant instead of silently overwriting earlier one |
+| `focaltech-nbis-one-touch.tar.gz` | NBIS probe, one-touch diagnostic, tests, docs (5 files) | `0aeef7ab90fc57e0582cdc47b02a2381c75393892ac978ef091e128bc5d3a450` | Distinct minutiae-extraction diagnostic; useful to understand why generic libfprint NBIS path struggled |
+| `fix_focaltech_5955_scaffold.py` | Early libfprint 1.94.100 registration and discovery-only stub | `92cb5358aaad44044b4dc3f9469637598a1e470f2bf39253f3868eaf0a70eedb` | **Obsolete as an installer**; source preserved at [scaffold repair](../research/source-history/scaffold/fix_focaltech_5955_scaffold.py). Do **not run** on live tree |
+| `moh-attach-disassembly.txt` | Audited vendor Attach disassembly research note | `7072f6470f5c3b6aeddf49d08b51db414b12fbcc4e939057b95e61536143cc43` | Historical analysis only; proprietary-derived disassembly not imported as repository source without licensing review |
+
+The real source of the historical v0.8.1 process-cleanup change is now preserved separately at [v0.8.1 patch script](../research/source-history/v0.8.1/ft5955-v0.8.1-fix-cleanup.py). It is **not** an instruction to reapply a patch to the currently working local driver.
+
+## Source consolidation gate
+
+Before marking the repository as the **authoritative rebuildable native driver**, the original **local** `~/Projects/libfprint-ft5955` driver files, private Meson registrations, `~/Projects/ft5955-driver-integration-v0.8/engine` gateway and dependency manifests must be compared with these historical archives and imported under reviewed version control. Preserve active development work, prefer source files over gz archive copies, and avoid storing biometric or proprietary vendor materials. The 16 distinct versioned historical source archives have now been imported on the dedicated source-history branch; the live driver is still pending reconciliation. The two standalone Python patch scripts above were committed; no hardware files or auth setup were changed.
+
+
+## Non-destructive import helper (committed; not run on user's PC)
+
+The repository now contains [`tools/import_ft5955_history.py`](../tools/import_ft5955_history.py). It recognises the **10 listed historical source archives by SHA-256**, reads only bounded regular UTF-8 source files from those archives, rejects links/unsafe paths, and lays out their files in version-specific `research/source-history/` directories. This keeps overlapping versions separate and does not run old installers.
+
+The **dry-run was tested against all ten uploaded archives** in the assistant's isolated environment: **68 text source files** recognised. The importer has not been run on the user's Nobara checkout. It refuses to stage unless the checkout is clean and checked out on `feature/ft5955-private-fprintd-v096`; it refuses overwrites and does not make commits or push. It never touches `~/Projects/libfprint-ft5955`.
+
+Example **read-only** use from any checked-out copy of the repository, after fetching the current feature branch:
+
+```bash
+python3 tools/import_ft5955_history.py "$HOME/Downloads"
+```
+
+Opt-in `--stage` should only follow review of the worktree and branch. The user must inspect the staged source and explicitly commit/push the imported files separately. **Historical source import was subsequently confirmed on the dedicated source-history branch; the former dry-run-only instructions above are retained as a record of the earlier step.**
+
+
+## Completed source-history import — 16 October 2026
+
+The user executed the guarded importer in a dedicated Git worktree at `~/Projects/ft5955-source-history` and pushed commit [`0f6e826`](https://github.com/Inforce855/focaltech-5955-linux/commit/0f6e826) to [`feature/ft5955-source-history`](https://github.com/Inforce855/focaltech-5955-linux/tree/feature/ft5955-source-history).
+
+Observed terminal output: `17/21 archives recognised; 4 other archives ignored`, `135 versioned source files validated`, `Commit: 135 newly staged historical source files`, `PUSHED: 0f6e826`. Two Python cache binaries were skipped. The duplicate v0.9.4 archive was enumerated twice; **16 distinct versioned archive directories** were uploaded, verified in the GitHub tree. The earlier 138 count was an inaccurate pre-import estimate for the archive contents (the GitHub history tree also includes a root README and two previously committed repair scripts, making 138 total files in that history subtree).
+
+The historical files are now preserved in GitHub. **This does not yet mean that the live, uncommitted `~/Projects/libfprint-ft5955` driver and its build changes are backed up or reproducibly built from GitHub.** Continue with a read-only local Git inventory and reconcile the live driver separately. Do not overwrite local work with old snapshots.
+
+## Confirmed live-driver snapshot — 16 October 2026
+
+The user ran the non-destructive source snapshot and pushed commit [`77db7f5`](https://github.com/Inforce855/focaltech-5955-linux/commit/77db7f5) to `feature/ft5955-source-history`. The GitHub tree was independently verified to contain exactly **18 snapshot files** at [`driver/live-snapshot-2026-10-16/`](../driver/live-snapshot-2026-10-16/):
+
+- **13 active** C/header driver files (including the modified `focaltech_5955.c` and all FT5955 native action/capture, codec and callback bridge files).
+- **Three** current engine source files (`engine_gateway.py`, `template_runner.py`, `template_session.c`).
+- One `local-libfprint-changes.patch` recording tracked libfprint Meson/main-driver modifications.
+- A `README.md` manifest with individual SHA-256 file hashes and exact base libfprint Git commit `c8e01dc26cedb2d97779a314a7260f1c33e02bfa`.
+
+This is the actual then-live source, distinct from the v0.8 historical archive; no original files were changed or backed-up `.bak` files imported. **The snapshot has not yet been rebuilt or regression-tested from GitHub; it is a source-preservation milestone, not an assertion of production readiness.**
+
+### Saved-template investigation from the committed snapshot
+
+- `ft5955_native_action.c` receives a `TEMPLATE <size> <subfactor>` export on completion, then forwards it to `ft5955_fpi_action_bridge.c`.
+- The callback bridge packs the vendor template with `ft5955_print_pack()` and calls `ft5955_fpprint_assign()` to store it as a `FPI_PRINT_RAW` byte-array `GVariant`.
+- On verification `ft5955_fpprint_extract()` validates the `FT5955P1` envelope and SHA-256 digest; the native worker sends its bytes in `MODE V` to `engine_gateway.py`.
+- The gateway explicitly invokes `engine.imported(template,subfactor)` and waits for `IMPORTED` before reporting `READY 1`. The C worker requires `READY 1` before scanning a finger. A terminal `verify-no-match` therefore indicates that execution normally proceeded past the driver envelope check and gateway import acknowledgement, rather than merely observing a saved finger name.
+- A successful import acknowledgement **does not prove the template was the intended finger, preserved byte-for-byte through fprintd storage, or consistently recognised by the matcher**. These are still hypotheses to test. Earlier no-matches occurred even without restarting fprintd.
+
+Next tests should ideally be offline template-envelope codec/serialization checks and a controlled same-session-vs-post-restart verification plan, avoiding repeated 12-impression enrolments until a discriminating diagnostic is prepared.

@@ -1,0 +1,31 @@
+# SOURCE-ONLY PROTOTYPE. Never enable for production fingerprint login.
+# Requires audited root-owned vendor runner files and dedicated non-root
+# service account; none are installed by this repository's current scripts.
+[Unit]
+Description=FT5955 isolated non-root matching-engine broker (experimental)
+Requires=ft5955-engine.socket
+After=ft5955-engine.socket
+
+[Service]
+Type=simple
+User=ft5955-engine
+Group=ft5955-engine
+UMask=0077
+ExecStart=/usr/bin/python3 /opt/ft5955-system-trial/engine/ft5955_engine_broker.py --serve --gateway /opt/ft5955-system-trial/engine/engine_gateway.py --moh-dir /var/lib/ft5955-engine/vendor
+StateDirectory=ft5955-engine
+StateDirectoryMode=0700
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectHome=yes
+ProtectSystem=strict
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX
+RestrictSUIDSGID=yes
+LockPersonality=yes
+IPAddressDeny=any
+TimeoutStopSec=20

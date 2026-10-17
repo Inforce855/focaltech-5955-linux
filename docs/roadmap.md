@@ -1,188 +1,97 @@
-# Development roadmap
+# FocalTech 2808:5955 — development roadmap
 
-## Phase 1 — USB identification (complete)
-
-- [x] Identify USB device ID `2808:5955`.
-- [x] Record the interface and bulk endpoints.
-- [x] Check installed Nobara `fprintd` / `libfprint` support.
-- [x] Identify the matching MOH Windows driver package.
-
-## Phase 2 — Safe diagnostic application (baseline complete)
-
-- [x] Add a descriptor-only diagnostic command.
-- [x] Add an explicitly opted-in, timed IN-only listener.
-- [x] Run descriptor inspection on the actual Nobara system.
-- [x] Test IN-only listening for 15 seconds: **0 non-empty packets**, 11 October 2026.
-- [ ] Document non-root device permissions, when needed.
-
-## Phase 3 — Protocol research (in progress)
-
-- [x] Identify an XOR-based `ff_sc_CalcBCC` routine in the matching Windows MOH DLL.
-- [x] Locate relevant Windows function-name strings for sensor information and USB communication.
-- [x] Compare another FT9366-related project; found major USB interface differences from `2808:5955`.
-- [x] Statically reconstruct MOH USB request framing, length and XOR BCC, and basic reply validation (still untested on the hardware).
-- [ ] Verify the raw USB bulk pipe and whether a device initialisation sequence precedes the firmware-info command.
-- [ ] If needed, capture real Windows USB traffic on user-owned hardware.
-- [x] Implement and successfully run a confirmed single-shot firmware-information hardware test (11 October 2026).
-- [x] Confirm the firmware-information command works on 2808:5955 and returns ASCII firmware information.
-- [x] Correct reply decoding for the verified 50-byte frame followed by one trailing 00 byte.
-- [x] Recover the candidate `ff_sc_ReadFingerStatus` request (`02 00 03 82 73 01 f3`) from the Windows MOH DLL.
-- [x] Add a one-shot, explicitly confirmed finger-status experiment (not yet run against hardware).
-- [x] Verify a real finger-absent reply (`0x06`) and finger-on reply (`0x05`) using the same command.
-- [x] Confirm the observed status behaviour on repeated no-finger / finger-present tests and after finger removal (11 October 2026).
-- [x] Establish observed basic semantics: `0x05` finger touching, `0x06` finger absent; repeated in separate runs.
-- [ ] Implement a rate-limited, interruptible contact monitor if useful (avoid unbounded polling).
-- [ ] Determine whether further initialisation is required for event reporting or imaging.
-
-See [protocol research notes](protocol-research.md) and [image acquisition findings](image-acquisition-research.md).
-
-## Phase 4 — Fingerprint functions
-
-- [x] Demonstrate contact and release using repeated one-shot finger-status queries.
-- [x] Locate `ff_sc_GetImage`: candidate bulk-image logical request `0x81` (not hardware tested).
-- [x] Locate image geometry request path: `0x80` with selectors `03` (height) and `04` (width) (not hardware tested).
-- [x] Add a strictly opt-in image-geometry reader; no imaging or raw biometric storage.
-- [x] Verify image height via real hardware metadata response: **64 pixels** (`0x40`).
-- [x] Verify image width via real hardware metadata response: **80 pixels** (`0x50`); inferred 10,240-byte intermediate raw buffer for 80 × 64.
-- [x] Identify a scan-path handshake candidate `0x34` with expected two-byte `0xAA55` marker (DLL analysis only).
-- [x] Build an opt-in, one-shot handshake tester (not yet hardware-verified).
-- [x] Verify hardware scan handshake `02 00 01 34 35`: correct `55 aa` payload and checksum `f8` (11 October 2026).
-- [x] Add a one-shot, explicitly confirmed readiness query (`0x80`, selector `0x01`, two bytes), without scan-mode changes.
-- [x] Verify physical readiness response: exact `a5 5a` (`0x5AA5`), valid checksum, with no explicit scan-mode activation.
-- [ ] Trace mandatory scan activation, readiness checks and return-to-idle operations before full capture.
-- [x] Build and locally test a private offline 16-bit raw-to-PNG converter, with synthetic tests.
-- [x] Add a guarded 0x81-only image-read probe that does not modify the separate 0x87 scan mode; bounded private storage; 9 synthetic transfer tests.
-- [x] Receive first image-sized transfer on physical sensor: **10,246 USB bytes** on `0x81`, but checksum and pixel content not yet verified; no private capture saved on this attempt.
-- [x] Update image transfer parser to allow one unknown trailer byte **only after** a complete 10,245-byte frame passes protocol checksum and length validation.
-- [x] Capture and convert physical finger image files under Nobara; owner reported three image files: finger A, finger B, finger A again (11 October 2026). First/third visually similar; second visibly different.
-- [x] Observe clearer fingerprint-like detail with **big-endian** raw interpretation; little-endian preview was largely repeated row lines (owner visual inspection; encoding not conclusively proven).
-- [x] Add **offline A–B–A image similarity experiment**, with lighting normalisation, ±6 pixel translations, no USB or template storage, and 10 synthetic tests (local tests passed).
-- [x] Run A–B–A comparator on real 11 October 2026 data: same finger +0.132; controls +0.078 and +0.130; **+0.003** separation, too weak for authentication.
-- [x] Extend the optional offline translation window up to 14px; default remains 6px; do not interpret higher correlations alone as recognition.
-- [x] Run the same three private captures with --max-shift 12: A1–A2 unchanged at 0.132; A1–B rose to 0.100, A2–B stayed 0.130; still just +0.003 separation.
-- [x] Revisit the matching Windows MOH image converter: its preprocessing at 0x180006184 uses 64-sample/128-byte row strides across 80 rows, suggesting a 64 × 80 intermediate array.
-- [x] Add an offline two-layout comparator and an alternative private 64 × 80 PNG rendering option, with synthetic unit tests.
-- [ ] Compare private real A–B–A captures in both 80 × 64 and 64 × 80 layouts, and inspect 64 × 80 PNG preview before further algorithm changes.
-- [x] Add controlled four-shot **A1, A2, B1, B2** capture mode (`--session --send`), requiring only Enter immediately before each existing `0x81` request; cancelling/failure stops safely.
-- [x] Label each real raw capture privately and implement an offline four-capture comparison of two same-finger pairs against all four different-finger combinations.
-- [x] Add file-ignore protection for fingerprint-named RAW/PNG files, plus synthetic offline session and comparator selection tests.
-- [ ] Test four-capture Enter flow on the actual Nobara PC and review the resulting non-biometric correlation scores.
-
-- [ ] Independently validate pixel interpretation, ridge quality and repeatability with multiple private local comparisons (without sharing biometric data).
-- [ ] Validate the image payload and sensor pixel ordering before attempting enrollment.
-- [ ] Determine whether the MOH device returns raw images, processed images or proprietary features.
-- [ ] Evaluate libfprint image processing/template matching for this device; fall back to a separately vetted matching implementation if necessary.
-- [ ] Implement safe enrolment and verification without leaking templates.
-
-## Phase 5 — Linux desktop integration
-
-- [ ] Implement a stable `libfprint` driver or documented alternative.
-- [ ] Test through `fprintd` independently of production authentication.
-- [ ] Evaluate reliability, privacy and access controls.
-- [ ] Optionally enable KDE / PAM integration once proven safe.
-
-## Explicitly out of scope for the initial release
-
-Firmware flashing, guessed USB command bytes, system fingerprint-library replacement and changing login authentication.
-
-- [x] Run real A1/A2/B1/B2 offline comparison: same-finger +0.089 / +0.081, different-finger maximum +0.118 — no genuine/impostor separation (11 October 2026).
-- [x] Identify signed-16-bit input and negative clamp in matching Windows MOH converter (VA 0x180006184); add an offline aggregate-only diagnostic with synthetic tests.
-- [x] Run signed-16-bit aggregate diagnostic on four real private captures: little-endian shows 0% signed-negative samples and 99th percentiles 1,616–2,008; swapped big-endian shows 38.9–51.2% negative samples. Strong evidence favours **little-endian** raw words, despite earlier misleading image previews.
-- [x] Verify the Windows MOH general converter first clamps signed-negative words and then applies separate sensor-specific correction; negative clamp alone is not sufficient.
-- [x] Add private little-endian signed-clamped and optional row-normalised image preview experiments for both 80 × 64 and 64 × 80 layouts, with synthetic tests.
-- [ ] Run offline private four-preview experiment on an existing capture, evaluate actual grey sensor patterns separately from any user-added annotations, then revisit matching.
-
-- [x] Capture swapped finger-role A1/A2/B1/B2 session at 14:55 BST: same-pair 80×64 little-endian scores +0.234/+0.197; strongest different-pair +0.201; weak margins +0.032/−0.004.
-- [x] Correct premature claim that a higher 80×64 correlation validates row layout: user observes better fingerprint-like *greyscale* structure at 64×80, while quantitative scores change greatly across sessions. Both remain unverified hypotheses.
-- [ ] Recompare latest four private captures using little-endian --both-layouts at fixed ±6 px; focus subsequent work on reconstructing the Windows image converter, not threshold tuning.
+> **Current milestone (17 October 2026):** the complete **real normal-`fprintd` → KDE enrol both index fingers → observed `verify-match` → experimental uninstall/rollback** cycle PASSED. The packaged Nobara system has been restored, with no PAM/SDDM changes. Verification is inconsistent on the first press (~85% user-estimated success only after 3–4 deliberate taps), and this is **not a production authentication release**. See the [one-page next-session handoff](next-session-handoff.md), [full test record](kde-short-lived-trial-2026-10-17.md), and [documentation index](index.md). The historical checklist below intentionally retains earlier failures and intermediate steps — its dated statements are not independent current release claims.
 
 
-## Related FocalTech c652 research (11 October 2026)
+**Updated: 17 October 2026.** This is a concise status-driven roadmap, modelled on the layout introduced on `feature/ft5955-moh-engine-bridge`. Earlier experiments are preserved in the [research roadmap archive](archive/roadmap-research-log-2026-10-16.md). See [current status](status-2026-10-16.md) for what was actually demonstrated.
 
-- [x] Inspect scamiran149/libfprint_focaltechc652 via GitHub: same 0x01/0x82 bulk endpoints, 0x81 image request, 10246-byte image frames and little-endian 16-bit samples.
-- [x] Document their explicit 64 x 80 layout, which agrees with the user's visual impression and the MOH 64-sample intermediate row-stride clue.
-- [x] Confirm a key protocol incompatibility: c652 treats 82 73 01 as a capture trigger, while the physical 5955 returns finger-present / finger-absent codes on that command.
-- [x] Identify a C++ descriptor-serialization mismatch in the reference SIFT implementation; do not blindly copy its enrollment or threshold.
-- [x] Add an independent, offline-only OpenCV SIFT comparison experiment and synthetic tests without libfprint/PAM changes or biometric data publication.
-- [ ] Use two-layout SIFT experiment on current four private captures, comparing both genuine pairs with all cross-finger controls.
-- [ ] Reconstruct reliable native image correction/geometry; verify quality and impostor rejection before discussing fprintd integration.
+## 1. Sensor communication — experimental baseline achieved
 
-- [x] Run initial four-capture offline SIFT test: 80×64 yielded 147–244 keypoints and 4–5 RANSAC inliers per pair; 64×80 yielded 1750–2285 keypoints and 5–6 inliers, with **no genuine/impostor separation**.
-- [x] Add aggregate-only little-endian 64-versus-80 raw row-boundary probe and five synthetic tests.
-- [ ] Investigate candidate row-width seam signals on private original captures before further SIFT tuning; interpret alongside MOH conversion disassembly and user's visual observations.
+- [x] USB identity `2808:5955`, endpoints, handshake and readiness understood.
+- [x] Finger contact/release and physical image capture demonstrated.
+- [x] Primary processed image layout established experimentally as 64 × 80 pixels.
+- [x] **14 October hardware tests:** experimental native driver completed 12-stage enrolment with **five rejected impressions**, verification cancellation reported `G_IO_ERROR_CANCELLED`, device closed/reopened successfully, and forced quality rejection produced one retry callback then an appropriate `NO_MATCH`; no leftover subprocesses reported. The user had already done these tests; **do not request their repetition or physical unplugging of the built-in sensor**.
+- [ ] **Remaining reliability scope:** extended sustained-use and security review only; synthetic USB/error injection may cover unplug-like failure without a physical disconnect. Prior tests show basic cancel/reject/reopen paths working, not proof of every rare failure condition.
 
-## Native-driver architecture and fingerprint-enrolment research (11 October 2026)
+## 2. Experimental enrolment/matching — demonstrated, not security-validated
 
-- [x] Independently verify likely 64 x 80 sensor row geometry: four physical capture sets show 5.48–9.96× median jumps at 64-sample wraps, but only 0.90–1.37× at proposed 80-sample wraps; stride-64 vertical neighbour differences also smaller.
-- [x] Inspect OMGrant/ft9201-libfprint's LGPL native Linux WinBio engine bridge, 64 x 80 BIR format, eight-stage repositioned enrollment with duplicate/low-quality retries and private opaque template handling.
-- [x] Record key incompatibility: 93a9 uses 96 x 96 native optical hardware, different USB endpoints and FT9348 firmware; do not use those commands or firmware on 5955.
-- [x] Document possible modular native implementation in docs/ft9201-engine-porting.md and distinction between vendor matcher and USB capture.
-- [ ] Identify engine-adapter DLL and INF engine registration in the matching Windows package for 2808:5955; inspect exports/imports locally, never commit proprietary binaries.
-- [ ] Confirm genuine 64 x 80 image correction/8-bit BIR format and vendor engine ABI with offline synthetic diagnostics.
-- [ ] Implement private offline multi-sample enrollment / genuine-and-impostor verification; require quality gating and repositioned impressions, not just two-image correlations.
-- [ ] Build tested out-of-tree libfprint 5955 transport and matching adapter without replacing distro libraries, enabling logins or altering hardening prematurely.
+- [x] Build isolated MOH research bridge and RAM-only multi-impression enrolment experiments.
+- [x] Demonstrate two-finger identification and limited different-finger controls.
+- [ ] Validate repeated sessions, difficult placements and genuine/impostor outcomes with sufficient samples.
+- [ ] Review proprietary-engine isolation and template confidentiality.
 
-## Phase: fully native image processing (11 October 2026)
+## 3. Native open-source matching — in progress
 
-- [x] Identify original signed-word inversion + histogram construction in the recovered native FocalTech 2025 Linux binary; do not include proprietary source/binaries in this repo.
-- [x] Implement independent, local-only C11 image-preparation prototype for 5120 little-endian signed-clamped 16-bit samples in an experimental 64 × 80 row arrangement.
-- [x] Implement exact-count histogram, documented provisional 1/99-percentile 8-bit conversion, defensive low-contrast handling and aggregate-only metrics.
-- [x] Build and pass five **synthetic-only** C tests in a separate container, without USB, biometrics or installing system drivers.
-- [ ] Run `make -C native test` on the user's Nobara machine with GCC/Clang, and verify the test output.
-- [x] Independently implement the observed five-bin, three-pass histogram smoothing filter with five synthetic tests (not yet integrated with image conversion).
-- [x] Implement research-only 256-bin three-pass + 250-bin two-pass histogram pipeline with five synthetic tests; verify branch ratio from FT9362 ELF.
-- [x] Add separately testable 200/250 vs 250/250 contrast-cap experiment and five synthetic-only tests; not a verified vendor-equivalent transform.
-- [x] Correct earlier fixed 20% contrast cap assumption: the vendor ELF actually performs a sliding-window histogram cutoff search (bins 240 or 190), using a dynamic threshold and fallback.
-- [x] Implement an independent, separately tested C cutoff-search module with five synthetic-only tests; keep existing experimental tone map isolated.
-- [x] Independently integrate the histogram-selected cutoff into experimental native tone mapping; confirm cutoff-to-output arithmetic through native ELF static disassembly; five synthetic tests and sanitizer checks.
-- [x] Validate v3 final scaling arithmetic against static Ubuntu ELF instructions (`0x4f8f1`..`0x4f958`), including the +1e-6 denominator and float-to-integer truncation; six synthetic regression tests under ASan/UBSan.
-- [x] Execute the recovered original FT9362 Linux normalizer only in an isolated offline analysis namespace with USB-blocking shim and 8 synthetic patterns; independent model achieves byte-identical output across all 8 cases.
-- [x] Add 8 vendor-output synthetic golden vectors to offline C test suite (no proprietary runtime needed on Nobara).
-- [ ] Extend parity with additional pattern extremes and settle FocalTech signed-negative handling, sensor calibration, and Windows 5955 MOH image conversion.
-- [ ] Reconstruct the full histogram smoothing and tone-map stages from native ELF and cross-check MOH Windows conversion. The current percentile mapping is **our approximation**, not a faithful vendor algorithm.
-- [ ] Reconstruct the vendor's image quality and custom feature descriptors on synthetic data before biometric enrollment or verification.
-- [ ] Implement and validate real multi-impression template enrollment and genuine/impostor separation before ever considering login integration.
+- [x] Develop standalone image-conversion and preprocessing experiments and synthetic tests.
+- [ ] Complete calibrated image and feature extraction parity or independent implementation.
+- [ ] Implement and validate a genuine native matcher, secure template format and cross-session reliability.
+- [ ] Remove the proprietary Windows DLL research dependency.
 
-- [x] Reverse-engineer one `FtComputeDescriptors` 256-bit histogram-comparison packing branch (average ×0.125, adjacent-cell threshold ×1.05) and write five synthetic-only tests.
-- [ ] Recover histogram construction and sensor-specific branch selection; establish isolated vendor-output parity for extracted descriptors before considering fingerprint matching.
+## 4. Standard Linux integration — current priority
 
-- [x] Trace `FtComputeDescriptors` upstream orientation histogram allocation, ±15 patch, gradient call and trilinear eight-bin interpolation in recovered FT9362 ELF.
-- [x] Implement **separate, experimental** native C 8×8×8 histogram and gradient field from synthetic inputs; pass six tests and ASan/UBSan.
-- [ ] Recover scale-specific Gaussian lookup, gradient validity rules, algorithm mode and exact mapping of the 512 float bins to the 256-bit final descriptor; test against vendor output.
+- [x] Prototype the FocalTech 5955 as an experimental `libfprint` device driver.
+- [x] **14 October:** disposable private `fprintd` recognised and claimed the sensor using private PolicyKit.
+- [x] **16 October:** v0.9.6 private D-Bus enrolment/verification test **compiled successfully** (`--check`, no scan).
+- [x] **16 October:** confirm USB access failure cause (missing write permission); grant narrowly scoped temporary ACL only on the identified `2808:5955` device node; next non-root `Claim` succeeded. Permanent udev handling pending.
+- [x] **16 October:** complete genuine 12-stage private-`fprintd` enrolment: 11 intermediate passes plus `enroll-completed (done=true)` from the physical sensor.
+- [x] **16 October:** `/dev/tty` confirmation fix tested successfully on Nobara; complete a new physical enrolment, recover from one `enroll-retry-scan`, and receive `VerifyStatus: verify-match (done=true)` on a fresh touch through private `fprintd`. One positive verification only; not a reliability estimate.
+- [x] **16 October:** first `--controls` hardware run: right-index genuine match, right-middle different-finger no-match, left-index different-finger no-match. The second right-index genuine attempt returned `verify-no-match (done=true)` and the strict initial client exited **FAIL**. User reported possible incomplete sensor placement; cause unconfirmed. One `enroll-retry-scan` was recovered during enrolment.
+- [x] **16 October:** bounded-retry controls ran on hardware: one genuine match, two distinct-finger rejections and **three terminal genuine no-matches** when returning to the enrolled finger. Overall control sequence FAIL; no different-finger false matches observed in this limited test.
+- [x] **16 October:** subsequent `--controls` run completed **4/4** first-attempt expectations: two enrolled right-index matches, two different-finger `verify-no-match` rejections, and zero genuine no-matches. This shows that negative comparisons do **not invariably** prevent later genuine matches; earlier failed runs remain relevant.
+- [ ] **Optional diagnostic on Nobara:** the committed `--diagnose` mode alternates A, A, B, A, C, A to help localise intermittent genuine no-matches. It is not yet hardware-tested and is less urgent than collecting repeatability data.
+- [x] **16 October `--roundtrip` physical test: PARTIAL PASS / OVERALL FAIL.** Enrolled fingerprint name appeared in private fprintd both before and after restart with the same RAM state; all three genuine post-restart checks returned terminal `verify-no-match`. Not a successful reusable biometric template. No same-session baseline was run in this test.
+- [x] **16 October controlled `--roundtrip`: FULL PASS.** Physical right-index print successfully enrolled and listed; a fresh client on the original private `fprintd` matched the saved template on genuine attempt **2/3** (one preceding terminal genuine `NO_MATCH`); after restarting only private `fprintd` with the same RAM state, another fresh client listed and MATCHED it on the **first** genuine attempt. This disproves *inevitable* restart-induced loss, **not** intermittent failures or security/reliability limitations. No different-finger check in this particular test. See [verified status](status-2026-10-16.md).
+- [x] Inspect the **then-live private libfprint driver ↔ MOH gateway** path: committed live-source snapshot confirms FpPrint RAW envelope pack/extract, SHA-256 integrity check, and acknowledgement of MOH template import before scanning. This is source inspection, not byte-level persistence validation.
+- [ ] **Usability acceptance (user-confirmed, 16 October):** the built-in reader is awkward to reach and requires stretching; **one genuine `NO_MATCH` followed by a successful second deliberate press is acceptable**. Prioritise predictable manual retry, preserved security/negative controls, and practical integration over eliminating every first-touch rejection. Never silently turn a `NO_MATCH` into a successful login; leave password fallback available.
+- [ ] **Lower priority:** investigate intermittent genuine `NO_MATCH` only if retries become inconsistent or excessively frequent; controlled logs may distinguish touch positioning, capture quality and engine return code without publishing biometric samples or templates.
+- [ ] Repeat successful before/after daemon restarts across multiple **bounded**, separately documented trials; negative controls and error rates are still insufficient.
+- [ ] Repeat enrol/verify across separate sessions; confirm consistent positive and negative outcomes.
+- [ ] Verify persistent storage and reload behaviour, error propagation and privacy boundaries.
+- [ ] Only after sufficient evidence, review optional KDE/PAM integration with password fallback.
+- [ ] **Optional future GUI: [COSMIC Utils Enroll](https://github.com/cosmic-utils/enroll)** ([Flathub](https://flathub.org/apps/org.cosmic_utils.enroll)). Source reviewed 17 October 2026: Rust/libcosmic frontend calls normal `net.reactivated.Fprint` **system-bus** D-Bus methods for user selection, listing prints, Register/`EnrollStart`, Verify/`VerifyStart` and deletion; Flatpak manifest grants system bus access to fprintd, PolicyKit and Accounts. It does **not** add sensor drivers or native matching. Could become a GUI for our reader **only after** safe system fprintd/libfprint integration; it does **not** automatically find the existing isolated private D-Bus test service. COSMIC styling may also work under KDE, but this has **not** been tested on user's Nobara installation. **Do not click Register/Enroll or Delete** in the current no-enrolment phase; no installation or system-auth changes requested.
 
-## First actual-capture image-processing check (private, offline)
+**Not ready for production login.** A successful compile or one test match is not authentication assurance.
 
-- [x] Add stdin/stdout-only native `ft5955_normalize_cli` wrapping our C v3
-  16-bit-to-8-bit normalizer; no hardware, vendor code or privilege needed.
-- [x] Add `tools/real_capture_eval.py`, using existing private A1/A2/B1/B2
-  captures to produce 64×80 and 80×64 grayscale **contact sheets** inside
-  gitignored `local-data/native-real-test/` (mode 0700, files 0600).
-- [x] Compare six genuine/different-finger image correlations from those
-  native-normalized 8-bit frames and report **both margins** without any
-  acceptance threshold or claim of verification. Add synthetic CLI/plumbing tests.
-- [x] Run the real-capture check on the owner's Nobara system. Review ONLY
-  numerical pairwise scores in chat; actual biometric previews stay private.
-- [ ] Determine whether the reconstructed normalization improves real ridge
-  visibility and genuine/impostor score separation; if not, investigate
-  image calibration, physical layout and multi-impression feature extraction
-  rather than forcing an identity decision.
+## 5. Source control and reproducible builds
 
-Run locally (no new captures):
+- [x] Recover and inventory the uploaded historical archives; **135 source files** from 16 versioned directories imported to [`feature/ft5955-source-history`](https://github.com/Inforce855/focaltech-5955-linux/tree/feature/ft5955-source-history/research/source-history). Inventory of further *local* snapshots may remain; [issue #3](https://github.com/Inforce855/focaltech-5955-linux/issues/3).
+- [x] **Preserve** the then-live private libfprint driver and gateway in commit [`77db7f5`](https://github.com/Inforce855/focaltech-5955-linux/commit/77db7f5): 13 driver/header sources, 3 gateway files, tracked Meson/driver patch and hashes. Original dirty checkout was not modified. **Still needed:** reconcile it into a clean-clone reproducible development build.
+- [ ] Reconcile earlier MOH development branch with current private-fprintd work.
+- [x] **16 October:** rebuild the preserved live driver source from GitHub in an isolated temporary tree using libfprint 1.94.100 and pinned upstream commit `c8e01dc`; SHA-verified snapshot and recorded Meson patch applied, Meson configured FocalTech-only driver, Ninja finished **109/109 build steps** (27 Meson targets). No enrolment, hardware scan, install or changes to the working driver. [Source-history rebuild proof](https://github.com/Inforce855/focaltech-5955-linux/blob/feature/ft5955-source-history/docs/rebuild-ft5955-without-enrolment.md).
+- [x] **17 October:** GitHub-rebuilt library was loaded by a fresh disposable private `fprintd`, confirmed by `/proc/PID/maps`, and the physical `2808:5955` reader was **discovered, Claimed and Released**. Dedicated Claim-only client had no enrol/verify code; hardware test PASS, with source build 109/109 steps and successful cleanup. [Verified report](https://github.com/Inforce855/focaltech-5955-linux/blob/feature/ft5955-source-history/docs/rebuild-ft5955-without-enrolment.md).
+- [x] **17 October:** read-only base-commit provenance audit confirms pinned `c8e01dc` has parent `68696e04`, introduces/modifies FocalTech scaffold; 1 local branch contains base, 0 locally fetched remote-tracking refs and 0 tags. No worktree or USB changes. This **suggests**, but does not prove, that the commit is local-only.
+- [x] **17 October:** guarded parent-to-base scaffold delta inspection PASS: **one** modified C file (`libfprint/drivers/focaltech_5955.c`), **1,449 bytes** of diff, SHA-256 `df8af5a8ac10b716266bb8bdc1107a74c4714079e506a083b2579efa4c5d44f9`; no file/USB changes. Meson registration predates this specific commit.
+- [x] **17 October:** Reviewed the exact one-file `c8e01dc` USB descriptor improvement and preserved [SHA-256-matched 1,449-byte source patch](../driver/live-snapshot-2026-10-16/patches/parent-to-base-usb-descriptor.patch) on the consolidation branch; no reader operation or worktree changes.
+- [x] **17 October:** confirmed the original discovery-only FocalTech scaffold was introduced by commit `68696e04` with parent `80a4b5ec`; nearest locally reachable release tag is `v1.94.100`. This is **not yet proof** of exact tag equality or network availability.
+- [x] **17 October:** read-only audit confirmed local `v1.94.100` tag resolves **exactly** to the original FocalTech commit's parent `80a4b5ec` (zero intervening commits). The initial scaffold affects `libfprint/drivers/focaltech_5955.c` (A), `libfprint/meson.build` (M), and `tests/meson.build` (M).
+- [x] **17 October:** initial audit correctly failed closed when its whitelist expected a root `meson.build` rather than the observed `tests/meson.build`; whitelist corrected in GitHub without weakening file or safety checks.
+- [x] **17 October:** Corrected initial scaffold audit PASS: local release tag `v1.94.100` **is** exact pre-scaffold parent `80a4b5ec`; three-file initial scaffold diff measured **2,474 bytes**, SHA-256 `5a4f80b925ad2640689f1748fb175ca0b01650ebb697da8d74743cf7080047cd`. Complete reviewed [patch preserved](../driver/live-snapshot-2026-10-16/patches/upstream-v1.94.100-to-initial-scaffold.patch).
+- [x] **17 October:** Implemented [independent upstream-tag clean-clone builder](../tools/verify_ft5955_clean_clone.py) that verifies all three source patches, clones exact upstream tag, rebuilds and compares the resulting active driver; original known-working builder unchanged. **New build path awaits Nobara testing.**
+- [x] **17 October, user-run on Nobara:** **independent clean clone and compile PASS**. Fresh GitHub repo clone, fresh upstream libfprint `v1.94.100` clone at verified commit `80a4b5ec`, all three SHA-verified/reviewed patches applied successfully, byte-identical current C driver reconstructed, Meson 27 targets, Ninja **109/109**. Temporary build removed, live checkout/system authentication untouched. Optional driver tests skipped because introspection/dependencies unavailable, so **build PASS is not runtime validation**.
+- [x] **17 October, user-run:** independently clean-cloned libfprint **109/109 build AND physical Claim-only runtime PASS**, private `fprintd` `/proc/PID/maps` confirmed newly rebuilt library, then GetDevices → Claim → Release succeeded on real FT5955. No `EnrollStart`, `VerifyStart`, capture or persistent biometric storage. First attempt returned USB `Access denied [-3]`; manual, per-user ACL on exact `/dev/bus/usb/003/003` node allowed success. This ACL is not removed by test cleanup and is not a permanent udev rule. [Verified test record](independent-hardware-pass-2026-10-17.md).
+- [ ] **Current:** recognise the completed 14 October failed-scan/cancellation/reopen tests and avoid repetition. Do a focused **source-only review** of security-sensitive template persistence, unkeyed checksums, MOH subprocess isolation and reversible system integration; if any uncovered recovery case matters, test with synthetic/offline error injection. No physical USB unplug test, new enrolment, or premature PAM/KDE login enabling.
+- [x] **17 October:** read-only Nobara system preflight **PASS**: Nobara 44, `fprintd 1.94.5-5.fc44`, `libfprint 1.94.100-1.fc44`, service static and inactive, only vendor global timeout drop-in, USB device allowed, `ProtectHome=yes`, `ProtectSystem=strict`, no `fprintd-pam` or local override. **Nothing installed or activated.**
+- [x] **17 October:** new `--stage` mode PASS. Official-source clean build 109/109, private user staging file SHA-256 `003ed7e6d53109ad355b653f3b5a9a6cfb33c99e150ae5e58ed7f6ff41fd7d4e`; no system files touched during staging.
+- [x] **17 October:** reversible normal **system** `fprintd` installation trial PASS! `--activate` copied the verified library separately under `/opt`, added temporary `/etc/systemd/system/fprintd.service.d/90-ft5955-system-trial.conf`, started normal service; `/proc/PID/maps` confirmed PID 11201 loaded the experimental .so and normal system D-Bus `GetDevices` enumerated `/net/reactivated/Fprint/Device/0`. No biometric operations, MOH bridge or PAM change.
+- [x] **17 October:** explicit `--rollback` PASS: local override and `/opt` trial binary removed, original RPM-owned libfprint and fprintd untouched; system service stopped/reloaded. A user-only staging directory may remain but is not an active installation. [Evidence and precise limits](system-fprintd-install-rollback-pass-2026-10-17.md).
+- [x] **17 October: non-root MOH service boundary prototype** implemented without changing the verified driver/snapshot: [AF_UNIX broker and stdio relay](../tools/ft5955_engine_broker.py), [zero-biometric synthetic test](../tools/test_ft5955_engine_broker_synthetic.py), and **GitHub Actions smoke test PASS** ([run 39024071118](https://github.com/Inforce855/focaltech-5955-linux/actions/runs/39024071118)). [Disabled systemd broker service/socket prototypes](../docs/nonroot-moh-broker-prototype-2026-10-17.md) staged as source only, not installed. This is IPC evidence, **not matching or KDE login evidence**.
+- [x] **17 October: first local MOH runner source review complete:** user's real launcher preserves exact 110-import audit and SHA-pinned DLL copy, compiles C from its original `tools/` and `engine/` tree, and uses bwrap with no host home/USB/network mounted. **It defaults to the root-owned /usr/local DLL but its presence/hash has not yet been verified.** Offline attach is enabled with `-DFT5955_ALLOW_UNVERIFIED_ATTACH`; not production login-ready. [Findings](nonroot-moh-broker-prototype-2026-10-17.md).
+- [x] **17 October — local MOH relocation audit PASS:** original launcher/source/preflight present; command dependencies present; runner syntax & structure verified; installed DLL **root-owned, non-group/world-writable, SHA-256 matches pinned preflight digest**. No engine ran and nothing changed. **UNVERIFIED_ATTACH is still diagnostic only**, not approved for production authentication.
+- [x] **17 October — CI smoke scripts PASS (static only):** non-root Python synthetic transport and Bash syntax for [temporary systemd smoke helper](../tools/smoke_ft5955_broker_systemd.sh) checked successfully by [GitHub Actions run 39024853556](https://github.com/Inforce855/focaltech-5955-linux/actions/runs/39024853556). No real systemd service or MOH in CI.
+- [x] **17 October — REAL temporary non-root systemd broker smoke PASS on user's Nobara 44:** `sudo bash tools/smoke_ft5955_broker_systemd.sh --smoke` reported protected AF_UNIX peer socket, `MODE E → READY 1 → RETRY QUALITY → BYE`, process PID **13909** running **UID 955** (not root), followed by `PASS: temporary broker unit files, sandbox code, socket and account removed`. No real MOH, fingerprints, USB, normal fprintd, PAM or KDE changes. **Do not repeat this baseline test.**
+- [x] **17 October — nested bwrap-in-systemd probe FAILED (not a fingerprint-driver regression):** user ran `sudo bash tools/smoke_ft5955_broker_systemd.sh --probe-bwrap`; root synthetic client received `ERROR BWRAP_NAMESPACE_UNAVAILABLE` from the already restricted systemd broker. **Cleanup PASS**: temporary units, socket, test code and account removed. Underlying bwrap diagnostic cause not isolated; the previously verified non-root broker transport, private MOH tests, system fprintd discovery and rollback remain valid.
+- [x] **User-directed scope change:** stop pursuing nested systemd+bwrap; use original user-session MOH/bwrap with the existing AF_UNIX relay, while preserving the original working scanner and separate driver rollback. No production fingerprint login or PAM changes.
+- [x] **17 October — first REAL KDE fingerprint enrolment PASS (user-reported):** short-lived trial activator loaded staged libfprint in system `fprintd` PID **18185**, discovered `/net/reactivated/Fprint/Device/0`, and launched the user-session MOH broker. In KDE System Settings → Users, the **Configure Fingerprint Authentication** button appeared and the user **successfully added left and right index fingers**. This is end-to-end system KDE *enrolment*, not yet independently verified fingerprint matching or production login. [Lab trial and rollback](kde-short-lived-trial-2026-10-17.md). No PAM/SDDM changes; keep password login and recovery snapshot. Experimental templates may persist after rollback. Do not redo enrolments; test verification of the two enrolled fingers only. `UNVERIFIED_ATTACH`, template authenticity and user-controlled matcher still block a claim of secure production login.
+- [x] **17 October — real system fingerprint verification PASS (user-reported):** after left/right index KDE enrolments, the user ran normal `fprintd-verify` and observed actual `verify-match` results. User estimates **around 85% success when deliberately tapping/lifting/reapplying the finger 3–4 times**; **NOT** an 85% single-press measured acceptance rate, nor a quantified false-accept rate. Earlier capture experiments found that a lift/new press is needed for a fresh image, which is a plausible contributor; timing vs quality vs placement has not been isolated. No more mandatory re-enrolment or prolonged test loop. This proves first normal-system real enrol+verification path, **not security-grade login/PAM**.
+- [x] **17 October — REAL KDE lab trial ROLLBACK PASS (user-run):** after successfully enrolling both index fingers and observing `fprintd-verify` → `verify-match` (informally around 85% only with 3–4 fresh taps), user ran `bash "$HOME/Projects/ft5955-independent-build-check/tools/ft5955_kde_trial.sh" --stop`. Output confirmed `PASS: experimental biometric gateway disabled and lab relay removed`, `PASS: trial service override and separate binary removed`, `PASS: original RPM-owned libfprint and fprintd untouched; packaged service restored`, and `PASS: experimental driver removed; original Nobara fprintd restored`. No PAM changes. Saved trial fingerprint templates **are not automatically deleted** by the rollback. This establishes the **full real install → KDE enrol → system verification → uninstall/rollback cycle**, not secure production login. No need to repeat it.
+- [ ] Complete offline error/security regression review and plan any system integration only after explicit review, safe rollback and password fallback. **User requests no further enrolments.**
+- [ ] Maintain this roadmap and [dated current status](status-2026-10-16.md) alongside each tested change.
 
-```bash
-git pull --ff-only
-make -C native build/ft5955_normalize_cli
-python3 tools/real_capture_eval.py
-```
+## References
 
-Privacy: do not upload or commit actual `.raw` captures, preview images or
-feature templates. Keep fprintd, PAM, and the sensor itself untouched.
+- [v0.9.6 private-fprintd test](../experiments/private-fprintd/README.md)
+- [Current status and known local development trees](status-2026-10-16.md)
+- [Archived research roadmap](archive/roadmap-research-log-2026-10-16.md)
+- [Older MOH bridge branch](https://github.com/Inforce855/focaltech-5955-linux/tree/feature/ft5955-moh-engine-bridge)
 
-## Cross-session 5955 fingerprint comparison (pending Nobara run)
-
-- [x] Real-capture test on the 14:55 A1/A2/B1/B2 session produced valid native-normalised 64x80 and 80x64 private previews, with all six scores for each.
-- [x] At 64x80, same-finger A=+0.293, B=+0.136; strongest different-finger control=+0.137, margins A=+0.156, B=-0.001. At 80x64, A=+0.231, B=+0.181, strongest different=+0.199, margins A=+0.032, B=-0.018.
-- [x] Identify the critical limitation: neither orientation validates B; repeated shifts touch the ±6-pixel boundary. Current image correlation still cannot support authentication.
-- [x] Add offline `tools/cross_session_eval.py`, which evaluates 16 early-versus-late pairs across the existing 14:24 and 14:55 sessions, with reversed A/B physical roles.
-- [ ] Run `python3 tools/cross_session_eval.py --swapped` after `git pull --ff-only`, using the already-built native v3 executable; evaluate cross-session ranking and boundary shifts with private scans.
-- [ ] If across-session genuine/impostor scores overlap, focus on spatial calibration, alignment and complete vendor feature extraction, not threshold tuning or PAM.
+Future support for other FocalTech USB or SPI devices is an **architecture goal**, not proven compatibility.
