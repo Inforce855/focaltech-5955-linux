@@ -1,7 +1,7 @@
 # FT5955 live driver source snapshot — 16 October 2026
 
 Captured from the experimental private checkout, not the old archive.
-Source-preservation snapshot. **Rebuild-only PASS on Nobara, 16 October 2026:** reconstructed pinned libfprint 1.94.100, Meson configured FocalTech-only driver, and Ninja compiled all 109 build steps; no install, hardware scan, or enrolment. See [rebuild report](../../docs/rebuild-ft5955-without-enrolment.md). Runtime testing of the independently rebuilt binary remains pending.
+Source-preservation snapshot. **Rebuild-only PASS on Nobara, 16 October 2026:** reconstructed pinned libfprint 1.94.100, Meson configured FocalTech-only driver, and Ninja compiled all 109 build steps; no install, hardware scan, or enrolment. See [rebuild report](../../docs/rebuild-ft5955-without-enrolment.md). **17 October 2026 USB Claim-only hardware PASS**: the rebuilt binary was confirmed loaded by the private fprintd and successfully discovered, claimed and released the real reader, with no biometric capture or enrolment. Full matcher/runtime biometric testing of this rebuilt binary remains pending.
 
 Base libfprint Git commit: c8e01dc26cedb2d97779a314a7260f1c33e02bfa
 
