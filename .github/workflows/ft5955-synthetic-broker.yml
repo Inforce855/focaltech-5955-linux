@@ -8,6 +8,7 @@ on:
       - "tools/ft5955_engine_broker.py"
       - "tools/test_ft5955_engine_broker_synthetic.py"
       - "tools/audit_ft5955_moh_relocation.py"
+      - "tools/smoke_ft5955_broker_systemd.sh"
       - ".github/workflows/ft5955-synthetic-broker.yml"
   workflow_dispatch:
 
@@ -25,6 +26,8 @@ jobs:
       - name: Compile Python sources, no biometrics
         run: |
           python3 -m py_compile tools/ft5955_engine_broker.py tools/test_ft5955_engine_broker_synthetic.py tools/audit_ft5955_moh_relocation.py
+      - name: Check reversible service smoke script shell syntax (do not run)
+        run: bash -n tools/smoke_ft5955_broker_systemd.sh
       - name: Non-root synthetic transport smoke test
         run: |
           test "$(id -u)" -ne 0
