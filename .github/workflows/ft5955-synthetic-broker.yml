@@ -28,6 +28,17 @@ jobs:
           python3 -m py_compile tools/ft5955_engine_broker.py tools/test_ft5955_engine_broker_synthetic.py tools/audit_ft5955_moh_relocation.py
       - name: Check reversible service smoke script shell syntax (do not run)
         run: bash -n tools/smoke_ft5955_broker_systemd.sh
+      - name: Validate embedded mock gateway source syntax (never execute)
+        run: |
+          python3 - <<'CHECK_EMBEDDED'
+          from pathlib import Path
+          import re
+          source = Path("tools/smoke_ft5955_broker_systemd.sh").read_text()
+          match = re.search(r"""cat > "\$ROOT/mock_gateway.py" <<'PY'\n(.*?)\nPY\n""", source, re.S)
+          assert match, "Mock gateway source block missing"
+          compile(match.group(1), "ft5955_mock_gateway", "exec")
+          print("PASS: embedded fake gateway Python syntax")
+          CHECK_EMBEDDED
       - name: Non-root synthetic transport smoke test
         run: |
           test "$(id -u)" -ne 0
