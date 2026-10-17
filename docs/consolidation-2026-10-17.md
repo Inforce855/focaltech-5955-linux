@@ -2,6 +2,26 @@
 
 This is the **integration development branch**, not an installation or production release. The intent is to work from GitHub as the authoritative **source of experimental code** without modifying the existing dirty Nobara libfprint working tree.
 
+## Clean upstream-clone rebuild — hardware-free PASS on Nobara (17 October 2026)
+
+**Independently verified from the user's terminal output.** The user created a separate clean checkout `~/Projects/ft5955-independent-build-check` of this feature branch (GitHub clone reported 285 objects) and ran `tools/verify_ft5955_clean_clone.py --build`. The new builder:
+
+- verified the SHA-256 manifest for the saved FocalTech driver plus both historical source patches;
+- independently fetched official libfprint `v1.94.100` from `https://gitlab.freedesktop.org/libfprint/libfprint.git`, without using `~/Projects/libfprint-ft5955`, and verified the checked-out `HEAD` equals exact upstream commit `80a4b5ec612892c5c056c48dddaa561452cf37ec`;
+- successfully applied, in order, the **initial discovery scaffold**, **USB descriptor support**, and **complete live driver/Meson** patches;
+- checked the final reconstructed main driver file byte-for-byte against the captured GitHub snapshot, and copied the other 12 verified driver/header files;
+- configured Meson **27 build targets** for libfprint 1.94.100 with only the `focaltech_5955` driver, `doc=false`, `introspection=false`;
+- compiled successfully: `[109/109] Linking target tests/test-fpi-device`; emitted `PASS: CLEAN upstream clone + 3 GitHub patches built independently`;
+- removed disposable `/tmp/ft5955-rebuild-*` source/build artifacts, without changing the existing live checkout, installed system fprintd or PAM.
+
+The upstream clone showed an **annotated release tag** warning, followed by detached-HEAD checkout of `80a4b5ec`. That warning was nonfatal, and the builder independently checked the exact commit. Meson reported optional test dependencies absent and skipped driver tests without introspection. **109/109 proves source compilation; it is not a passing test-suite report.**
+
+**What this closes:** the local-only Git-object build dependency. The full saved active source is now reconstructable from the public upstream release plus files committed to this project, on the user's Nobara environment. This does not prove cross-distribution packaging or reproducible machine-bit-for-bit binaries.
+
+**What remains:** the **new clean-clone-compiled** library has **not yet been tested against USB hardware**; the earlier private Claim/Release PASS used the prior GitHub-rebuilt library. No biometric enrolment, recognition, saved-template check, KDE GUI, system installation or authentication is validated by this new compile.
+
+**Next isolated milestone:** from the existing clean GitHub checkout, execute `python3 "$HOME/Projects/ft5955-independent-build-check/tools/verify_ft5955_clean_clone.py" --claim-only`. This rebuilds privately and runs only device discovery, Claim and Release, with no fingerprint scan/enrolment and no PAM, system fprintd or KDE changes. A USB permission blocker can occur after reboot and should be diagnosed without blanket permission changes.
+
 ## GitHub layout: what is current vs historical
 
 | Path | Purpose | Status |
@@ -111,15 +131,15 @@ The complete recorded reconstruction chain is now:
 3. SHA-verified [USB-descriptor patch](../driver/live-snapshot-2026-10-16/patches/parent-to-base-usb-descriptor.patch), original local commit `c8e01dc`.
 4. Existing [working-driver code and Meson patch](../driver/live-snapshot-2026-10-16/README.md), plus all 13 SHA-verified driver/header files.
 
-The new [`tools/verify_ft5955_clean_clone.py`](../tools/verify_ft5955_clean_clone.py) leaves the successful original rebuild path unchanged. It validates the snapshot and **both historical patch hashes**, clones the exact upstream release into a disposable `/tmp/ft5955-rebuild-*` tree, insists `HEAD` equals the expected tag commit, applies the three reviewed patches, verifies the final driver source equals the captured SHA-verified snapshot, layers the remaining driver files, and runs the same Meson/Ninja configuration. Default invocation is read-only manifest preflight; `--build` opts into the network clone and compile, without USB access, enrolment, install, PAM or KDE changes. `--claim-only` additionally enables the previously demonstrated isolated no-enrolment hardware claim harness. All temp files are removed after command completion. **The clean clone builder has been committed but not yet executed successfully on Nobara.**
+The new [`tools/verify_ft5955_clean_clone.py`](../tools/verify_ft5955_clean_clone.py) leaves the successful original rebuild path unchanged. It validates the snapshot and **both historical patch hashes**, clones the exact upstream release into a disposable `/tmp/ft5955-rebuild-*` tree, insists `HEAD` equals the expected tag commit, applies the three reviewed patches, verifies the final driver source equals the captured SHA-verified snapshot, layers the remaining driver files, and runs the same Meson/Ninja configuration. Default invocation is read-only manifest preflight; `--build` opts into the network clone and compile, without USB access, enrolment, install, PAM or KDE changes. `--claim-only` additionally enables the previously demonstrated isolated no-enrolment hardware claim harness. All temp files are removed after command completion. **The independent clean-clone build PASSED on Nobara; see the verified result at the top of this document.**
 
-The upstream project/release URL is documented publicly and the version exists in distro packages, but **actual network checkout of that exact tag and a fresh-clone compile have not yet been verified**. If the upstream server blocks the Git clone, report that as an availability problem, not a driver-code failure. Do not switch branches or overwrite the existing live driver checkout.
+**The network clone of the exact upstream tag and fresh-clone compile have now PASSED on Nobara (17 October 2026).** If the upstream server blocks the Git clone, report that as an availability problem, not a driver-code failure. Do not switch branches or overwrite the existing live driver checkout.
 
-## What still blocks a portable, clean-clone build
+## Historical clean-clone blocker (resolved 17 October 2026)
 
 The SHA-verified builder uses a **pinned libfprint Git commit** `c8e01dc26cedb2d97779a314a7260f1c33e02bfa`, currently present in `~/Projects/libfprint-ft5955` on the user's Nobara system. Its availability from a fresh external clone has **not** been established. The build can be recreated on this machine even with a dirty worktree because `git archive` reads the commit object, not the working files.
 
-**Next test:** use the independent clean-clone builder, first as source-only preflight, then an opt-in `--build` on Nobara to verify the real upstream network fetch, patch application and Meson compilation. No biometric operations. The previous read-only Git provenance audit is complete. If it is local-only, reconstruct its modifications against an identified public upstream libfprint tag/commit or provide a reviewed reproducible base-patch chain. Do **not** assume a random public libfprint checkout contains our scaffold. Do not publish a full fork or vendor arbitrary upstream source without license/build review.
+**Resolved:** the independent clean-clone `--build` passed on Nobara. The next test uses `--claim-only` to check physical USB Claim without biometric operations. The previous read-only Git provenance audit is complete. If it is local-only, reconstruct its modifications against an identified public upstream libfprint tag/commit or provide a reviewed reproducible base-patch chain. Do **not** assume a random public libfprint checkout contains our scaffold. Do not publish a full fork or vendor arbitrary upstream source without license/build review.
 
 ## Working boundaries
 
@@ -130,6 +150,6 @@ The SHA-verified builder uses a **pinned libfprint Git commit** `c8e01dc26cedb2d
 
 ## Safe next check
 
-Both historical patches are preserved and SHA-256 verified, and the original pre-scaffold commit exactly equals the local `v1.94.100` tag. The independent clean-clone builder is committed; the next requested hardware-free milestone is to test its `--build` mode. This is source-only work; no biometric or system-auth operations.
+Both historical patches are preserved and SHA-256 verified, and the original pre-scaffold commit exactly equals the local `v1.94.100` tag. The independent clean-clone builder now has a hardware-free `--build` PASS; the next milestone is its private no-enrolment `--claim-only` mode. This is source-only work; no biometric or system-auth operations.
 
-Until that source provenance is resolved, our results are **working rebuild from saved GitHub sources on the tested Nobara machine**, not yet universally reproducible driver packaging.
+Source provenance and the external-clone build are resolved for the tested Nobara environment. **No system driver package, fingerprint login, or cross-machine reliability assurance has yet been demonstrated.**
