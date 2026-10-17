@@ -15,6 +15,8 @@ Experimental `libfprint` driver for USB VID:PID **`2808:5955`**, developed and v
 | **Fresh GitHub project clone + fresh upstream libfprint clone + three patches** | **PASS 17 October**, exact upstream `80a4b5ec`, all three patches applied, exact saved driver reconstructed; Meson 27 targets, Ninja `109/109` |
 | Private `fprintd` **loads exact rebuilt library**, discovers, Claims and Releases real reader | **PASS 17 October**; no biometric capture |
 | **Independent clean-clone binary on real FT5955 USB reader** | **PASS 17 October**; private `fprintd` loaded exact new .so, Discover → Claim → Release; zero biometric operations |
+| **Normal Nobara system `fprintd` loads our driver and discovers reader** | **PASS 17 October**; verified experimental `.so` mapped by PID 11201; system `GetDevices` lists device; no biometric operations |
+| **Reversible service override and rollback** | **PASS 17 October**; experimental `/opt` library and local override removed, original packaged files preserved |
 | Production system `fprintd`, KDE fingerprint UI, PAM login | **Not enabled or security validated** |
 | Fully native open-source fingerprint matcher | **Not implemented** |
 
@@ -41,11 +43,11 @@ The separate test checkout is now confirmed at `~/Projects/ft5955-independent-bu
 
 [Complete independent build + hardware PASS](docs/independent-hardware-pass-2026-10-17.md) · [Consolidation and audit record](docs/consolidation-2026-10-17.md)
 
-## Reversible Nobara system trial — preparation only
+## Reversible Nobara system trial — activation and rollback verified
 
-The independent rebuilt FocalTech library has already passed private physical Discover/Claim/Release. The [read-only system preflight](tools/preflight_ft5955_system_trial.sh) also **PASSED on Nobara 44**: installed `fprintd 1.94.5-5.fc44`, `libfprint 1.94.100-1.fc44`, inactive static service, no local drop-in or `fprintd-pam`, existing USB device allowance and standard systemd sandbox. **No system installation has happened yet.**
+The independent rebuilt FocalTech library has already passed private physical Discover/Claim/Release. The [read-only system preflight](tools/preflight_ft5955_system_trial.sh) also **PASSED on Nobara 44**: installed `fprintd 1.94.5-5.fc44`, `libfprint 1.94.100-1.fc44`, inactive static service, no local drop-in or `fprintd-pam`, existing USB device allowance and standard systemd sandbox. **The subsequent first installation trial PASSED and was explicitly rolled back. There is no active system-trial installation now.**
 
-The staged trial uses the existing clean builder's new `--stage` mode to save a verified user-owned copy, then [a separate opt-in activation/rollback script](tools/manage_ft5955_system_trial.sh) to copy it to a dedicated root-owned `/opt/ft5955-system-trial` directory, add a narrowly scoped service override, verify loaded `.so` in `/proc/PID/maps`, and call only `GetDevices` on the real system bus. Neither the package library nor PAM is replaced. [Detailed trial and rollback plan](docs/reversible-system-trial-plan.md). **The newly added `--stage` and privileged activation script still require the first actual user run; neither is a production installer.**
+The staged trial uses the existing clean builder's new `--stage` mode to save a verified user-owned copy, then [a separate opt-in activation/rollback script](tools/manage_ft5955_system_trial.sh) to copy it to a dedicated root-owned `/opt/ft5955-system-trial` directory, add a narrowly scoped service override, verify loaded `.so` in `/proc/PID/maps`, and call only `GetDevices` on the real system bus. Neither the package library nor PAM is replaced. [Detailed trial and rollback plan](docs/reversible-system-trial-plan.md). **Both user-only `--stage` and privileged `--activate`/`--rollback` passed on Nobara 44.** The temporary system `fprintd` PID 11201 mapped the exact installed trial library (SHA-256 `003ed7e6d53109ad355b653f3b5a9a6cfb33c99e150ae5e58ed7f6ff41fd7d4e`) and normal `GetDevices` returned `/net/reactivated/Fprint/Device/0`. The user then ran rollback successfully, removing the override and `/opt` trial binary. The original packaged libfprint/fprintd were untouched. The staged user-only source artifact may remain. [Detailed activation/rollback result](docs/system-fprintd-install-rollback-pass-2026-10-17.md). **This is a device-discovery success, not normal-service Claim/enrolment/authentication validation.**
 
 **Initial system trial allows device discovery/Claim only.** It does not enable fingerprint enrolment, biometric matching, KDE login, PAM edits or experimental MOH engine execution as root. The historical 14 October reject/cancel/reopen tests already passed, and physical disconnection of the power-button sensor is not a prerequisite.
 
