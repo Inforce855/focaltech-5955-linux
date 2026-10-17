@@ -41,6 +41,12 @@ The separate test checkout is now confirmed at `~/Projects/ft5955-independent-bu
 
 [Complete independent build + hardware PASS](docs/independent-hardware-pass-2026-10-17.md) · [Consolidation and audit record](docs/consolidation-2026-10-17.md)
 
+## Reversible Nobara system trial — preparation only
+
+The independent rebuilt FocalTech library has already passed private physical Discover/Claim/Release. We are now preparing a **reversible normal-system `fprintd` integration**. First run the [non-root read-only preflight](tools/preflight_ft5955_system_trial.sh) to inspect the exact installed fprintd package, systemd unit, service sandbox, library paths and existing drop-ins. The [trial plan](docs/reversible-system-trial-plan.md) requires a staged custom library, minimal reversible service override, verified actual loaded binary and a tested rollback; none has been applied yet.
+
+**Initial system trial allows device discovery/Claim only.** It does not enable fingerprint enrolment, biometric matching, KDE login, PAM edits or experimental MOH engine execution as root. The historical 14 October reject/cancel/reopen tests already passed, and physical disconnection of the power-button sensor is not a prerequisite.
+
 ## Security and scope
 
 - This is a **research implementation**; successful matching and two negative controls do not demonstrate an acceptable false-accept rate or protection against spoofing.
