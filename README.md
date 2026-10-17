@@ -43,7 +43,9 @@ The separate test checkout is now confirmed at `~/Projects/ft5955-independent-bu
 
 ## Reversible Nobara system trial — preparation only
 
-The independent rebuilt FocalTech library has already passed private physical Discover/Claim/Release. We are now preparing a **reversible normal-system `fprintd` integration**. First run the [non-root read-only preflight](tools/preflight_ft5955_system_trial.sh) to inspect the exact installed fprintd package, systemd unit, service sandbox, library paths and existing drop-ins. The [trial plan](docs/reversible-system-trial-plan.md) requires a staged custom library, minimal reversible service override, verified actual loaded binary and a tested rollback; none has been applied yet.
+The independent rebuilt FocalTech library has already passed private physical Discover/Claim/Release. The [read-only system preflight](tools/preflight_ft5955_system_trial.sh) also **PASSED on Nobara 44**: installed `fprintd 1.94.5-5.fc44`, `libfprint 1.94.100-1.fc44`, inactive static service, no local drop-in or `fprintd-pam`, existing USB device allowance and standard systemd sandbox. **No system installation has happened yet.**
+
+The staged trial uses the existing clean builder's new `--stage` mode to save a verified user-owned copy, then [a separate opt-in activation/rollback script](tools/manage_ft5955_system_trial.sh) to copy it to a dedicated root-owned `/opt/ft5955-system-trial` directory, add a narrowly scoped service override, verify loaded `.so` in `/proc/PID/maps`, and call only `GetDevices` on the real system bus. Neither the package library nor PAM is replaced. [Detailed trial and rollback plan](docs/reversible-system-trial-plan.md). **The newly added `--stage` and privileged activation script still require the first actual user run; neither is a production installer.**
 
 **Initial system trial allows device discovery/Claim only.** It does not enable fingerprint enrolment, biometric matching, KDE login, PAM edits or experimental MOH engine execution as root. The historical 14 October reject/cancel/reopen tests already passed, and physical disconnection of the power-button sensor is not a prerequisite.
 
