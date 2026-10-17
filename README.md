@@ -27,23 +27,23 @@ The current development priority is **source consolidation, clean-clone rebuild,
 
 [Complete branch reconciliation and remaining clean-clone blocker](docs/consolidation-2026-10-17.md) · [17 October hardware rebuild/Claim report](docs/rebuild-ft5955-without-enrolment.md) · [Detailed status](docs/status-2026-10-16.md) · [Roadmap](docs/roadmap.md)
 
-## Next safe step — inspect the pinned libfprint scaffold changes
+## Next source-only step — review the one-file scaffold patch
 
-**17 October audit PASS:** the pinned source commit `c8e01dc26cedb2d97779a314a7260f1c33e02bfa` has exactly one parent, `68696e04a88efbecd5dd79cebf05b8ef013c51d8`. One local branch contains the base; no locally fetched remote-tracking refs or tags do. Upstream availability is not yet confirmed.
+**17 October audit PASS:** the local base `c8e01dc` has parent `68696e04`; the full parent-to-base diff changes only `libfprint/drivers/focaltech_5955.c`. Its text patch is 1,449 bytes, SHA-256 `df8af5a8ac10b716266bb8bdc1107a74c4714079e506a083b2579efa4c5d44f9`. This means the parent already had the driver scaffold and Meson registration, so its ancestry must also be reconstructed.
 
-The next step is to inspect which files changed between those two Git objects, before publishing any additional patch. This is read-only, does not enrol or access the fingerprint reader, and **does not modify the existing libfprint worktree**:
+To inspect that exact patch **without exporting a file or touching the working tree**:
 
 ```bash
-REPO="$HOME/Projects/focaltech-5955-linux"
-git -C "$REPO" fetch origin feature/ft5955-driver-consolidation-20261017 &&
-git -C "$REPO" show FETCH_HEAD:tools/inspect_ft5955_base_delta.py | python3 -
+git -C "$HOME/Projects/libfprint-ft5955" diff \
+  --no-ext-diff --no-textconv --no-renames --binary \
+  68696e04a88efbecd5dd79cebf05b8ef013c51d8 \
+  c8e01dc26cedb2d97779a314a7260f1c33e02bfa \
+  -- libfprint/drivers/focaltech_5955.c
 ```
 
-Expected output: parent/base SHAs, filenames, source-patch size and SHA-256, then `PASS` if the changes are confined to the expected scaffold and Meson files. Any extra changes **stop** the inspector and must be reviewed rather than hidden. The optional `--export` flag can create an actual text patch after review, but is **not used in this read-only step**.
+Review before publication. Once the exact small patch has been reviewed, preserve it in this development branch and trace the parent's scaffold/Meson changes to a verifiably fetchable upstream commit. No biometric scan, enrolment, private template storage, installation or system authentication changes.
 
-Once the scaffold delta is understood, we can preserve it as an explicit versioned source patch on GitHub and rebuild from a verified, fetchable libfprint upstream parent rather than requiring the user's local pinned commit.
-
-[Full consolidated source audit and findings](docs/consolidation-2026-10-17.md) · [Earlier successfully rebuilt hardware Claim test](docs/rebuild-ft5955-without-enrolment.md)
+[Detailed consolidation report](docs/consolidation-2026-10-17.md) · [Successful isolated rebuild and physical Claim result](docs/rebuild-ft5955-without-enrolment.md)
 
 ## Security and scope
 
