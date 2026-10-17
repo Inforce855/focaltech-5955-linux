@@ -12,11 +12,12 @@ Experimental `libfprint` driver for USB VID:PID **`2808:5955`**, developed and v
 | Different-finger rejection controls | Both passed in controlled tests; security significance remains limited |
 | Save, reload and match after private `fprintd` restart | **PASS** in controlled before/after restart test |
 | Build the preserved driver directly from GitHub snapshot | **PASS**, libfprint 1.94.100; Ninja `109/109` |
+| **Fresh GitHub project clone + fresh upstream libfprint clone + three patches** | **PASS 17 October**, exact upstream `80a4b5ec`, all three patches applied, exact saved driver reconstructed; Meson 27 targets, Ninja `109/109` |
 | Private `fprintd` **loads exact rebuilt library**, discovers, Claims and Releases real reader | **PASS 17 October**; no biometric capture |
 | Production system `fprintd`, KDE fingerprint UI, PAM login | **Not enabled or security validated** |
 | Fully native open-source fingerprint matcher | **Not implemented** |
 
-The current development priority is **source consolidation, clean-clone rebuild, reliability/security review and ultimately reversible system integration**. The user explicitly requested **no further fingerprint enrolments** during these stages. The existing private test templates were stored only in disposable RAM storage, so do not assume durable fingerprints are enrolled for the normal operating system.
+The current development priority is **private hardware validation of the fresh-clone binary, reliability/security review and ultimately reversible system integration**. The user explicitly requested **no further fingerprint enrolments** during these stages. The existing private test templates were stored only in disposable RAM storage, so do not assume durable fingerprints are enrolled for the normal operating system.
 
 ## Which files are current?
 
@@ -25,7 +26,7 @@ The current development priority is **source consolidation, clean-clone rebuild,
 - **Current private test harness:** [`experiments/private-fprintd/`](experiments/private-fprintd/README.md) — consolidated from the newest `feature/ft5955-private-fprintd-v096` version, including its successful saved-template baseline test. Historical scripts are retained for reference, not proposed as production tools.
 - **Older source research:** [`research/source-history/`](research/source-history/) — deliberately preserved; **do not run historical installers or repair scripts against the active working checkout**.
 
-[Complete branch reconciliation and remaining clean-clone blocker](docs/consolidation-2026-10-17.md) · [17 October hardware rebuild/Claim report](docs/rebuild-ft5955-without-enrolment.md) · [Detailed status](docs/status-2026-10-16.md) · [Roadmap](docs/roadmap.md)
+[Completed clean-clone reconstruction and branch consolidation](docs/consolidation-2026-10-17.md) · [17 October hardware rebuild/Claim report](docs/rebuild-ft5955-without-enrolment.md) · [Detailed status](docs/status-2026-10-16.md) · [Roadmap](docs/roadmap.md)
 
 ## Clean-build path — source history now preserved
 
@@ -33,9 +34,9 @@ The libfprint `v1.94.100` tag locally resolves **exactly** to the commit before 
 
 The new [`tools/verify_ft5955_clean_clone.py`](tools/verify_ft5955_clean_clone.py) is intended to **clone an ordinary upstream libfprint release from the network**, apply our three recorded patches in a disposable temporary directory, compare the result against the verified working driver, and compile it there. It does **not** use the dirty `~/Projects/libfprint-ft5955` working checkout. Default invocation is source preflight only; `--build` adds network clone and compilation without sensor access; `--claim-only` separately opts into the isolated USB Discover/Claim/Release test, never enrolment.
 
-**State:** the clean-clone builder has been committed, but independent network fetch/compile have **not yet passed on Nobara**. The original pinned-commit rebuild and physical Claim/Release test have already passed and are unchanged.
+**State: PASS on Nobara (17 October 2026).** The user cloned this project afresh, the builder independently cloned the upstream libfprint `v1.94.100` source at **exactly** `80a4b5ec612892c5c056c48dddaa561452cf37ec`, applied all three reviewed patches, reproduced the byte-identical main FocalTech driver from the saved snapshot, and compiled **109/109** steps with **27 Meson targets**. The disposable source and binary were removed; the original live driver/system fprintd/PAM were unchanged. Optional tests were skipped due to disabled introspection and missing dependencies; compilation success is **not** a full test-suite PASS. The log's Git annotated-tag warning and detached HEAD were nonfatal; the actual checked-out commit was verified. **Next: prove private `GetDevices` / `Claim` / `Release` using the independently rebuilt binary, with no biometric operations.** The previously successful private hardware test used the earlier reconstructed library, not yet this fresh-clone path.
 
-To keep the user's existing project sources intact, run the new builder from a **separate checkout** of branch `feature/ft5955-driver-consolidation-20261017` when ready for the next source-only test. No more historical Git archaeology is needed.
+The separate test checkout is now confirmed at `~/Projects/ft5955-independent-build-check`; no further clone or checkout is necessary. The next optional no-enrolment test from that checkout is `python3 "$HOME/Projects/ft5955-independent-build-check/tools/verify_ft5955_clean_clone.py" --claim-only`. It will recompile in `/tmp`, run the dedicated private system-bus-mapped Claim-only test with **no `EnrollStart` or `VerifyStart`**, and remove temporary state. It does not install or enable system authentication. No more historical Git archaeology is needed.
 
 [Clean-build and audit record](docs/consolidation-2026-10-17.md) · [Previously verified private hardware test](docs/rebuild-ft5955-without-enrolment.md)
 
