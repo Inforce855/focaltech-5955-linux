@@ -1,5 +1,8 @@
 # FocalTech 2808:5955 — development roadmap
 
+> **Current milestone (17 October 2026):** the complete **real normal-`fprintd` → KDE enrol both index fingers → observed `verify-match` → experimental uninstall/rollback** cycle PASSED. The packaged Nobara system has been restored, with no PAM/SDDM changes. Verification is inconsistent on the first press (~85% user-estimated success only after 3–4 deliberate taps), and this is **not a production authentication release**. See the [one-page next-session handoff](next-session-handoff.md), [full test record](kde-short-lived-trial-2026-10-17.md), and [documentation index](index.md). The historical checklist below intentionally retains earlier failures and intermediate steps — its dated statements are not independent current release claims.
+
+
 **Updated: 17 October 2026.** This is a concise status-driven roadmap, modelled on the layout introduced on `feature/ft5955-moh-engine-bridge`. Earlier experiments are preserved in the [research roadmap archive](archive/roadmap-research-log-2026-10-16.md). See [current status](status-2026-10-16.md) for what was actually demonstrated.
 
 ## 1. Sensor communication — experimental baseline achieved
