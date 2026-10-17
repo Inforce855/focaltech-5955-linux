@@ -19,7 +19,8 @@ Once the user chooses to attempt the normal-service KDE experiment:
 ```bash
 REPO="$HOME/Projects/ft5955-independent-build-check"
 git -C "$REPO" pull --ff-only &&
-bash -n "$REPO/tools/ft5955_kde_trial.sh" "$REPO/tools/manage_ft5955_kde_trial.sh" &&
+bash -n "$REPO/tools/ft5955_kde_trial.sh" &&
+bash -n "$REPO/tools/manage_ft5955_kde_trial.sh" &&
 bash "$REPO/tools/ft5955_kde_trial.sh" --start
 ```
 
