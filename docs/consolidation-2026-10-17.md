@@ -96,15 +96,30 @@ M libfprint/meson.build
 M tests/meson.build
 ```
 
-The first audit run **stopped by design** because our exact-path safety whitelist incorrectly expected `meson.build` at the repository root, rather than the observed `tests/meson.build`. That does **not** indicate a failed libfprint build. The whitelist has now been corrected to precisely those three statuses and paths, with all original commit checks, safe file-mode checks, binary rejection, maximum patch size and read-only operation intact (commit `4cdf4a5`). The corrected audit's complete patch, byte count and SHA-256 are **still pending one user run and review**. Do not claim a successful initial scaffold patch validation until then.
+The first audit run **stopped by design** because our exact-path safety whitelist incorrectly expected `meson.build` at the repository root, rather than the observed `tests/meson.build`. That does **not** indicate a failed libfprint build. The whitelist has now been corrected to precisely those three statuses and paths, with all original commit checks, safe file-mode checks, binary rejection, maximum patch size and read-only operation intact (commit `4cdf4a5`). The corrected audit subsequently **PASSED** (2,474-byte initial patch; SHA-256 recorded in the next section). The original first-failure event remains preserved above for audit history.
 
-**Next:** rerun `tools/audit_ft5955_scaffold_origin.py --show-patch`, inspect the exact three-file source diff, compare its checksum and preserve it as a reviewed patch. Then verify clean network fetchability of upstream libfprint `v1.94.100` and use the two preserved commits' patches plus the existing live-driver patch to produce the current driver independently of the user's original local libfprint checkout.
+**Subsequently completed:** the corrected audit passed and the three-file patch was saved with exact SHA-256 verification. The next test is the separate upstream-clone builder, not another ancestry inspection.
+
+## Initial scaffold PASS and independent-build implementation — 17 October 2026
+
+The user reran the corrected audit successfully. Their local `v1.94.100` tag resolved **exactly** to `80a4b5ec612892c5c056c48dddaa561452cf37ec`, the direct parent of the FocalTech discovery commit `68696e04`. The complete initial scaffold patch changes **only** these three expected paths: adds `libfprint/drivers/focaltech_5955.c`, modifies `libfprint/meson.build`, and modifies `tests/meson.build` (correcting the foreach test-loop unpacking). It was **2,474 bytes** with SHA-256 **`5a4f80b925ad2640689f1748fb175ca0b01650ebb697da8d74743cf7080047cd`**. Full patch content was supplied and reviewed; the two invisible leading Git-diff context spaces were reconstructed and its SHA-256 verified before committing [the exact scaffold patch](../driver/live-snapshot-2026-10-16/patches/upstream-v1.94.100-to-initial-scaffold.patch). Its Git blob SHA was independently checked against the audited bytes.
+
+The complete recorded reconstruction chain is now:
+
+1. Unmodified upstream libfprint release tag `v1.94.100`, expected commit `80a4b5ec`.
+2. SHA-verified [initial scaffold patch](../driver/live-snapshot-2026-10-16/patches/upstream-v1.94.100-to-initial-scaffold.patch), original local commit `68696e04`.
+3. SHA-verified [USB-descriptor patch](../driver/live-snapshot-2026-10-16/patches/parent-to-base-usb-descriptor.patch), original local commit `c8e01dc`.
+4. Existing [working-driver code and Meson patch](../driver/live-snapshot-2026-10-16/README.md), plus all 13 SHA-verified driver/header files.
+
+The new [`tools/verify_ft5955_clean_clone.py`](../tools/verify_ft5955_clean_clone.py) leaves the successful original rebuild path unchanged. It validates the snapshot and **both historical patch hashes**, clones the exact upstream release into a disposable `/tmp/ft5955-rebuild-*` tree, insists `HEAD` equals the expected tag commit, applies the three reviewed patches, verifies the final driver source equals the captured SHA-verified snapshot, layers the remaining driver files, and runs the same Meson/Ninja configuration. Default invocation is read-only manifest preflight; `--build` opts into the network clone and compile, without USB access, enrolment, install, PAM or KDE changes. `--claim-only` additionally enables the previously demonstrated isolated no-enrolment hardware claim harness. All temp files are removed after command completion. **The clean clone builder has been committed but not yet executed successfully on Nobara.**
+
+The upstream project/release URL is documented publicly and the version exists in distro packages, but **actual network checkout of that exact tag and a fresh-clone compile have not yet been verified**. If the upstream server blocks the Git clone, report that as an availability problem, not a driver-code failure. Do not switch branches or overwrite the existing live driver checkout.
 
 ## What still blocks a portable, clean-clone build
 
 The SHA-verified builder uses a **pinned libfprint Git commit** `c8e01dc26cedb2d97779a314a7260f1c33e02bfa`, currently present in `~/Projects/libfprint-ft5955` on the user's Nobara system. Its availability from a fresh external clone has **not** been established. The build can be recreated on this machine even with a dirty worktree because `git archive` reads the commit object, not the working files.
 
-**Next read-only task:** rerun the now-corrected initial-scaffold audit for `68696e04` and inspect its three-file patch; upstream tag-to-parent equality has already been established locally. The previous read-only Git provenance audit is complete. If it is local-only, reconstruct its modifications against an identified public upstream libfprint tag/commit or provide a reviewed reproducible base-patch chain. Do **not** assume a random public libfprint checkout contains our scaffold. Do not publish a full fork or vendor arbitrary upstream source without license/build review.
+**Next test:** use the independent clean-clone builder, first as source-only preflight, then an opt-in `--build` on Nobara to verify the real upstream network fetch, patch application and Meson compilation. No biometric operations. The previous read-only Git provenance audit is complete. If it is local-only, reconstruct its modifications against an identified public upstream libfprint tag/commit or provide a reviewed reproducible base-patch chain. Do **not** assume a random public libfprint checkout contains our scaffold. Do not publish a full fork or vendor arbitrary upstream source without license/build review.
 
 ## Working boundaries
 
@@ -115,6 +130,6 @@ The SHA-verified builder uses a **pinned libfprint Git commit** `c8e01dc26cedb2d
 
 ## Safe next check
 
-The parent-to-base USB descriptor patch is already preserved and hash checked. The initial scaffold is proven to start exactly from the local `v1.94.100` tag; now inspect and preserve the three-file initial scaffold patch with the corrected whitelist. This is source-only work; no biometric or system-auth operations.
+Both historical patches are preserved and SHA-256 verified, and the original pre-scaffold commit exactly equals the local `v1.94.100` tag. The independent clean-clone builder is committed; the next requested hardware-free milestone is to test its `--build` mode. This is source-only work; no biometric or system-auth operations.
 
 Until that source provenance is resolved, our results are **working rebuild from saved GitHub sources on the tested Nobara machine**, not yet universally reproducible driver packaging.
