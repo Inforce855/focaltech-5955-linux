@@ -29,7 +29,7 @@ The current development priority is **source consolidation, clean-clone rebuild,
 
 ## Next safe step — verify release-tag relation and initial scaffold patch
 
-Read-only Git history confirmed the discovery-only FocalTech driver was introduced in `68696e04` on parent `80a4b5ec`; nearest local release tag is `v1.94.100`. **Exact tag equivalence remains unverified.** The next audit checks this relationship and produces the *original* driver-scaffold/Meson diff for source review, without modifying files:
+Read-only Git history and the latest audit confirmed the discovery-only FocalTech driver was introduced in `68696e04` on parent `80a4b5ec`, and **that parent exactly equals local tag `v1.94.100`** (zero intervening commits). The first audit stopped safely because the initial scaffold changed `tests/meson.build`, not an initially expected root `meson.build`. The whitelist is now corrected to all three observed files. Rerun to inspect the complete *original* driver-scaffold/Meson diff, without modifying files:
 
 ```bash
 REPO="$HOME/Projects/focaltech-5955-linux"
