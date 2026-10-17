@@ -1,6 +1,6 @@
 # FocalTech 2808:5955 — development roadmap
 
-**Updated: 16 October 2026.** This is a concise status-driven roadmap, modelled on the layout introduced on `feature/ft5955-moh-engine-bridge`. Earlier experiments are preserved in the [research roadmap archive](archive/roadmap-research-log-2026-10-16.md). See [current status](status-2026-10-16.md) for what was actually demonstrated.
+**Updated: 17 October 2026.** This is a concise status-driven roadmap, modelled on the layout introduced on `feature/ft5955-moh-engine-bridge`. Earlier experiments are preserved in the [research roadmap archive](archive/roadmap-research-log-2026-10-16.md). See [current status](status-2026-10-16.md) for what was actually demonstrated.
 
 ## 1. Sensor communication — experimental baseline achieved
 
@@ -53,7 +53,8 @@
 - [x] **Preserve** the then-live private libfprint driver and gateway in commit [`77db7f5`](https://github.com/Inforce855/focaltech-5955-linux/commit/77db7f5): 13 driver/header sources, 3 gateway files, tracked Meson/driver patch and hashes. Original dirty checkout was not modified. **Still needed:** reconcile it into a clean-clone reproducible development build.
 - [ ] Reconcile earlier MOH development branch with current private-fprintd work.
 - [x] **16 October:** rebuild the preserved live driver source from GitHub in an isolated temporary tree using libfprint 1.94.100 and pinned upstream commit `c8e01dc`; SHA-verified snapshot and recorded Meson patch applied, Meson configured FocalTech-only driver, Ninja finished **109/109 build steps** (27 Meson targets). No enrolment, hardware scan, install or changes to the working driver. [Source-history rebuild proof](https://github.com/Inforce855/focaltech-5955-linux/blob/feature/ft5955-source-history/docs/rebuild-ft5955-without-enrolment.md).
-- [ ] Establish independent clean-clone (rather than pinned commit from local Git object store) and an isolated **discovery/Claim-only** test using the GitHub-rebuilt driver, keeping biometric data and proprietary binaries out of GitHub. **User requests no further enrolments.**
+- [x] **17 October:** GitHub-rebuilt library was loaded by a fresh disposable private `fprintd`, confirmed by `/proc/PID/maps`, and the physical `2808:5955` reader was **discovered, Claimed and Released**. Dedicated Claim-only client had no enrol/verify code; hardware test PASS, with source build 109/109 steps and successful cleanup. [Verified report](https://github.com/Inforce855/focaltech-5955-linux/blob/feature/ft5955-source-history/docs/rebuild-ft5955-without-enrolment.md).
+- [ ] Establish independent clean-clone build (the successful rebuild still uses the pinned upstream libfprint commit from the user's local Git object store), complete an offline regression review, and prepare any system integration only after explicit review, safe rollback and password fallback. **User requests no further enrolments.**
 - [ ] Maintain this roadmap and [dated current status](status-2026-10-16.md) alongside each tested change.
 
 ## References
