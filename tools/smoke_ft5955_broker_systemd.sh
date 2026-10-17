@@ -10,8 +10,13 @@ if (( EUID != 0 )) || [[ -z "${SUDO_USER:-}" || "$SUDO_USER" == root ]]; then
     echo "STOP: use sudo bash from your normal user account." >&2
     exit 2
 fi
-if [[ $# -ne 1 || "$1" != "--smoke" ]]; then
-    echo "Usage: sudo bash $0 --smoke" >&2
+if [[ $# -ne 1 || ( "$1" != "--smoke" && "$1" != "--probe-bwrap" ) ]]; then
+    echo "Usage: sudo bash $0 --smoke | --probe-bwrap" >&2
+    exit 2
+fi
+MODE="$1"
+if [[ "$MODE" == --probe-bwrap ]] && ! command -v bwrap >/dev/null; then
+    echo "STOP: bubblewrap not installed; nothing changed." >&2
     exit 2
 fi
 for cmd in systemctl useradd userdel getent install timeout python3 cmp; do
@@ -60,7 +65,7 @@ cleanup() {
         if [[ -f "$MARK" && ! -L "$MARK" && "$(cat "$MARK")" == FT5955_BROKER_SMOKE_V1 ]]; then
             rm -f -- "$SERVICE" "$SOCKET_UNIT"
             systemctl daemon-reload || true
-            rm -f -- "$ROOT/ft5955_engine_broker.py" "$ROOT/mock_gateway.py" "$MARK"
+             rm -f -- "$ROOT/ft5955_engine_broker.py" "$ROOT/mock_gateway.py" "$ROOT/nested-bwrap-probe" "$MARK"
             rmdir -- "$ROOT" 2>/dev/null || true
             rmdir -- "$SOCKET_DIR" 2>/dev/null || true
         else
@@ -90,12 +95,46 @@ install -m 0644 -o root -g root "$SOURCE" "$ROOT/ft5955_engine_broker.py"
 cat > "$ROOT/mock_gateway.py" <<'PY'
 #!/usr/bin/env python3
 # Synthetic transport ONLY. Cannot produce a biometric MATCH.
-import argparse, sys
+import argparse, os, subprocess, sys
+from pathlib import Path
 parser = argparse.ArgumentParser()
 parser.add_argument("--moh-dir", required=True)
 parser.parse_args()
 reader, writer = sys.stdin.buffer, sys.stdout.buffer
 assert reader.readline() == b"MODE E\n"
+# Extra test-only mode: no proprietary code, sensor or fingerprint data.
+# Emulate the established wrapper's bwrap flags, from inside the
+# real hardened non-root systemd account.
+if Path("/opt/ft5955-broker-smoke/nested-bwrap-probe").exists():
+    mounts = ["--ro-bind", "/usr", "/usr"]
+    for path in ("/lib", "/lib64", "/bin", "/sbin"):
+        if os.path.islink(path):
+            target = os.readlink(path)
+            if target.startswith("/"):
+                writer.write(b"ERROR BWRAP_ABSOLUTE_HOST_SYMLINK\n"); writer.flush()
+                raise SystemExit(17)
+            mounts.extend(["--symlink", target, path])
+        elif os.path.isdir(path):
+            mounts.extend(["--ro-bind", path, path])
+    command = [
+        "/usr/bin/timeout", "8s", "/usr/bin/bwrap",
+        "--unshare-all", "--die-with-parent", "--new-session",
+        "--clearenv", "--setenv", "PATH", "/usr/bin:/bin",
+        "--setenv", "HOME", "/tmp", "--setenv", "TMPDIR", "/tmp",
+        *mounts, "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp",
+        "--chdir", "/tmp", "--", "/usr/bin/python3", "-c",
+        "print('FT5955_SYNTHETIC_NAMESPACE_OK')",
+    ]
+    try:
+        result = subprocess.run(command, capture_output=True, timeout=12,
+                                stdin=subprocess.DEVNULL, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        writer.write(b"ERROR BWRAP_EXECUTION_FAILED\n"); writer.flush()
+        raise SystemExit(18)
+    if result.returncode != 0 or result.stdout.strip() != b"FT5955_SYNTHETIC_NAMESPACE_OK":
+        # Do not expose private data, environment, or arbitrary stderr.
+        writer.write(b"ERROR BWRAP_NAMESPACE_UNAVAILABLE\n"); writer.flush()
+        raise SystemExit(19)
 writer.write(b"READY 1\n"); writer.flush()
 assert reader.readline() == b"FRAME\n"
 data = reader.read(5120)
@@ -105,6 +144,10 @@ assert reader.readline() == b"QUIT\n"
 writer.write(b"BYE\n"); writer.flush()
 PY
 chmod 0644 "$ROOT/mock_gateway.py"
+if [[ "$MODE" == --probe-bwrap ]]; then
+    : > "$ROOT/nested-bwrap-probe"
+    chmod 0644 "$ROOT/nested-bwrap-probe"
+fi
 # No login shell, password, home creation, or system authentication module.
 useradd --system --user-group --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin "$ACCOUNT"
 account_created=1
@@ -176,6 +219,9 @@ while True:
 client.close()
 expected = b"READY 1\nRETRY QUALITY\nBYE\n"
 if bytes(received) != expected:
+    if b"ERROR BWRAP_" in received:
+        raise RuntimeError("Nested bubblewrap blocked in restricted service: "
+                           + received.decode("ascii", errors="replace").strip())
     raise RuntimeError("Wrong mock reply (NO biometric matching tested)")
 print("PASS: non-root systemd service, protected UNIX socket, root-only peer")
 print("PASS: synthetic MODE E -> READY 1 -> RETRY QUALITY -> BYE")
@@ -193,4 +239,7 @@ EXPECTED_UID="$(id -u "$ACCOUNT")"
     exit 1
 }
 echo "PASS: isolated broker PID $PID is non-root UID $EXPECTED_UID."
+if [[ "$MODE" == --probe-bwrap ]]; then
+    echo "PASS: nested bubblewrap user/mount namespaces inside hardened non-root service."
+fi
 echo "PASS: temporary service trial complete, cleaning up automatically."
