@@ -1,6 +1,14 @@
 # FocalTech 2808:5955 — development roadmap
 
-**Updated: 16 October 2026.** This is a concise status-driven roadmap, modelled on the layout introduced on `feature/ft5955-moh-engine-bridge`. Earlier experiments are preserved in the [research roadmap archive](archive/roadmap-research-log-2026-10-16.md). See [current status](status-2026-10-16.md) for what was actually demonstrated.
+**Updated: 17 October 2026.** This is a concise status-driven roadmap, modelled on the layout introduced on `feature/ft5955-moh-engine-bridge`. Earlier experiments are preserved in the [research roadmap archive](archive/roadmap-research-log-2026-10-16.md). See [current status](status-2026-10-16.md) for what was actually demonstrated.
+
+## Source-history branch hardware checkpoint — 17 October 2026
+
+- [x] Reconstruct the 13-file active FT5955 driver and Meson patch from the reviewed GitHub snapshot, against pinned libfprint 1.94.100 source; Ninja build `109/109`, 27 Meson targets (16 October).
+- [x] Build again from snapshot; load exact newly compiled shared library into **private** fprintd (checked via `/proc/PID/maps`); on real reader `GetDevices`, `Claim` and `Release` all PASS (17 October). No enrolment, scan, verification, system authentication changes or persistent installation.
+- [ ] Prove clean-clone build independent of existing upstream local Git objects, review/consolidate source branches, and prepare future reversible integration with password fallback. **User explicitly requests no more fingerprint enrolments.**
+
+See [Nobara rebuild and Claim-only hardware test](rebuild-ft5955-without-enrolment.md) and the [up-to-date private-fprintd roadmap](https://github.com/Inforce855/focaltech-5955-linux/blob/feature/ft5955-private-fprintd-v096/docs/roadmap.md). Older 16 October notes below are retained as chronology, not latest status.
 
 ## 1. Sensor communication — experimental baseline achieved
 
