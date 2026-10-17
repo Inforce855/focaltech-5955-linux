@@ -1,10 +1,10 @@
 # Rebuild the preserved FT5955 driver without enrolment
 
-**State: PASS on Nobara, 16 October 2026.** The isolated GitHub-snapshot source build completed successfully; hardware operation with the newly built copy was **not** tested. This is a preparation and compile test, not a verified native matcher or system integration. The source is pinned to the real private driver snapshot [live-snapshot-2026-10-16](../driver/live-snapshot-2026-10-16/README.md), preserved in commit [77db7f5](https://github.com/Inforce855/focaltech-5955-linux/commit/77db7f5).
+**State: PASS on Nobara, 17 October 2026.** The source-only rebuild passed on 16 October; on 17 October the rebuilt library also passed private-`fprintd` **device discovery, Claim, and Release against real hardware**, without enrolment or verification. This proves the GitHub-snapshot driver's USB open/close path, not a newly rebuilt matcher or production integration. The source is pinned to the real private driver snapshot [live-snapshot-2026-10-16](../driver/live-snapshot-2026-10-16/README.md), preserved in commit [77db7f5](https://github.com/Inforce855/focaltech-5955-linux/commit/77db7f5).
 
 ## Milestone 2 — use the GitHub-rebuilt driver for private USB Claim (17 October 2026)
 
-**New code committed; not yet run on Nobara.** This extends the previously PASSED source-only build without adding any enrolment or fingerprint verification.
+**PASS on real Nobara hardware, 17 October 2026.** This extends the previously PASSED source-only build without adding any enrolment or fingerprint verification.
 
 The new `--claim-only` mode of [the verified rebuild tool](../tools/verify_ft5955_rebuild.py) performs the following actions, in order:
 
@@ -27,7 +27,25 @@ python3 "$HISTORY/tools/verify_ft5955_rebuild.py" --claim-only
 
 **Possible non-code blocker:** Physical `Claim` needs non-root USB write access. The earlier narrowly scoped temporary ACL for device `2808:5955` may expire across reconnection/reboot. If it does, this test is expected to fail safely at `Claim`; **do not run as root**, apply blanket USB permissions or alter system udev/PAM without a separate, reviewed step.
 
-**Result:** PENDING USER HARDWARE TEST. Retain the exact terminal pass/fail output (no fingerprints or templates will be printed) and update this document/roadmap with observed results. The code includes no enrolment path, and no Windows MOH gateway runs.
+**Observed result — PASS (17 October 2026, user-run on Nobara).** `python3 "$HISTORY/tools/verify_ft5955_rebuild.py" --claim-only` reported 27 configured Meson targets, FocalTech driver only, Ninja `[109/109]`, and `PASS: isolated libfprint build completed using GitHub snapshot`. Private fprintd verified it loaded the **exact** new shared library. The Claim-only D-Bus client reported:
+
+```text
+PASS: private fprintd loaded the exact GitHub rebuilt libfprint.
+PASS: discovered one private device: /net/reactivated/Fprint/Device/0
+PASS: Claim succeeded using rebuilt GitHub library.
+PASS: Release succeeded.
+PASS: NO EnrollStart, VerifyStart or biometric capture requested.
+PRIVATE BUS TEST PolicyKit: action=net.reactivated.fprint.device.verify decision=ALLOW
+PASS: GitHub rebuilt driver: Discover -> Claim -> Release.
+PASS: rebuilt GitHub driver passed private Discover/Claim/Release.
+PASS: temporary build and private test state removed; system fprintd/PAM and working checkout unchanged.
+```
+
+The private PolicyKit `verify decision=ALLOW` relates to permission for the device-claim operation; the dedicated client has **no `VerifyStart` method call** and did not perform fingerprint recognition. Source-based safeguards plus the user's transcript support the claim-only boundary. The script reports cleanup of the temporary build and private RAM storage.
+
+**What this validates:** source is in GitHub, the recorded build patch and extra driver files reconstruct a working libfprint USB driver, the isolated process loads this exact compiled binary, and the device's open/close handshake path succeeds without an enrolment. **What remains unverified:** runtime enrol/verify using *this specifically rebuilt* binary; persistent storage on disk; clean clone independent of local upstream Git object store; and any system/PAM login configuration. The previously proven fingerprint verification is from the earlier local live library. **User constraint: no more fingerprint enrolment.**
+
+**Next priority:** consolidate branches/source into a reviewable, reproducible project, add offline regression tests where useful, and plan bounded reversible integration with normal system fprintd and password fallback only after review. Do not enable production login yet.
 
 ## Confirmed Nobara build result — 16 October 2026
 
