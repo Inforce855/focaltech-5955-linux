@@ -6,7 +6,7 @@
 # All test units, code and the dedicated temporary service account are removed.
 set -Eeuo pipefail
 umask 022
-if (( EUID != 0 )) || [[ -z "$SUDO_USER" || "$SUDO_USER" == root ]]; then
+if (( EUID != 0 )) || [[ -z "${SUDO_USER:-}" || "$SUDO_USER" == root ]]; then
     echo "STOP: use sudo bash from your normal user account." >&2
     exit 2
 fi
