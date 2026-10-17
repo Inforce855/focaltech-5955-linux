@@ -68,7 +68,8 @@ if [[ "$MODE" == --stop ]]; then
 fi
 
 # --start
-[[ ! -e "$PIDFILE" && ! -e "$SOCKET" && ! -L "$SOCKET" ]] || {
+[[ ! -e "$PIDFILE" && ! -e "$SOCKET" && ! -L "$SOCKET" &&
+   ! -e "$SOCKET_DIR" && ! -L "$SOCKET_DIR" ]] || {
   echo "STOP: existing broker or live trial state; run --stop/review first." >&2; exit 2
 }
 [[ -f "$BROKER" && -f "$GATEWAY" &&
