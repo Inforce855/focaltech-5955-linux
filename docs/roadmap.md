@@ -2,14 +2,6 @@
 
 **Updated: 17 October 2026.** This is a concise status-driven roadmap, modelled on the layout introduced on `feature/ft5955-moh-engine-bridge`. Earlier experiments are preserved in the [research roadmap archive](archive/roadmap-research-log-2026-10-16.md). See [current status](status-2026-10-16.md) for what was actually demonstrated.
 
-## Source-history branch hardware checkpoint — 17 October 2026
-
-- [x] Reconstruct the 13-file active FT5955 driver and Meson patch from the reviewed GitHub snapshot, against pinned libfprint 1.94.100 source; Ninja build `109/109`, 27 Meson targets (16 October).
-- [x] Build again from snapshot; load exact newly compiled shared library into **private** fprintd (checked via `/proc/PID/maps`); on real reader `GetDevices`, `Claim` and `Release` all PASS (17 October). No enrolment, scan, verification, system authentication changes or persistent installation.
-- [ ] Prove clean-clone build independent of existing upstream local Git objects, review/consolidate source branches, and prepare future reversible integration with password fallback. **User explicitly requests no more fingerprint enrolments.**
-
-See [Nobara rebuild and Claim-only hardware test](rebuild-ft5955-without-enrolment.md) and the [up-to-date private-fprintd roadmap](https://github.com/Inforce855/focaltech-5955-linux/blob/feature/ft5955-private-fprintd-v096/docs/roadmap.md). Older 16 October notes below are retained as chronology, not latest status.
-
 ## 1. Sensor communication — experimental baseline achieved
 
 - [x] USB identity `2808:5955`, endpoints, handshake and readiness understood.
@@ -44,19 +36,26 @@ See [Nobara rebuild and Claim-only hardware test](rebuild-ft5955-without-enrolme
 - [x] **16 October:** subsequent `--controls` run completed **4/4** first-attempt expectations: two enrolled right-index matches, two different-finger `verify-no-match` rejections, and zero genuine no-matches. This shows that negative comparisons do **not invariably** prevent later genuine matches; earlier failed runs remain relevant.
 - [ ] **Optional diagnostic on Nobara:** the committed `--diagnose` mode alternates A, A, B, A, C, A to help localise intermittent genuine no-matches. It is not yet hardware-tested and is less urgent than collecting repeatability data.
 - [x] **16 October `--roundtrip` physical test: PARTIAL PASS / OVERALL FAIL.** Enrolled fingerprint name appeared in private fprintd both before and after restart with the same RAM state; all three genuine post-restart checks returned terminal `verify-no-match`. Not a successful reusable biometric template. No same-session baseline was run in this test.
-- [ ] Inspect the **local libfprint driver ↔ MOH engine integration** for host-template payload export/import and reconstructed matching state across daemon lifetimes (v0.4 real-engine export/import and v0.6.1 synthetic FpPrint serialisation were demonstrated earlier).
+- [x] **16 October controlled `--roundtrip`: FULL PASS.** Physical right-index print successfully enrolled and listed; a fresh client on the original private `fprintd` matched the saved template on genuine attempt **2/3** (one preceding terminal genuine `NO_MATCH`); after restarting only private `fprintd` with the same RAM state, another fresh client listed and MATCHED it on the **first** genuine attempt. This disproves *inevitable* restart-induced loss, **not** intermittent failures or security/reliability limitations. No different-finger check in this particular test. See [verified status](status-2026-10-16.md).
+- [x] Inspect the **then-live private libfprint driver ↔ MOH gateway** path: committed live-source snapshot confirms FpPrint RAW envelope pack/extract, SHA-256 integrity check, and acknowledgement of MOH template import before scanning. This is source inspection, not byte-level persistence validation.
+- [ ] **Usability acceptance (user-confirmed, 16 October):** the built-in reader is awkward to reach and requires stretching; **one genuine `NO_MATCH` followed by a successful second deliberate press is acceptable**. Prioritise predictable manual retry, preserved security/negative controls, and practical integration over eliminating every first-touch rejection. Never silently turn a `NO_MATCH` into a successful login; leave password fallback available.
+- [ ] **Lower priority:** investigate intermittent genuine `NO_MATCH` only if retries become inconsistent or excessively frequent; controlled logs may distinguish touch positioning, capture quality and engine return code without publishing biometric samples or templates.
+- [ ] Repeat successful before/after daemon restarts across multiple **bounded**, separately documented trials; negative controls and error rates are still insufficient.
 - [ ] Repeat enrol/verify across separate sessions; confirm consistent positive and negative outcomes.
 - [ ] Verify persistent storage and reload behaviour, error propagation and privacy boundaries.
 - [ ] Only after sufficient evidence, review optional KDE/PAM integration with password fallback.
+- [ ] **Optional future GUI: [COSMIC Utils Enroll](https://github.com/cosmic-utils/enroll)** ([Flathub](https://flathub.org/apps/org.cosmic_utils.enroll)). Source reviewed 17 October 2026: Rust/libcosmic frontend calls normal `net.reactivated.Fprint` **system-bus** D-Bus methods for user selection, listing prints, Register/`EnrollStart`, Verify/`VerifyStart` and deletion; Flatpak manifest grants system bus access to fprintd, PolicyKit and Accounts. It does **not** add sensor drivers or native matching. Could become a GUI for our reader **only after** safe system fprintd/libfprint integration; it does **not** automatically find the existing isolated private D-Bus test service. COSMIC styling may also work under KDE, but this has **not** been tested on user's Nobara installation. **Do not click Register/Enroll or Delete** in the current no-enrolment phase; no installation or system-auth changes requested.
 
 **Not ready for production login.** A successful compile or one test match is not authentication assurance.
 
 ## 5. Source control and reproducible builds
 
-- [ ] Inventory all local `ft5955-*` source snapshots and compare with GitHub; [issue #3](https://github.com/Inforce855/focaltech-5955-linux/issues/3).
-- [ ] Commit/review uncommitted local libfprint driver and gateway code without losing changes.
+- [x] Recover and inventory the uploaded historical archives; **135 source files** from 16 versioned directories imported to [`feature/ft5955-source-history`](https://github.com/Inforce855/focaltech-5955-linux/tree/feature/ft5955-source-history/research/source-history). Inventory of further *local* snapshots may remain; [issue #3](https://github.com/Inforce855/focaltech-5955-linux/issues/3).
+- [x] **Preserve** the then-live private libfprint driver and gateway in commit [`77db7f5`](https://github.com/Inforce855/focaltech-5955-linux/commit/77db7f5): 13 driver/header sources, 3 gateway files, tracked Meson/driver patch and hashes. Original dirty checkout was not modified. **Still needed:** reconcile it into a clean-clone reproducible development build.
 - [ ] Reconcile earlier MOH development branch with current private-fprintd work.
-- [ ] Establish a clean-clone build and test path, keeping biometric data and proprietary binaries out of GitHub.
+- [x] **16 October:** rebuild the preserved live driver source from GitHub in an isolated temporary tree using libfprint 1.94.100 and pinned upstream commit `c8e01dc`; SHA-verified snapshot and recorded Meson patch applied, Meson configured FocalTech-only driver, Ninja finished **109/109 build steps** (27 Meson targets). No enrolment, hardware scan, install or changes to the working driver. [Source-history rebuild proof](https://github.com/Inforce855/focaltech-5955-linux/blob/feature/ft5955-source-history/docs/rebuild-ft5955-without-enrolment.md).
+- [x] **17 October:** GitHub-rebuilt library was loaded by a fresh disposable private `fprintd`, confirmed by `/proc/PID/maps`, and the physical `2808:5955` reader was **discovered, Claimed and Released**. Dedicated Claim-only client had no enrol/verify code; hardware test PASS, with source build 109/109 steps and successful cleanup. [Verified report](https://github.com/Inforce855/focaltech-5955-linux/blob/feature/ft5955-source-history/docs/rebuild-ft5955-without-enrolment.md).
+- [ ] Establish independent clean-clone build (the successful rebuild still uses the pinned upstream libfprint commit from the user's local Git object store), complete an offline regression review, and prepare any system integration only after explicit review, safe rollback and password fallback. **User requests no further enrolments.**
 - [ ] Maintain this roadmap and [dated current status](status-2026-10-16.md) alongside each tested change.
 
 ## References
