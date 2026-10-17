@@ -2,6 +2,33 @@
 
 **State: PASS on Nobara, 16 October 2026.** The isolated GitHub-snapshot source build completed successfully; hardware operation with the newly built copy was **not** tested. This is a preparation and compile test, not a verified native matcher or system integration. The source is pinned to the real private driver snapshot [live-snapshot-2026-10-16](../driver/live-snapshot-2026-10-16/README.md), preserved in commit [77db7f5](https://github.com/Inforce855/focaltech-5955-linux/commit/77db7f5).
 
+## Milestone 2 — use the GitHub-rebuilt driver for private USB Claim (17 October 2026)
+
+**New code committed; not yet run on Nobara.** This extends the previously PASSED source-only build without adding any enrolment or fingerprint verification.
+
+The new `--claim-only` mode of [the verified rebuild tool](../tools/verify_ft5955_rebuild.py) performs the following actions, in order:
+
+1. Verify the original 13-driver/3-gateway/Meson-patch SHA-256 manifest, confirm the exact pinned libfprint commit, and **compile** the small dedicated [Claim-only D-Bus client](../experiments/private-fprintd/ft5955_claim_only_v097.c) and private PolicyKit helper first. These Claim-only programme sources **do not call `EnrollStart` or `VerifyStart`**, never read or save templates/images, and cannot enrol a finger.
+2. Reconstruct and rebuild the preserved driver in a temporary `/tmp/ft5955-rebuild-*` directory, as in the previously successful 109-step build.
+3. Start the dedicated [Claim-only launcher](../experiments/private-fprintd/ft5955_claim_only_v097.sh). It starts a fresh **private D-Bus session** and private PolicyKit stub, runs the *unchanged* `/usr/libexec/fprintd` process as the normal user (using an isolated, disposable `STATE_DIRECTORY` under `/dev/shm`), and sets `LD_LIBRARY_PATH` to **the new temporary build**.
+4. **Before physical USB Claim**, read the private `fprintd` process's `/proc/PID/maps` and **require that the exact newly compiled GitHub libfprint shared object was loaded**. Fail closed if the daemon loaded the installed or old working-tree library.
+5. On that same private-bus client connection, call only `GetDevices`, `Claim`, `Release` and exit. The driver may perform its previously documented **USB descriptor, readiness handshake and contact-status** transactions when opening the device. It does not request a fingerprint image. No finger needs to touch the reader.
+6. Stop private `fprintd` and PolicyKit, delete disposable RAM storage, and remove the entire temporary source/build folder. No installation and no modification of desktop login settings, PAM or system `fprintd`.
+
+Use a terminal, normal user **without sudo**:
+
+```bash
+HISTORY="$HOME/Projects/ft5955-source-history"
+git -C "$HISTORY" pull --ff-only &&
+python3 "$HISTORY/tools/verify_ft5955_rebuild.py" --claim-only
+```
+
+**Expected full PASS:** source manifest validated; Claim-only test C clients compiled; libfprint rebuilt; mapped-library check passed; `GetDevices` discovered one private fingerprint device; `Claim` succeeded; `Release` succeeded; everything cleaned up. A build PASS alone or ordinary enumeration alone is **not** the final milestone.
+
+**Possible non-code blocker:** Physical `Claim` needs non-root USB write access. The earlier narrowly scoped temporary ACL for device `2808:5955` may expire across reconnection/reboot. If it does, this test is expected to fail safely at `Claim`; **do not run as root**, apply blanket USB permissions or alter system udev/PAM without a separate, reviewed step.
+
+**Result:** PENDING USER HARDWARE TEST. Retain the exact terminal pass/fail output (no fingerprints or templates will be printed) and update this document/roadmap with observed results. The code includes no enrolment path, and no Windows MOH gateway runs.
+
 ## Confirmed Nobara build result — 16 October 2026
 
 The user executed `python3 "$HISTORY/tools/verify_ft5955_rebuild.py" --build` after updating the source-history worktree from GitHub. The final terminal output showed:
