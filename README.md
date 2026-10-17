@@ -27,19 +27,17 @@ The current development priority is **source consolidation, clean-clone rebuild,
 
 [Complete branch reconciliation and remaining clean-clone blocker](docs/consolidation-2026-10-17.md) · [17 October hardware rebuild/Claim report](docs/rebuild-ft5955-without-enrolment.md) · [Detailed status](docs/status-2026-10-16.md) · [Roadmap](docs/roadmap.md)
 
-## Next safe step — verify release-tag relation and initial scaffold patch
+## Clean-build path — source history now preserved
 
-Read-only Git history and the latest audit confirmed the discovery-only FocalTech driver was introduced in `68696e04` on parent `80a4b5ec`, and **that parent exactly equals local tag `v1.94.100`** (zero intervening commits). The first audit stopped safely because the initial scaffold changed `tests/meson.build`, not an initially expected root `meson.build`. The whitelist is now corrected to all three observed files. Rerun to inspect the complete *original* driver-scaffold/Meson diff, without modifying files:
+The libfprint `v1.94.100` tag locally resolves **exactly** to the commit before our first FocalTech driver change. The complete initial C/Meson scaffold patch (2,474 bytes) and subsequent USB-descriptor patch (1,449 bytes) have both been reviewed, SHA-256 verified, and saved in GitHub. Combined with the existing working-driver patch and 13 driver/header sources, the source reconstruction chain is now preserved.
 
-```bash
-REPO="$HOME/Projects/focaltech-5955-linux"
-git -C "$REPO" fetch origin feature/ft5955-driver-consolidation-20261017 &&
-git -C "$REPO" show FETCH_HEAD:tools/audit_ft5955_scaffold_origin.py | python3 - --show-patch
-```
+The new [`tools/verify_ft5955_clean_clone.py`](tools/verify_ft5955_clean_clone.py) is intended to **clone an ordinary upstream libfprint release from the network**, apply our three recorded patches in a disposable temporary directory, compare the result against the verified working driver, and compile it there. It does **not** use the dirty `~/Projects/libfprint-ft5955` working checkout. Default invocation is source preflight only; `--build` adds network clone and compilation without sensor access; `--claim-only` separately opts into the isolated USB Discover/Claim/Release test, never enrolment.
 
-This checks the entire initial scaffold diff against an explicit expected-file whitelist. If the file set differs, the tool stops rather than silently discarding changes. No fingerprint sensor access, enrolment, build, installation, template read/write or system authentication changes. The patch will be considered for GitHub only after review.
+**State:** the clean-clone builder has been committed, but independent network fetch/compile have **not yet passed on Nobara**. The original pinned-commit rebuild and physical Claim/Release test have already passed and are unchanged.
 
-[Full audit history](docs/consolidation-2026-10-17.md)
+To keep the user's existing project sources intact, run the new builder from a **separate checkout** of branch `feature/ft5955-driver-consolidation-20261017` when ready for the next source-only test. No more historical Git archaeology is needed.
+
+[Clean-build and audit record](docs/consolidation-2026-10-17.md) · [Previously verified private hardware test](docs/rebuild-ft5955-without-enrolment.md)
 
 ## Security and scope
 
