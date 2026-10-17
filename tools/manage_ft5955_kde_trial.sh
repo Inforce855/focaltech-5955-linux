@@ -52,7 +52,9 @@ restore_discovery() {
     return 1
   fi
   systemctl stop fprintd.service
-  normal_dropin > "$DROPIN"
+  normal_dropin > "$DROPIN.revert"
+  chmod 0644 "$DROPIN.revert"
+  mv -fT -- "$DROPIN.revert" "$DROPIN"
   systemctl daemon-reload
   rm -- "$LIVE_BROKER" "$MARK"
   echo "PASS: experimental biometric gateway disabled and lab relay removed."
@@ -96,6 +98,8 @@ cleanup_on_failure() {
   trap - ERR
   if (( stage_live )); then
     echo "Trial setup failed. Restoring discovery-only configuration..." >&2
+    if [[ -f "$DROPIN.revert" ]] ; then rm -f -- "$DROPIN.revert"; fi
+    if [[ -f "$DROPIN.live" ]] ; then rm -f -- "$DROPIN.live"; fi
     if owned_live; then
       restore_discovery || true
     elif [[ -f "$MARK" && -f "$DROPIN" ]] &&
@@ -114,7 +118,9 @@ stage_live=1
 install -m 0644 -o root -g root "$BROKER" "$LIVE_BROKER"
 printf '%s\n' FT5955_LAB_V1 > "$MARK"
 chmod 0644 "$MARK"
-live_dropin > "$DROPIN"
+live_dropin > "$DROPIN.live"
+chmod 0644 "$DROPIN.live"
+mv -fT -- "$DROPIN.live" "$DROPIN"
 systemctl daemon-reload
 systemctl restart fprintd.service
 PID="$(systemctl show fprintd.service --value -p MainPID)"
