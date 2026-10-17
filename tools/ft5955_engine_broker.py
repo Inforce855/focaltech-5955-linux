@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import argparse
 import os
+import pwd
+import select
 from pathlib import Path
 import signal
 import socket
@@ -49,6 +51,15 @@ def copy_stream(reader, writer, *, socket_writer=False):
                 pass
 
 
+def write_stdout_all(data: bytes) -> None:
+    view = memoryview(data)
+    while view:
+        written = os.write(1, view)
+        if written <= 0:
+            raise BrokenPipeError("Unable to forward gateway reply")
+        view = view[written:]
+
+
 def relay(path: str) -> int:
     """Run as the system fprintd's transient child. Never load vendor code."""
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as remote:
@@ -61,7 +72,7 @@ def relay(path: str) -> int:
             daemon=True,
         )
         up.start()
-        copy_stream(remote.recv, lambda buf: os.write(1, buf))
+        copy_stream(remote.recv, write_stdout_all)
         # Never keep the service running after the client has finished.
     up.join(timeout=1)
     return 0
@@ -78,7 +89,7 @@ def clean_environment() -> dict[str, str]:
     # No caller-provided LD_PRELOAD, Python search paths or FT5955 modes.
     return {
         "PATH": "/usr/sbin:/usr/bin:/sbin:/bin",
-        "HOME": os.path.expanduser("~"),
+        "HOME": pwd.getpwuid(os.geteuid()).pw_dir,
         "LANG": "C",
     }
 
@@ -106,8 +117,15 @@ def serve_session(conn: socket.socket, gateway: Path, moh_dir: Path) -> None:
 
     inbound = threading.Thread(target=toward_gateway, daemon=True)
     inbound.start()
+
+    def bounded_gateway_read(n: int) -> bytes:
+        remaining = SESSION_LIMIT - (time.monotonic() - started)
+        if remaining <= 0 or not select.select([child.stdout], [], [], remaining)[0]:
+            raise TimeoutError("Gateway exceeded bounded session")
+        return os.read(child.stdout.fileno(), n)
+
     try:
-        copy_stream(child.stdout.read, conn.sendall, socket_writer=conn)
+        copy_stream(bounded_gateway_read, conn.sendall, socket_writer=conn)
     finally:
         if child.poll() is None:
             # If peer died/cancelled, terminate the complete engine group.
