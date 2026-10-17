@@ -67,6 +67,23 @@ The user ran `tools/inspect_ft5955_base_delta.py` read-only on Nobara. It **PASS
 
 **COMPLETED: exact patch reviewed and preserved.** The user provided the full parent-to-base source diff; its code only adds a standard USB GET_DESCRIPTOR validation and reports success or a protocol error, with no fingerprint capture. The reconstructed patch was verified against the audited 1,449-byte length **and** SHA-256 `df8af5a8ac10b716266bb8bdc1107a74c4714079e506a083b2579efa4c5d44f9`, then committed unchanged as [parent-to-base-usb-descriptor.patch](../driver/live-snapshot-2026-10-16/patches/parent-to-base-usb-descriptor.patch). The existing separately recorded later working-driver patch and its SHA-verified source files are unchanged. **Next:** identify the parent commit's earlier scaffold/Meson introduction and a truly available upstream ancestor, then exercise a clean-clone reconstruction. Then inspect the parent ancestry/registration additions against its upstream ancestor; prepare a full patch chain and independent clean-clone build. Existing full build and physical Claim/Release PASS remain valid.
 
+## Initial scaffold ancestry identified — 17 October 2026
+
+The user inspected libfprint Git history **read-only** after preserving the USB descriptor patch:
+
+```text
+ORIGINAL SCAFFOLD ADDITION:
+68696e04a88efbecd5dd79cebf05b8ef013c51d8 Add FocalTech 5955 discovery-only driver
+NEAREST LOCAL UPSTREAM TAG:
+v1.94.100
+PARENT COMMIT:
+68696e04a88efbecd5dd79cebf05b8ef013c51d8 80a4b5ec612892c5c056c48dddaa561452cf37ec Add FocalTech 5955 discovery-only driver
+```
+
+This establishes an exact first FocalTech commit (`68696e04`) and its immediate pre-FocalTech parent (`80a4b5ec`). The nearest reachable **local** release tag is `v1.94.100`; this alone **does not establish** that `80a4b5ec` equals the tag commit or that the tag is currently obtainable over the network.
+
+The committed [read-only scaffold-origin audit](../tools/audit_ft5955_scaffold_origin.py) checks tag equality/ancestry, lists any intervening upstream modifications, rejects unexpected initial scaffold patch files/modes, and prints the exact diff size and SHA-256. Its optional `--show-patch` prints the full vetted source-only diff in the terminal for review; it does not export, install or modify files. **The new script has not yet been run on Nobara.** After validating the diff, we can preserve that earlier scaffold/Meson patch and reconstruct from an independently fetchable upstream source.
+
 ## What still blocks a portable, clean-clone build
 
 The SHA-verified builder uses a **pinned libfprint Git commit** `c8e01dc26cedb2d97779a314a7260f1c33e02bfa`, currently present in `~/Projects/libfprint-ft5955` on the user's Nobara system. Its availability from a fresh external clone has **not** been established. The build can be recreated on this machine even with a dirty worktree because `git archive` reads the commit object, not the working files.
