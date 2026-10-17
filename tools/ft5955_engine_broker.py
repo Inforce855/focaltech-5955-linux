@@ -11,6 +11,9 @@ protected AF_UNIX socket provided as fd 3 by systemd socket activation.
 Only peer UID 0 (fprintd) is accepted in production. One MOH gateway process
 is created per connection; raw samples and templates are never logged.
 --test-only permits a local non-root synthetic protocol test; root cannot use it.
+--serve-user-trial is an explicitly experimental non-login bridge: it runs
+in the already-working user session, retains original MOH/bwrap isolation,
+and accepts only root fprintd peers. NEVER use this bridge for PAM login.
 """
 from __future__ import annotations
 
@@ -169,12 +172,17 @@ def serve(args) -> int:
         raise ValueError("Broker MUST run as a dedicated non-root account")
     gateway = Path(args.gateway)
     moh_dir = Path(args.moh_dir)
-    check_owned_gateway(gateway, moh_dir, args.test_only)
+    check_owned_gateway(gateway, moh_dir, args.test_only or args.serve_user_trial)
 
-    if args.test_only:
+    if args.test_only or args.serve_user_trial:
         directory = Path(args.socket).parent
-        if not directory.is_dir() or directory.stat().st_uid != os.geteuid():
-            raise ValueError("Synthetic socket parent must be owned by test UID")
+        st = directory.lstat()
+        if not stat.S_ISDIR(st.st_mode) or st.st_uid != os.geteuid() or (st.st_mode & 0o077):
+            raise ValueError("Private user trial socket directory must be owned by caller, mode 0700")
+        if args.serve_user_trial and args.socket != SOCKET_PATH:
+            raise ValueError("Live trial requires fixed /run socket")
+        if os.path.lexists(args.socket):
+            raise ValueError("Socket already exists; refuse to replace it")
         listening = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         listening.bind(args.socket)
         os.chmod(args.socket, 0o600)
@@ -197,12 +205,12 @@ def serve(args) -> int:
                     continue
                 try:
                     serve_session(conn, gateway, moh_dir)
-                except (OSError, ValueError, subprocess.SubprocessError) as exc:
+                except (OSError, ValueError, TimeoutError, subprocess.SubprocessError) as exc:
                     # Do not print potentially sensitive inputs or templates.
                     print("FT5955 broker session error: " + type(exc).__name__, file=sys.stderr)
             if args.test_only:
                 break
-    if args.test_only:
+    if args.test_only or args.serve_user_trial:
         Path(args.socket).unlink(missing_ok=True)
     return 0
 
@@ -211,13 +219,16 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--serve", action="store_true")
     parser.add_argument("--test-only", action="store_true")
+    parser.add_argument("--serve-user-trial", action="store_true", help="Unsafe for login; root-peer experiment only")
     parser.add_argument("--socket", default=SOCKET_PATH)
     parser.add_argument("--gateway")
     parser.add_argument("--moh-dir")
     args = parser.parse_args()
 
-    if args.test_only and os.geteuid() == 0:
-        raise ValueError("--test-only cannot run as root")
+    if (args.test_only or args.serve_user_trial) and os.geteuid() == 0:
+        raise ValueError("Non-root broker test and user trial MUST NOT run as root")
+    if args.serve_user_trial and (not args.serve or args.test_only):
+        raise ValueError("--serve-user-trial must accompany --serve without --test-only")
     if args.serve:
         if not args.gateway or not args.moh_dir:
             parser.error("--serve needs --gateway and --moh-dir")
@@ -234,6 +245,6 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+    except (OSError, ValueError, TimeoutError, subprocess.SubprocessError) as exc:
         print("FT5955 broker/relay stopped: " + type(exc).__name__, file=sys.stderr)
         sys.exit(2)
