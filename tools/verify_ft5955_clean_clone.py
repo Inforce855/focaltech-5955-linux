@@ -128,7 +128,7 @@ def main() -> None:
                 raise ValueError(f"Exact built libfprint SONAME target missing: {library}")
             # Ensure source executable remains ordinary ELF and was compiled
             # for the same runtime ABI; no hardware or system service involved.
-            if library.open("rb").read(4) != b"\\x7fELF":
+            if library.open("rb").read(4) != b"\x7fELF":
                 raise ValueError("Built library is not an ELF file")
             stage.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
             stage.mkdir(mode=0o700)
@@ -139,7 +139,7 @@ def main() -> None:
             os.chmod(staged, 0o600)
             digest = hashlib.sha256(staged.read_bytes()).hexdigest()
             manifest = stage / "SHA256"
-            manifest.write_text(f"{digest}  lib/{library.name}\\n", encoding="ascii")
+            manifest.write_text(f"{digest}  lib/{library.name}\n", encoding="ascii")
             os.chmod(manifest, 0o600)
             print("PASS: verified clean build STAGED to user-only location:", stage)
             print("STAGED_LIB_SHA256:", digest)
