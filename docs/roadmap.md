@@ -7,7 +7,8 @@
 - [x] USB identity `2808:5955`, endpoints, handshake and readiness understood.
 - [x] Finger contact/release and physical image capture demonstrated.
 - [x] Primary processed image layout established experimentally as 64 × 80 pixels.
-- [ ] Validate sustained use, USB recovery, cancellation and error handling.
+- [x] **14 October hardware tests:** experimental native driver completed 12-stage enrolment with **five rejected impressions**, verification cancellation reported `G_IO_ERROR_CANCELLED`, device closed/reopened successfully, and forced quality rejection produced one retry callback then an appropriate `NO_MATCH`; no leftover subprocesses reported. The user had already done these tests; **do not request their repetition or physical unplugging of the built-in sensor**.
+- [ ] **Remaining reliability scope:** extended sustained-use and security review only; synthetic USB/error injection may cover unplug-like failure without a physical disconnect. Prior tests show basic cancel/reject/reopen paths working, not proof of every rare failure condition.
 
 ## 2. Experimental enrolment/matching — demonstrated, not security-validated
 
@@ -65,7 +66,7 @@
 - [x] **17 October:** Implemented [independent upstream-tag clean-clone builder](../tools/verify_ft5955_clean_clone.py) that verifies all three source patches, clones exact upstream tag, rebuilds and compares the resulting active driver; original known-working builder unchanged. **New build path awaits Nobara testing.**
 - [x] **17 October, user-run on Nobara:** **independent clean clone and compile PASS**. Fresh GitHub repo clone, fresh upstream libfprint `v1.94.100` clone at verified commit `80a4b5ec`, all three SHA-verified/reviewed patches applied successfully, byte-identical current C driver reconstructed, Meson 27 targets, Ninja **109/109**. Temporary build removed, live checkout/system authentication untouched. Optional driver tests skipped because introspection/dependencies unavailable, so **build PASS is not runtime validation**.
 - [x] **17 October, user-run:** independently clean-cloned libfprint **109/109 build AND physical Claim-only runtime PASS**, private `fprintd` `/proc/PID/maps` confirmed newly rebuilt library, then GetDevices → Claim → Release succeeded on real FT5955. No `EnrollStart`, `VerifyStart`, capture or persistent biometric storage. First attempt returned USB `Access denied [-3]`; manual, per-user ACL on exact `/dev/bus/usb/003/003` node allowed success. This ACL is not removed by test cleanup and is not a permanent udev rule. [Verified test record](independent-hardware-pass-2026-10-17.md).
-- [ ] **Current:** perform source-only reliability/security review of USB timeouts, cancel/disconnect, private MOH subprocess cleanup, template handling and error mapping. Prefer offline, synthetic tests and preserve no-enrolment constraint; do not enable system fprintd/PAM/KDE fingerprint login yet.
+- [ ] **Current:** recognise the completed 14 October failed-scan/cancellation/reopen tests and avoid repetition. Do a focused **source-only review** of security-sensitive template persistence, unkeyed checksums, MOH subprocess isolation and reversible system integration; if any uncovered recovery case matters, test with synthetic/offline error injection. No physical USB unplug test, new enrolment, or premature PAM/KDE login enabling.
 - [ ] Complete offline error/security regression review and plan any system integration only after explicit review, safe rollback and password fallback. **User requests no further enrolments.**
 - [ ] Maintain this roadmap and [dated current status](status-2026-10-16.md) alongside each tested change.
 
