@@ -1,0 +1,14 @@
+# SOURCE-ONLY PROTOTYPE. DO NOT INSTALL/ENABLE before private MOH audit.
+[Unit]
+Description=FT5955 dedicated non-root matching-engine IPC socket (experimental)
+
+[Socket]
+ListenStream=/run/ft5955-engine/engine.sock
+SocketUser=ft5955-engine
+SocketGroup=root
+SocketMode=0660
+DirectoryMode=0755
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target
