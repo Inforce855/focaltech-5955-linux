@@ -27,11 +27,43 @@ The snapshot directory deliberately retains the date in its name as an **immutab
 
 The user explicitly accepts a deliberate second press if the first legitimate fingerprint is rejected. This is a **usability tolerance**, not permission to turn `NO_MATCH` into an authentication success, to ignore different-finger checks or to weaken password fallback.
 
+## Pinned-base provenance audit — 17 October 2026 (real Nobara result)
+
+The user ran the **read-only** `tools/audit_ft5955_base.py` directly from GitHub on their existing Nobara development machine. The terminal returned:
+
+```text
+PINNED_LIBFPRINT_COMMIT: c8e01dc26cedb2d97779a314a7260f1c33e02bfa
+PARENT_COUNT: 1
+PARENT_1: 68696e04a88efbecd5dd79cebf05b8ef013c51d8
+BASE_CONTAINS_LIBFPRINT_MESON_BUILD: YES
+BASE_CONTAINS_LIBFPRINT_DRIVERS_FOCALTECH_5955_C: YES
+LOCAL_BRANCHES_CONTAINING_BASE: 1
+REMOTE_TRACKING_REFS_CONTAINING_BASE: 0
+TAGS_CONTAINING_BASE: 0
+CONFIGURED_REMOTE_COUNT: 1
+BASE_COMMIT_CHANGED_DRIVER_SCAFFOLD: YES
+PASS: audit read Git metadata only; no changes or sensor operations.
+```
+
+**Conclusion:** the pinned base commit is accessible from one local Git branch and introduced or modified the FocalTech scaffold; no *locally fetched* remote-tracking branch or tag contains that commit. This strongly suggests a local development commit, but **does not prove that the commit or its parent is unavailable from the upstream remote**. The original build remains reproducible on the user's machine but is not yet verified from a network-clean clone.
+
+### Next source-only check: identify the entire parent-to-base delta
+
+A new reviewed-scope inspector [`tools/inspect_ft5955_base_delta.py`](../tools/inspect_ft5955_base_delta.py) is now committed. It verifies both SHA-1 Git commit objects and their parent relation, prints exactly which paths changed in the scaffold commit, checks for binary/symlink/oversize content, and outputs the prospective text patch size and SHA-256. **By default it reads Git objects only and writes nothing.** It expects changes to be limited to:
+
+- `meson.build`
+- `libfprint/meson.build`
+- `libfprint/drivers/focaltech_5955.c`
+
+If there are other changes, unsupported file modes, or a non-text delta, the tool **stops** rather than silently excluding them. An optional explicit `--export /absolute/path.patch` writes a reviewable, private-permissions text-only diff outside the active trees; **do not publish any patch without first inspecting its contents**. A patch export is not run by default.
+
+No biometric scan, enrolment, driver installation, system fprintd/PAM change, Git fetch, remote URL output or modification of the local working tree is involved.
+
 ## What still blocks a portable, clean-clone build
 
 The SHA-verified builder uses a **pinned libfprint Git commit** `c8e01dc26cedb2d97779a314a7260f1c33e02bfa`, currently present in `~/Projects/libfprint-ft5955` on the user's Nobara system. Its availability from a fresh external clone has **not** been established. The build can be recreated on this machine even with a dirty worktree because `git archive` reads the commit object, not the working files.
 
-**Next read-only task:** establish the provenance and reachability of that exact base commit. If it is local-only, reconstruct its modifications against an identified public upstream libfprint tag/commit or provide a reviewed reproducible base-patch chain. Do **not** assume a random public libfprint checkout contains our scaffold. Do not publish a full fork or vendor arbitrary upstream source without license/build review.
+**Next read-only task:** inventory the **exact changes** introduced by that pinned base commit and verify whether its parent is available upstream. The previous read-only Git provenance audit is complete. If it is local-only, reconstruct its modifications against an identified public upstream libfprint tag/commit or provide a reviewed reproducible base-patch chain. Do **not** assume a random public libfprint checkout contains our scaffold. Do not publish a full fork or vendor arbitrary upstream source without license/build review.
 
 ## Working boundaries
 
@@ -42,6 +74,6 @@ The SHA-verified builder uses a **pinned libfprint Git commit** `c8e01dc26cedb2d
 
 ## Safe next check
 
-After fetching this branch into a **separate checkout**, run the static base-commit audit tool `tools/audit_ft5955_base.py`. It reads only the existing local Git object store, does not access USB or print remote URLs, and does not change the libfprint worktree. Then use its result to decide whether to add a clean-clone rebuild pathway.
+After fetching this branch, run the newly committed scaffold delta inspector `tools/inspect_ft5955_base_delta.py` from the GitHub branch. It reads the existing local Git object store, does not access USB or print remote URLs, and does not change the libfprint worktree. Once the complete base-commit delta is known and reviewed, preserve that patch on GitHub and create a verified build from a **publicly accessible upstream parent**.
 
 Until that source provenance is resolved, our results are **working rebuild from saved GitHub sources on the tested Nobara machine**, not yet universally reproducible driver packaging.
