@@ -30,6 +30,34 @@ The user's **real local** `test_moh_isolated_live_identify.sh` was inspected by 
 
 The retained date-stamped C/native driver and three reproducible source patches are **unchanged**.
 
+## 17 October 2026 — user's local MOH relocation audit PASS
+
+The ordinary-user, read-only `python3 tools/audit_ft5955_moh_relocation.py` completed with **PASS for every current local input**: original audited launcher, 110-import/SHA preflight module, MOH source file, installed root-owned DLL, all build/sandbox commands, Bash syntax and exact expected launcher structure. The installed proprietary DLL's SHA-256 **matched the pinned audit digest**, and it is not group/world writable.
+
+This proves the existing MOH input files are present and unaltered at the pinned DLL level. **It does not prove** that bwrap runs in the eventual dedicated service account, that the Windows matcher is stable across systemd isolation, that `UNVERIFIED_ATTACH` is safe for login, or that KDE fingerprint enrolment succeeds.
+
+## Temporary systemd service isolation smoke test — prepared, not yet run
+
+The new [`tools/smoke_ft5955_broker_systemd.sh`](../tools/smoke_ft5955_broker_systemd.sh) performs a narrowly scoped **real systemd** smoke test on the user's Nobara host. It is an independent opt-in script and does **not** invoke the FocalTech DLL, its loader or the actual `fprintd` system service.
+
+- It refuses any already existing broker root folder, socket folder, service/socket unit, or matching service account.
+- Temporarily creates `ft5955-engine` as a **non-root system service account** and root-owned `/opt/ft5955-broker-smoke` files containing only the reviewed AF_UNIX broker and an innocuous mock gateway (which never produces `MATCH`).
+- Temporarily installs **different unit names** `ft5955-engine-smoke.socket` and `ft5955-engine-smoke.service`. Those exercise `ProtectHome=yes`, `ProtectSystem=strict`, `PrivateTmp=yes`, `PrivateDevices=yes`, `NoNewPrivileges=yes`, no capabilities and AF_UNIX-only access. Socket path is exactly the future planned `/run/ft5955-engine/engine.sock`.
+- Connects using a *synthetic root client* permitted by the broker's `SO_PEERCRED` root-UID restriction, sends one **all-zero 5120-byte mock frame** and requires the exact `READY 1` / `RETRY QUALITY` / `BYE` reply sequence. Checks the actual broker process runs as non-root.
+- **Automatic cleanup on script exit, including failure:** stops temporary units, removes its files/units/socket and attempts to delete the temporary service account. Does not touch `/usr/lib64/libfprint*`, `/usr/libexec/fprintd`, `/etc/pam.d/`, `fprintd.service`, or the root-owned vendor DLL; does not enrol.
+- The smoke script itself is newly written; prior synthetic GitHub Actions proof was the **non-root local Python two-process transport**, not a real systemd-root-client run. **Do not call the systemd smoke PASS until the user actually runs it.**
+
+If there are no local resource collisions, the one-run trial command is:
+
+```bash
+REPO="$HOME/Projects/ft5955-independent-build-check"
+git -C "$REPO" pull --ff-only
+bash -n "$REPO/tools/smoke_ft5955_broker_systemd.sh"
+sudo bash "$REPO/tools/smoke_ft5955_broker_systemd.sh" --smoke
+```
+
+**Next if successful:** package and isolate the actual audited MOH source with the pinned installed DLL, checking non-root bwrap/user-namespace compatibility without changing system authentication. Existing driver installation and rollback remain independent.
+
 ## Non-installed systemd prototypes
 
 - [`systemd/ft5955-engine.socket`](../systemd/ft5955-engine.socket) proposes a root-group `0660` Unix socket outside /home. Systemd would own the listening descriptor and pass fd 3 to the broker, allowing only root clients and the dedicated service account to connect.
