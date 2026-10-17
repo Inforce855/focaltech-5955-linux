@@ -50,6 +50,8 @@ def main() -> None:
                       help="Fetch exact upstream release and compile in /tmp (NO USB)")
     mode.add_argument("--claim-only", action="store_true",
                       help="Rebuild then private Discover/Claim/Release (NO ENROL/VERIFY)")
+    mode.add_argument("--stage", action="store_true",
+                      help="Rebuild and stage verified .so in PRIVATE user state; NO install/USB")
     args = ap.parse_args()
     if os.geteuid() == 0:
         raise ValueError("Run as a normal user; never root")
@@ -60,7 +62,7 @@ def main() -> None:
     active_patch = snapshot / existing.PATCH
     print("PASS: saved working-driver source manifest and BOTH historical patch hashes verified")
     print("PASS: pinned upstream libfprint release tag =", UPSTREAM_TAG)
-    if not (args.build or args.claim_only):
+    if not (args.build or args.claim_only or args.stage):
         print("SOURCE PREFLIGHT ONLY: no network, USB, build or installation.")
         return
     for command in ("git", "meson", "ninja"):
@@ -114,6 +116,34 @@ def main() -> None:
         if not list((build / "libfprint").glob("libfprint-2.so*")):
             raise ValueError("Build finished without a libfprint shared library")
         print("PASS: CLEAN upstream clone + 3 GitHub patches built independently")
+        if args.stage:
+            # User-owned staging only. Do not put the shared library where a
+            # protected system fprintd service would load it. A separate
+            # privileged trial tool will copy it into root-owned /opt later.
+            stage = Path.home() / ".local" / "state" / "ft5955-system-trial" / "stage"
+            if stage.exists() or stage.is_symlink():
+                raise ValueError(f"Stage already exists: {stage}; refusing overwrite")
+            library = build / "libfprint" / "libfprint-2.so.2.0.0"
+            if library.is_symlink() or not library.is_file():
+                raise ValueError(f"Exact built libfprint SONAME target missing: {library}")
+            # Ensure source executable remains ordinary ELF and was compiled
+            # for the same runtime ABI; no hardware or system service involved.
+            if library.open("rb").read(4) != b"\\x7fELF":
+                raise ValueError("Built library is not an ELF file")
+            stage.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            stage.mkdir(mode=0o700)
+            lib_stage = stage / "lib"
+            lib_stage.mkdir(mode=0o700)
+            staged = lib_stage / library.name
+            shutil.copyfile(library, staged)
+            os.chmod(staged, 0o600)
+            digest = hashlib.sha256(staged.read_bytes()).hexdigest()
+            manifest = stage / "SHA256"
+            manifest.write_text(f"{digest}  lib/{library.name}\\n", encoding="ascii")
+            os.chmod(manifest, 0o600)
+            print("PASS: verified clean build STAGED to user-only location:", stage)
+            print("STAGED_LIB_SHA256:", digest)
+            print("No files in /opt, /etc, /usr, no service/PAM edits and no USB operations.")
         if args.claim_only:
             env = os.environ.copy()
             env["FT5955_REBUILD_CLAIM_TEST"] = "1"
