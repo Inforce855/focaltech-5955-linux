@@ -3,6 +3,7 @@ name: FT5955 broker synthetic transport
 on:
   push:
     branches:
+      - main
       - feature/ft5955-driver-consolidation-20261017
     paths:
       - "tools/ft5955_engine_broker.py"
