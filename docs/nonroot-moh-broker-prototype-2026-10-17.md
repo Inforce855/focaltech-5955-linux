@@ -1,6 +1,6 @@
 # Non-root matching-engine IPC broker — initial source prototype
 
-**17 October 2026 · Prototype code committed; synthetic check awaits execution. No new driver installation.**
+**17 October 2026 · Synthetic protocol smoke test PASSED in GitHub Actions. No new driver installation.**
 
 ## Why the normal system driver cannot simply use the experimental engine
 
@@ -18,7 +18,17 @@ We added [`tools/ft5955_engine_broker.py`](../tools/ft5955_engine_broker.py), a 
 3. Each accepted session launches the already tested `engine_gateway.py` under the dedicated non-root account with a minimal subprocess environment. Its individual MOH subprocess remains isolated by its existing bwrap rules, with bounded read and cleanup on peer/child exit.
 4. **Production not authorised:** until verified with the actual systemd sandbox, review root-owned script deployment, bwrap availability, socket permissions, cancellation/timeout, honest matcher results, secure template persistence and login fallback. Neither test-mode broker nor synthetic gateway may ever be used for real biometric authentication.
 
+## Non-installed systemd prototypes
+
+- [`systemd/ft5955-engine.socket`](../systemd/ft5955-engine.socket) proposes a root-group `0660` Unix socket outside /home. Systemd would own the listening descriptor and pass fd 3 to the broker, allowing only root clients and the dedicated service account to connect.
+- [`systemd/ft5955-engine.service`](../systemd/ft5955-engine.service) proposes a separate `ft5955-engine` non-root account with `ProtectHome=yes`, `ProtectSystem=strict`, `PrivateDevices=yes` and no Linux capabilities. It expects audited engine code under root-owned `/opt/ft5955-system-trial/engine` and a private MOH tree under `/var/lib/ft5955-engine/vendor`. **These do not exist yet**; this is not an installer.
+- `NoNewPrivileges=yes`, user namespaces and the local MOH bwrap runner may interact; we have not validated that the proprietary loader will run under the proposed sandbox. The prototype service may need narrower researched allowances after source-only runner audit. **Do not weaken protections blindly.**
+
 ## Current offline check
+
+**GitHub Actions passed** the `FT5955 broker synthetic transport` Python syntax + mock protocol check (run [39024071118](https://github.com/Inforce855/focaltech-5955-linux/actions/runs/39024071118), status `completed`, conclusion `success`). CI is **synthetic only**: it uses no fingerprint reader or proprietary engine and does not establish security of fingerprint recognition.
+
+
 
 The accompanying [`tools/test_ft5955_engine_broker_synthetic.py`](../tools/test_ft5955_engine_broker_synthetic.py) launches both halves **only as the ordinary user**, with a disposable `/tmp` socket protected by a private directory. Its fake gateway accepts a synthetic all-zero 5,120-byte payload and emits **`READY 1`**, **`RETRY QUALITY`**, then **`BYE`**. It **never emits `MATCH`**, never accesses USB/fingerprints/templates/DLLs, and leaves fprintd/systemd/PAM unchanged. Passing it validates only transport, not recognition/security/integration.
 
