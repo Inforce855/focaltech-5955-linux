@@ -157,24 +157,32 @@ dbus-run-session -- bash -c '
     echo "Use the SAME right index finger for all enrolment touches."
     status=0
     if [[ "$FT5955_V096_PRIVATE_MODE" == "--roundtrip" ]]; then
-        echo "PHASE 1: Enrol once and confirm fprintd lists the finger."
+        echo "PHASE 1A: Enrol once and confirm fprintd lists the finger."
         "$FT5955_V096_PRIVATE_CLIENT" --enroll-only || status=$?
+        if [[ $status -eq 0 ]]; then
+            echo "PHASE 1B: NEW client, SAME private fprintd, saved-template verify."
+            "$FT5955_V096_PRIVATE_CLIENT" --verify-baseline || status=$?
+            if [[ $status -ne 0 ]]; then
+                echo "BASELINE FAIL: no successful saved-template match BEFORE daemon restart." >&2
+                echo "Skipping restart: a post-restart failure would not isolate persistence." >&2
+            fi
+        fi
         if [[ $status -eq 0 ]]; then
             echo "Restarting ONLY private fprintd; retaining disposable RAM storage."
             kill "$fp_pid" 2>/dev/null || true
             wait "$fp_pid" 2>/dev/null || true
             fp_pid=""
             if launch_fprintd "$TEST_DIR/fprintd-restarted.log"; then
-                echo "PHASE 2: New fprintd process, new client, same RAM storage."
+                echo "PHASE 2: NEW fprintd process, NEW client, SAME RAM storage."
                 "$FT5955_V096_PRIVATE_CLIENT" --verify-saved || status=$?
             else
                 status=5
             fi
         fi
         if [[ $status -eq 0 ]]; then
-            echo "PASS: enrolment survived a private daemon restart."
+            echo "PASS: saved template MATCHED before AND after private daemon restart."
         else
-            echo "FAIL: cross-daemon saved-template roundtrip." >&2
+            echo "FAIL: controlled cross-daemon saved-template roundtrip." >&2
         fi
     else
         "$FT5955_V096_PRIVATE_CLIENT" "$FT5955_V096_PRIVATE_MODE" || status=$?
