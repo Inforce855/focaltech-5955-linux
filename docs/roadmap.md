@@ -44,6 +44,7 @@
 - [ ] Repeat enrol/verify across separate sessions; confirm consistent positive and negative outcomes.
 - [ ] Verify persistent storage and reload behaviour, error propagation and privacy boundaries.
 - [ ] Only after sufficient evidence, review optional KDE/PAM integration with password fallback.
+- [ ] **Optional future GUI: [COSMIC Utils Enroll](https://github.com/cosmic-utils/enroll)** ([Flathub](https://flathub.org/apps/org.cosmic_utils.enroll)). Source reviewed 17 October 2026: Rust/libcosmic frontend calls normal `net.reactivated.Fprint` **system-bus** D-Bus methods for user selection, listing prints, Register/`EnrollStart`, Verify/`VerifyStart` and deletion; Flatpak manifest grants system bus access to fprintd, PolicyKit and Accounts. It does **not** add sensor drivers or native matching. Could become a GUI for our reader **only after** safe system fprintd/libfprint integration; it does **not** automatically find the existing isolated private D-Bus test service. COSMIC styling may also work under KDE, but this has **not** been tested on user's Nobara installation. **Do not click Register/Enroll or Delete** in the current no-enrolment phase; no installation or system-auth changes requested.
 
 **Not ready for production login.** A successful compile or one test match is not authentication assurance.
 
