@@ -36,6 +36,12 @@ The ordinary-user, read-only `python3 tools/audit_ft5955_moh_relocation.py` comp
 
 This proves the existing MOH input files are present and unaltered at the pinned DLL level. **It does not prove** that bwrap runs in the eventual dedicated service account, that the Windows matcher is stable across systemd isolation, that `UNVERIFIED_ATTACH` is safe for login, or that KDE fingerprint enrolment succeeds.
 
+## Decision after failed nested bwrap test (17 October 2026)
+
+The user ran the separate `--probe-bwrap` mode inside the temporary hardened broker service. The synthetic client received `ERROR BWRAP_NAMESPACE_UNAVAILABLE`; **nested bubblewrap inside that already hardened systemd service failed**. The helper confirmed **cleanup PASS**: temporary socket, units, files and user account removed. It did not execute the MOH DLL, capture a fingerprint, or change the normal `fprintd` service.
+
+**User preference: do not spend the day troubleshooting double sandboxing.** Stop the nested-systemd+bwrap track instead of weakening protections speculatively. Our original ordinary-user MOH/bwrap environment previously worked, and the normal-system `fprintd` driver-discovery installation/rollback and stand-alone AF_UNIX broker communication separately passed. Next, evaluate whether we can bridge normal `fprintd` to that *existing* non-root MOH environment over a protected local socket. This is a **design candidate only**; it has not been enabled or proven secure for user authentication. Preserve the old scanner, library snapshot, and the already working tests. Keep system fprintd biometric actions disabled until a bounded, auditable, reversible integration is available; **no new enrolment or PAM changes** at this stage.
+
 ## Real systemd non-root isolation — verified on Nobara 17 October 2026
 
 **USER-RUN PASS:** `sudo bash tools/smoke_ft5955_broker_systemd.sh --smoke` started temporary root-group Unix socket and the isolated non-root service. The root-credentialled synthetic client transmitted an all-zero 5,120-byte frame and received the exact sequence `READY 1 → RETRY QUALITY → BYE`. **Broker PID 13909 ran as UID 955 (non-root)**, under the hardened service. No DLL, genuine fingerprint, USB, real `fprintd`, KDE/PAM or template data was involved. **Cleanup PASS:** temporary service, socket, test code and service account were removed. This baseline test is complete; there is no need to repeat it.
