@@ -18,6 +18,18 @@ We added [`tools/ft5955_engine_broker.py`](../tools/ft5955_engine_broker.py), a 
 3. Each accepted session launches the already tested `engine_gateway.py` under the dedicated non-root account with a minimal subprocess environment. Its individual MOH subprocess remains isolated by its existing bwrap rules, with bounded read and cleanup on peer/child exit.
 4. **Production not authorised:** until verified with the actual systemd sandbox, review root-owned script deployment, bwrap availability, socket permissions, cancellation/timeout, honest matcher results, secure template persistence and login fallback. Neither test-mode broker nor synthetic gateway may ever be used for real biometric authentication.
 
+## Runner audit — user-provided 17 October source
+
+The user's **real local** `test_moh_isolated_live_identify.sh` was inspected by printing its first 260 lines and running `bash -n`; syntax returned cleanly. The full displayed file establishes:
+
+- It changes directory to its parent source tree: `cd "$(dirname "$0")/.."`, then imports `tools.moh_engine_preflight` and compiles `engine/ft_engine.c` and numerous `engine/ft5955_compat_*.c` files. **A DLL alone is insufficient**; the separate non-root service needs the audited C and Python dependencies in a stable read-only tree, or a precompiled reproducible executable.
+- With no argument it takes **`/usr/local/lib/focaltech-5955/ftWbioEngineAdapter.dll`** as the DLL. The path is merely a **default**, not proof that the DLL exists; it accepts a positional DLL or ZIP. Our current `template_runner.py` passes no explicit DLL, despite having an `executable` Python parameter. A future service-specific copy should pass an explicit root-owned DLL path, with the pinned SHA audit still intact. Do **not** edit the immutable saved 16 October snapshot.
+- `moh_engine_preflight.audit(candidate, Path("engine/ft_engine.c"))` requires **exactly 110 covered imports** and a SHA-256 match with the module's pinned DLL digest; it then hashes the actual temporary engine copy before any execution. This is stronger than just trusting a filename, but the user's printed source does **not** prove the currently installed DLL is present or matches. The read-only [relocation preflight](../tools/audit_ft5955_moh_relocation.py) checks those facts.
+- The runner compiles an executable in mode-0700 disposable `/tmp`, then uses `timeout --signal=KILL 1200s bwrap --unshare-all --die-with-parent --new-session --clearenv`, a read-only host runtime, private `/tmp`, and read-only binds of **only** the verified DLL and built executable. No host `/home`, real USB device, network, or other host writable paths are mounted. The code needs functioning **unprivileged user namespaces** in the eventual `ft5955-engine` service context; this cannot be established by reading the script alone.
+- The GCC flags explicitly include `-DFT5955_ALLOW_UNVERIFIED_ATTACH` and other `FT5955_OFFLINE_...` mock/diagnostic flags. Those guards may be required by the experimental MOH path, but **they must not be misrepresented as production-authentication readiness**. The service can be validated as a laboratory experiment with PAM disabled while remaining unsuitable for high-trust login.
+
+The retained date-stamped C/native driver and three reproducible source patches are **unchanged**.
+
 ## Non-installed systemd prototypes
 
 - [`systemd/ft5955-engine.socket`](../systemd/ft5955-engine.socket) proposes a root-group `0660` Unix socket outside /home. Systemd would own the listening descriptor and pass fd 3 to the broker, allowing only root clients and the dedicated service account to connect.
