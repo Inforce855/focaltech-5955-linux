@@ -31,7 +31,9 @@ jobs:
       - name: Check reversible service smoke script shell syntax (do not run)
         run: bash -n tools/smoke_ft5955_broker_systemd.sh
       - name: Syntax-check short-lived KDE lab experiment wrappers (NO execution)
-        run: bash -n tools/ft5955_kde_trial.sh tools/manage_ft5955_kde_trial.sh
+        run: |
+          bash -n tools/ft5955_kde_trial.sh
+          bash -n tools/manage_ft5955_kde_trial.sh
       - name: Validate embedded mock gateway source syntax (never execute)
         run: |
           python3 - <<'CHECK_EMBEDDED'
