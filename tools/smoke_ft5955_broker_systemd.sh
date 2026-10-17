@@ -73,7 +73,14 @@ cleanup() {
         fi
     fi
     if (( account_created )); then
-        userdel "$ACCOUNT" || echo "WARNING: could not remove temporary service account." >&2
+        if ! userdel "$ACCOUNT"; then
+            echo "WARNING: could not remove temporary service account." >&2
+            rc=1
+        fi
+        if getent passwd "$ACCOUNT" >/dev/null; then
+            echo "WARNING: temporary service account still exists after cleanup." >&2
+            rc=1
+        fi
     fi
     if (( installed )); then
         if [[ ! -e "$SERVICE" && ! -e "$SOCKET_UNIT" &&
