@@ -92,6 +92,8 @@ def main() -> None:
                         help="Existing local Git checkout (READ ONLY)")
     parser.add_argument("--build", action="store_true",
                         help="Run isolated temporary-source Meson compile (NO install)")
+    parser.add_argument("--claim-only", action="store_true",
+                        help="Rebuild, then run private D-Bus Discover/Claim/Release ONLY; NO enrolment")
     args = parser.parse_args()
     if os.geteuid() == 0:
         raise ValueError("Refusing root; run as normal user")
@@ -112,13 +114,22 @@ def main() -> None:
         raise ValueError("Base libfprint object is not a commit")
     print("PASS: 13 C/header driver files, 3 engine sources and Meson patch verified by SHA-256")
     print("PASS: base libfprint commit available locally; active checkout will remain untouched")
-    if not args.build:
+    if not (args.build or args.claim_only):
         print("PREFLIGHT ONLY — no files changed, no fingerprint operation. Use --build to compile.")
         return
+    if args.claim_only:
+        # Compile the tiny dedicated client separately before touching USB.
+        # No access to the old v0.9.6 enrolment client/launcher is required.
+        claim_script = repo / "experiments/private-fprintd/ft5955_claim_only_v097.sh"
+        if not claim_script.is_file():
+            raise ValueError("No dedicated GitHub Claim-only test launcher found")
+        execute(["bash", str(claim_script), "--check"], cwd=repo, stream=True)
     for exe in ("git", "meson", "ninja"):
         if not shutil.which(exe):
             raise ValueError(f"Build dependency missing: {exe}")
-    with tempfile.TemporaryDirectory(prefix="ft5955-rebuild-") as td:
+    # Explicit /tmp path is enforced by the Claim-only launcher: it must
+    # refuse a path to any installed or pre-existing libfprint binary.
+    with tempfile.TemporaryDirectory(prefix="ft5955-rebuild-", dir="/tmp") as td:
         work = Path(td)
         source = work / "libfprint-source"
         source.mkdir()
@@ -150,7 +161,21 @@ def main() -> None:
         if not libs:
             raise ValueError("Build finished but expected libfprint shared library is absent")
         print("PASS: isolated libfprint build completed using GitHub snapshot")
-    print("PASS: temporary rebuild removed; live checkout, system auth and USB device untouched")
+        if args.claim_only:
+            # The library is retained ONLY during the child private-bus test.
+            # The launcher checks /proc/PID/maps to prove this exact .so loaded.
+            env = os.environ.copy()
+            env["FT5955_REBUILD_CLAIM_TEST"] = "1"
+            env["FT5955_PRIVATE_LIB_DIR"] = str(build / "libfprint")
+            print("=== NO-ENROLMENT PRIVATE REBUILT-DRIVER CLAIM TEST ===", flush=True)
+            subprocess.run(["bash", str(claim_script), "--claim-only"],
+                           cwd=repo, env=env, check=True)
+            print("PASS: rebuilt GitHub driver passed private Discover/Claim/Release.")
+    if args.claim_only:
+        print("PASS: temporary build and private test state removed; "
+              "system fprintd/PAM and working checkout unchanged.")
+    else:
+        print("PASS: temporary rebuild removed; live checkout, system auth and USB device untouched")
 
 
 if __name__ == "__main__":
