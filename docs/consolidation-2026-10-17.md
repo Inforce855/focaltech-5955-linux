@@ -59,11 +59,19 @@ If there are other changes, unsupported file modes, or a non-text delta, the too
 
 No biometric scan, enrolment, driver installation, system fprintd/PAM change, Git fetch, remote URL output or modification of the local working tree is involved.
 
+### Confirmed parent-to-base scaffold diff — 17 October 2026
+
+The user ran `tools/inspect_ft5955_base_delta.py` read-only on Nobara. It **PASSED** with the exact parent `68696e04a88efbecd5dd79cebf05b8ef013c51d8` and base `c8e01dc26cedb2d97779a314a7260f1c33e02bfa`. Its **entire** changed-path set consisted of just **one modified tracked source**: `libfprint/drivers/focaltech_5955.c` (`M`). No `meson.build` files changed *in this one commit*. The exported candidate text patch was measured (but **not exported**) at **1,449 bytes**, SHA-256 `df8af5a8ac10b716266bb8bdc1107a74c4714079e506a083b2579efa4c5d44f9`. Source patch text itself has **not yet been reviewed or committed to GitHub**. The inspection did not change files, access USB, or perform biometric actions.
+
+**Interpretation:** The immediate parent already had the driver scaffold and Meson registration that appear in the pinned base (as the diff contains no Meson edits), so preserving this one small C patch *alone* does not create a portable build from a vanilla upstream checkout. A second dependency remains: determining how the **parent** obtained its scaffold/Meson additions, and whether it descends from a fetchable public upstream commit. No remote availability claim is made.
+
+**Next source-only action:** review the exact 1,449-byte `git diff` output for this one file and preserve it in GitHub after content review and checksum verification. Then inspect the parent ancestry/registration additions against its upstream ancestor; prepare a full patch chain and independent clean-clone build. Existing full build and physical Claim/Release PASS remain valid.
+
 ## What still blocks a portable, clean-clone build
 
 The SHA-verified builder uses a **pinned libfprint Git commit** `c8e01dc26cedb2d97779a314a7260f1c33e02bfa`, currently present in `~/Projects/libfprint-ft5955` on the user's Nobara system. Its availability from a fresh external clone has **not** been established. The build can be recreated on this machine even with a dirty worktree because `git archive` reads the commit object, not the working files.
 
-**Next read-only task:** inventory the **exact changes** introduced by that pinned base commit and verify whether its parent is available upstream. The previous read-only Git provenance audit is complete. If it is local-only, reconstruct its modifications against an identified public upstream libfprint tag/commit or provide a reviewed reproducible base-patch chain. Do **not** assume a random public libfprint checkout contains our scaffold. Do not publish a full fork or vendor arbitrary upstream source without license/build review.
+**Next read-only task:** review and preserve the exact single-source patch, then identify the parent commit's scaffold/Meson ancestry and determine whether an upstream ancestor is fetchable. The previous read-only Git provenance audit is complete. If it is local-only, reconstruct its modifications against an identified public upstream libfprint tag/commit or provide a reviewed reproducible base-patch chain. Do **not** assume a random public libfprint checkout contains our scaffold. Do not publish a full fork or vendor arbitrary upstream source without license/build review.
 
 ## Working boundaries
 
@@ -74,6 +82,6 @@ The SHA-verified builder uses a **pinned libfprint Git commit** `c8e01dc26cedb2d
 
 ## Safe next check
 
-After fetching this branch, run the newly committed scaffold delta inspector `tools/inspect_ft5955_base_delta.py` from the GitHub branch. It reads the existing local Git object store, does not access USB or print remote URLs, and does not change the libfprint worktree. Once the complete base-commit delta is known and reviewed, preserve that patch on GitHub and create a verified build from a **publicly accessible upstream parent**.
+The scaffold delta inventory is complete: one source file, 1,449-byte patch, checksum above. Next, inspect the complete text of that patch before preserving it on GitHub, then investigate the parent scaffold/Meson chain. This is source-only work; no biometric or system-auth operations.
 
 Until that source provenance is resolved, our results are **working rebuild from saved GitHub sources on the tested Nobara machine**, not yet universally reproducible driver packaging.
