@@ -41,6 +41,18 @@ If activation fails, the wrapper attempts automatic rollback, but its privileged
 - KDE System Settings → Users visibly offered **Configure Fingerprint Authentication**. User subsequently reported: **“I just added my left & right index fingers!!”** Treat as **real KDE enrolment success for both fingers**, not as measured false-accept resistance, verified fingerprint recognition, successful PAM authentication or independent user-template attestation.
 - **Verification PASS, user-reported:** standard `fprintd-verify` produced genuine `verify-match` results after KDE enrolment. User says **approximately 85% success with 3–4 distinct taps** (fresh lift/re-press on sensor); this is a practical informal estimate, **not** 85% first-press recognition, formal benchmark, negative-finger false-accept testing, or PAM login success. Previous finger-on/off studies established a new image needs fresh contact. The exact reason for misses remains undetermined. No need to enrol more fingers to mark end-to-end functionality achieved. Keep login/password unchanged. Roll back experimental system trial using `bash tools/ft5955_kde_trial.sh --stop` when finished; enrolled prints in fprintd storage are *not* removed automatically.
 
+## Verified user-run rollback — 17 October 2026
+
+Following real KDE enrolment of both index fingers and observed `fprintd-verify` matches, user ran:
+
+```bash
+bash "$HOME/Projects/ft5955-independent-build-check/tools/ft5955_kde_trial.sh" --stop
+```
+
+The terminal confirmed that the experimental biometric gateway was **disabled**, the user-session relay removed, the experimental systemd drop-in and separate library removed, and the **original packaged Nobara `libfprint` / `fprintd` retained**. Script printed `PASS: experimental driver removed; original Nobara fprintd restored` and `No PAM changes were made`. Standard D-Bus activation will load the packaged library; the original library's next **actual runtime mapping** was not independently verified after rollback. No Timeshift restore required. Stored test prints in `/var/lib/fprint` may remain and were **not** deleted by this script.
+
+**Cycle PASS: installation → real KDE enrolment of two fingers → observed `verify-match` → successful rollback.** Production login/security readiness remains **NOT APPROVED**; `FT5955_ALLOW_UNVERIFIED_ATTACH`, user-controlled matching engine, template integrity, and inconsistent first-press recognition remain open.
+
 ## Validation scope
 
 GitHub Actions passed shell syntax and ordinary-user synthetic Python broker transport [run 39026507585](https://github.com/Inforce855/focaltech-5955-linux/actions/runs/39026507585). CI never exercised actual MOH DLL, fingerprint enrolment, user-session root peer socket or live root service activation. **Those separate system steps now have first user-reported success for device integration and KDE enrolment** (as recorded above). CI scope remains synthetic; the user's real normal-service fingerprint verification now produced `verify-match` with inconsistent first-touch capture, but PAM login remains untested and intentionally disabled. This is still not a security-reviewed production login release.
