@@ -17,7 +17,7 @@ INITIAL = "68696e04a88efbecd5dd79cebf05b8ef013c51d8"
 UPSTREAM_PARENT = "80a4b5ec612892c5c056c48dddaa561452cf37ec"
 TAG = "v1.94.100"
 EXPECTED = {
-    "meson.build": "M",
+    "tests/meson.build": "M",
     "libfprint/meson.build": "M",
     "libfprint/drivers/focaltech_5955.c": "A",
 }
