@@ -27,23 +27,23 @@ The current development priority is **source consolidation, clean-clone rebuild,
 
 [Complete branch reconciliation and remaining clean-clone blocker](docs/consolidation-2026-10-17.md) · [17 October hardware rebuild/Claim report](docs/rebuild-ft5955-without-enrolment.md) · [Detailed status](docs/status-2026-10-16.md) · [Roadmap](docs/roadmap.md)
 
-## Next safe step — audit the pinned libfprint base
+## Next safe step — inspect the pinned libfprint scaffold changes
 
-The previously verified rebuild still uses a Git commit available in the **existing local libfprint Git object database**. A truly portable clean clone requires proving how to fetch or reconstruct that pinned base. The new audit does not use the sensor, print remote URLs, enrol, install or modify your checkout.
+**17 October audit PASS:** the pinned source commit `c8e01dc26cedb2d97779a314a7260f1c33e02bfa` has exactly one parent, `68696e04a88efbecd5dd79cebf05b8ef013c51d8`. One local branch contains the base; no locally fetched remote-tracking refs or tags do. Upstream availability is not yet confirmed.
 
-For a **separate repository clone**, leaving existing working trees untouched:
+The next step is to inspect which files changed between those two Git objects, before publishing any additional patch. This is read-only, does not enrol or access the fingerprint reader, and **does not modify the existing libfprint worktree**:
 
 ```bash
-git clone --single-branch --branch feature/ft5955-driver-consolidation-20261017 \
-  https://github.com/Inforce855/focaltech-5955-linux.git \
-  "$HOME/Projects/ft5955-driver-consolidated"
-
-python3 "$HOME/Projects/ft5955-driver-consolidated/tools/audit_ft5955_base.py"
+REPO="$HOME/Projects/focaltech-5955-linux"
+git -C "$REPO" fetch origin feature/ft5955-driver-consolidation-20261017 &&
+git -C "$REPO" show FETCH_HEAD:tools/inspect_ft5955_base_delta.py | python3 -
 ```
 
-If the destination already exists, `git clone` will fail safely; do not delete the directory or overwrite files. The audit prints whether the base commit is present, its parent commit(s) and the counts of local/remote-tracking refs containing it (but **not** author emails, credentials, remote URLs, image data or fingerprints). Remote-tracking refs do not prove that a remote still serves the commit.
+Expected output: parent/base SHAs, filenames, source-patch size and SHA-256, then `PASS` if the changes are confined to the expected scaffold and Meson files. Any extra changes **stop** the inspector and must be reviewed rather than hidden. The optional `--export` flag can create an actual text patch after review, but is **not used in this read-only step**.
 
-**Previously validated, not required to rerun:** the [temporary rebuild and Claim-only test](docs/rebuild-ft5955-without-enrolment.md). No production driver installation or PAM/fprintd change is proposed here.
+Once the scaffold delta is understood, we can preserve it as an explicit versioned source patch on GitHub and rebuild from a verified, fetchable libfprint upstream parent rather than requiring the user's local pinned commit.
+
+[Full consolidated source audit and findings](docs/consolidation-2026-10-17.md) · [Earlier successfully rebuilt hardware Claim test](docs/rebuild-ft5955-without-enrolment.md)
 
 ## Security and scope
 
