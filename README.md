@@ -51,6 +51,14 @@ The staged trial uses the existing clean builder's new `--stage` mode to save a 
 
 **Initial system trial allows device discovery/Claim only.** It does not enable fingerprint enrolment, biometric matching, KDE login, PAM edits or experimental MOH engine execution as root. The historical 14 October reject/cancel/reopen tests already passed, and physical disconnection of the power-button sensor is not a prerequisite.
 
+## MOH gateway isolation toward KDE integration — source-only progress
+
+The normal Nobara `fprintd` loads our driver successfully, but biometric operations remain off in the system trial. The experimental MOH `engine_gateway.py` **refuses root**, while the real `fprintd` service runs as root and uses `ProtectHome=yes`. Do not turn off these protections to force enrolment.
+
+[Experimental local AF_UNIX broker/stdio relay](tools/ft5955_engine_broker.py) is now in GitHub, with a [completely synthetic, non-root test](tools/test_ft5955_engine_broker_synthetic.py) that **PASSED GitHub Actions on 17 October 2026** ([run 39024071118](https://github.com/Inforce855/focaltech-5955-linux/actions/runs/39024071118)). [Dedicated non-root broker systemd unit and socket templates](docs/nonroot-moh-broker-prototype-2026-10-17.md) are **source-only; nothing was enabled or installed**. This test proves byte-stream transport through separate processes only, **not** biometric matching or KDE authentication.
+
+**Current next dependency:** inspect the user's local audited `test_moh_isolated_live_identify.sh` runner for safe relocation under a dedicated non-root service account without access to `/home`; then validate the real MOH bridge using sandboxed, non-biometric startup before an end-to-end GUI test. The long-term aim remains replacing the Windows engine with native Linux matching.
+
 ## Security and scope
 
 - This is a **research implementation**; successful matching and two negative controls do not demonstrate an acceptable false-accept rate or protection against spoofing.
