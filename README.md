@@ -27,23 +27,19 @@ The current development priority is **source consolidation, clean-clone rebuild,
 
 [Complete branch reconciliation and remaining clean-clone blocker](docs/consolidation-2026-10-17.md) · [17 October hardware rebuild/Claim report](docs/rebuild-ft5955-without-enrolment.md) · [Detailed status](docs/status-2026-10-16.md) · [Roadmap](docs/roadmap.md)
 
-## Next source-only step — review the one-file scaffold patch
+## Next safe step — verify release-tag relation and initial scaffold patch
 
-**17 October audit PASS:** the local base `c8e01dc` has parent `68696e04`; the full parent-to-base diff changes only `libfprint/drivers/focaltech_5955.c`. Its text patch is 1,449 bytes, SHA-256 `df8af5a8ac10b716266bb8bdc1107a74c4714079e506a083b2579efa4c5d44f9`. This means the parent already had the driver scaffold and Meson registration, so its ancestry must also be reconstructed.
-
-To inspect that exact patch **without exporting a file or touching the working tree**:
+Read-only Git history confirmed the discovery-only FocalTech driver was introduced in `68696e04` on parent `80a4b5ec`; nearest local release tag is `v1.94.100`. **Exact tag equivalence remains unverified.** The next audit checks this relationship and produces the *original* driver-scaffold/Meson diff for source review, without modifying files:
 
 ```bash
-git -C "$HOME/Projects/libfprint-ft5955" diff \
-  --no-ext-diff --no-textconv --no-renames --binary \
-  68696e04a88efbecd5dd79cebf05b8ef013c51d8 \
-  c8e01dc26cedb2d97779a314a7260f1c33e02bfa \
-  -- libfprint/drivers/focaltech_5955.c
+REPO="$HOME/Projects/focaltech-5955-linux"
+git -C "$REPO" fetch origin feature/ft5955-driver-consolidation-20261017 &&
+git -C "$REPO" show FETCH_HEAD:tools/audit_ft5955_scaffold_origin.py | python3 - --show-patch
 ```
 
-Review before publication. Once the exact small patch has been reviewed, preserve it in this development branch and trace the parent's scaffold/Meson changes to a verifiably fetchable upstream commit. No biometric scan, enrolment, private template storage, installation or system authentication changes.
+This checks the entire initial scaffold diff against an explicit expected-file whitelist. If the file set differs, the tool stops rather than silently discarding changes. No fingerprint sensor access, enrolment, build, installation, template read/write or system authentication changes. The patch will be considered for GitHub only after review.
 
-[Detailed consolidation report](docs/consolidation-2026-10-17.md) · [Successful isolated rebuild and physical Claim result](docs/rebuild-ft5955-without-enrolment.md)
+[Full audit history](docs/consolidation-2026-10-17.md)
 
 ## Security and scope
 
