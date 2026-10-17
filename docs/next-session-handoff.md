@@ -14,7 +14,7 @@
 
 ## Current implementation layout
 
-- **Authoritative integration branch:** `feature/ft5955-driver-consolidation-20261017` (existing user checkout `~/Projects/ft5955-independent-build-check`). Keep the original MOH, libfprint and historical research branches unmodified.
+- **Current repository baseline:** **`main`** now contains the tested consolidation after [merged PR #4](https://github.com/Inforce855/focaltech-5955-linux/pull/4). The existing user checkout `~/Projects/ft5955-independent-build-check` tracks `feature/ft5955-driver-consolidation-20261017` and was **not silently switched to `main`** by the GitHub merge. Both branch histories are preserved. Check the local branch before updating or editing it; do not delete or rewrite the separate MOH/libfprint research checkouts.
 - **Driver source of record:** [`driver/live-snapshot-2026-10-16/`](../driver/live-snapshot-2026-10-16/README.md), intentionally immutable due to checksum/patch provenance.
 - **Clean upstream build and optional stage:** [`tools/verify_ft5955_clean_clone.py`](../tools/verify_ft5955_clean_clone.py).
 - **System discovery-only install/rollback:** [`tools/manage_ft5955_system_trial.sh`](../tools/manage_ft5955_system_trial.sh).
@@ -34,7 +34,7 @@
 
 - An extra hardened `ft5955-engine-smoke.service` with a fake engine **passed** non-root socket/UID tests, but **nested bubblewrap inside that service failed** (`ERROR BWRAP_NAMESPACE_UNAVAILABLE`). Temporary units, socket and service account were removed. The team deliberately **stopped pursuing double sandboxing** and succeeded with the existing user-session MOH/bwrap route instead.
 - USB Claim permissions in the earlier private test required a temporary ACL on the identified device node. The standard system service already had USB access; no separate physical unplug test is necessary.
-- Keep [the open research PRs](https://github.com/Inforce855/focaltech-5955-linux/pulls) and old branches for historical reference until an explicit consolidation/merge decision. **Do not delete branches, run `git clean` in the live trees, or rewrite the pinned snapshot.**
+- **GitHub housekeeping, 17 October:** [consolidation PR #4](https://github.com/Inforce855/focaltech-5955-linux/pull/4) was **merged into `main`** with full history; the fully represented earlier private-[`fprintd` PR #2](https://github.com/Inforce855/focaltech-5955-linux/pull/2) was **closed as superseded without deleting its branch**. The older [MOH engine research PR #1](https://github.com/Inforce855/focaltech-5955-linux/pull/1) stays **open** because it contains substantial additional `engine/` code and tests not yet reviewed for merging to `main`. **Do not delete those branches, run `git clean` in live trees, or rewrite the pinned snapshot.**
 
 ## Safe operational note
 
