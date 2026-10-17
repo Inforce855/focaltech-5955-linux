@@ -36,27 +36,26 @@ The ordinary-user, read-only `python3 tools/audit_ft5955_moh_relocation.py` comp
 
 This proves the existing MOH input files are present and unaltered at the pinned DLL level. **It does not prove** that bwrap runs in the eventual dedicated service account, that the Windows matcher is stable across systemd isolation, that `UNVERIFIED_ATTACH` is safe for login, or that KDE fingerprint enrolment succeeds.
 
-## Temporary systemd service isolation smoke test — prepared, not yet run
+## Real systemd non-root isolation — verified on Nobara 17 October 2026
 
-The new [`tools/smoke_ft5955_broker_systemd.sh`](../tools/smoke_ft5955_broker_systemd.sh) performs a narrowly scoped **real systemd** smoke test on the user's Nobara host. It is an independent opt-in script and does **not** invoke the FocalTech DLL, its loader or the actual `fprintd` system service.
+**USER-RUN PASS:** `sudo bash tools/smoke_ft5955_broker_systemd.sh --smoke` started temporary root-group Unix socket and the isolated non-root service. The root-credentialled synthetic client transmitted an all-zero 5,120-byte frame and received the exact sequence `READY 1 → RETRY QUALITY → BYE`. **Broker PID 13909 ran as UID 955 (non-root)**, under the hardened service. No DLL, genuine fingerprint, USB, real `fprintd`, KDE/PAM or template data was involved. **Cleanup PASS:** temporary service, socket, test code and service account were removed. This baseline test is complete; there is no need to repeat it.
 
-- It refuses any already existing broker root folder, socket folder, service/socket unit, or matching service account.
-- Temporarily creates `ft5955-engine` as a **non-root system service account** and root-owned `/opt/ft5955-broker-smoke` files containing only the reviewed AF_UNIX broker and an innocuous mock gateway (which never produces `MATCH`).
-- Temporarily installs **different unit names** `ft5955-engine-smoke.socket` and `ft5955-engine-smoke.service`. Those exercise `ProtectHome=yes`, `ProtectSystem=strict`, `PrivateTmp=yes`, `PrivateDevices=yes`, `NoNewPrivileges=yes`, no capabilities and AF_UNIX-only access. Socket path is exactly the future planned `/run/ft5955-engine/engine.sock`.
-- Connects using a *synthetic root client* permitted by the broker's `SO_PEERCRED` root-UID restriction, sends one **all-zero 5120-byte mock frame** and requires the exact `READY 1` / `RETRY QUALITY` / `BYE` reply sequence. Checks the actual broker process runs as non-root.
-- **Automatic cleanup on script exit, including failure:** stops temporary units, removes its files/units/socket and attempts to delete the temporary service account. Does not touch `/usr/lib64/libfprint*`, `/usr/libexec/fprintd`, `/etc/pam.d/`, `fprintd.service`, or the root-owned vendor DLL; does not enrol.
-- The smoke script itself is newly written; prior synthetic GitHub Actions proof was the **non-root local Python two-process transport**, not a real systemd-root-client run. **Do not call the systemd smoke PASS until the user actually runs it.**
+### Remaining infrastructure check — nested bubblewrap namespaces
 
-If there are no local resource collisions, the one-run trial command is:
+The original audited MOH runner needs to create a second namespace via `bwrap --unshare-all --die-with-parent --new-session` **inside** the hardened broker service. The successful IPC test does **not** prove that nested user/mount namespaces work.
+
+The same temporary service script now supports a distinct **`--probe-bwrap`** mode. In this mode its mock Python gateway calls bwrap with the existing launcher’s namespace and read-only host mount settings, then launches only a harmless `python3 -c` success marker inside the sandbox. The result must be successful **before** the fake gateway responds `READY 1`. A fail-closed `ERROR BWRAP_...` response indicates restricted namespace creation, not a failed fingerprint capture. The script performs the same automatic temporary service/socket/account rollback. No DLL or fingerprint code runs.
 
 ```bash
 REPO="$HOME/Projects/ft5955-independent-build-check"
-git -C "$REPO" pull --ff-only
-bash -n "$REPO/tools/smoke_ft5955_broker_systemd.sh"
-sudo bash "$REPO/tools/smoke_ft5955_broker_systemd.sh" --smoke
+git -C "$REPO" pull --ff-only &&
+bash -n "$REPO/tools/smoke_ft5955_broker_systemd.sh" &&
+sudo bash "$REPO/tools/smoke_ft5955_broker_systemd.sh" --probe-bwrap
 ```
 
-**Next if successful:** package and isolate the actual audited MOH source with the pinned installed DLL, checking non-root bwrap/user-namespace compatibility without changing system authentication. Existing driver installation and rollback remain independent.
+**New mode has not yet been executed on Nobara.** GitHub Actions [run 39025242002](https://github.com/Inforce855/focaltech-5955-linux/actions/runs/39025242002) passed shell/mock Python syntax and the original non-root synthetic transport (not a real service namespace test). The previous `--smoke` mode is still available unchanged in scope.
+
+If nested bwrap works, the next action is to prepare a root-owned, read-only copy of the actual audited MOH tree accessible to the dedicated service account and test non-biometric engine startup. If it fails, investigate service settings/userspace restrictions **without** disabling root checks, opening host home, or modifying PAM. Existing driver installation and rollback remain separately proven.
 
 ## Non-installed systemd prototypes
 
