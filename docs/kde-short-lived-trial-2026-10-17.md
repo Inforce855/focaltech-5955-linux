@@ -1,6 +1,6 @@
 # First real KDE enrol / verify experiment — SHORT-LIVED LAB TRIAL
 
-**Prepared 17 October 2026. Not yet executed on Nobara. No fingerprint login or PAM enabled.**
+**Updated 17 October 2026. LIVE Nobara system trial and KDE registration PASSED for both index fingers, as reported by user. Verification and fingerprint login are NOT yet proven; no PAM enabled.**
 
 After the user's successful Timeshift snapshot, we chose to reuse the original functioning ordinary-user MOH + bubblewrap runner instead of attempting **nested bwrap inside an already sandboxed systemd service**, which failed with `ERROR BWRAP_NAMESPACE_UNAVAILABLE`. The completed non-root systemd socket mock and reversible system-driver discovery/rollback tests remain valid.
 
@@ -34,6 +34,13 @@ bash "$HOME/Projects/ft5955-independent-build-check/tools/ft5955_kde_trial.sh" -
 
 If activation fails, the wrapper attempts automatic rollback, but its privileged code is newly written and has not yet been run on Nobara. Look carefully at the terminal for rollback warnings; don't assume a Timeshift snapshot replaces verifying recovery. Original staged driver SHA is preserved and the OS's original libfprint stays packaged under `/usr/lib64`.
 
+## Observed real KDE results — user report, 17 October 2026
+
+- User ran `git pull --ff-only && bash tools/ft5955_kde_trial.sh --start`, saw `PASS: packaged service unchanged; staged library verified` (SHA-256 `003ed7e6d53109ad355b653f3b5a9a6cfb33c99e150ae5e58ed7f6ff41fd7d4e`).
+- Real `fprintd` PID **18010** mapped the experimental libfprint during initial reversible discovery activation, then real `fprintd` PID **18185** mapped the experimental library after enabling the **user-session** matching-engine broker. `GetDevices` returned `/net/reactivated/Fprint/Device/0`.
+- KDE System Settings → Users visibly offered **Configure Fingerprint Authentication**. User subsequently reported: **“I just added my left & right index fingers!!”** Treat as **real KDE enrolment success for both fingers**, not as measured false-accept resistance, verified fingerprint recognition, successful PAM authentication or independent user-template attestation.
+- Next narrow functional check, without more enrolments: `fprintd-verify -f left-index-finger` (if installed), optionally `right-index-finger`. Keep login/password unchanged. Roll back experimental system trial using `bash tools/ft5955_kde_trial.sh --stop` when finished; enrolled prints in fprintd storage are *not* removed automatically.
+
 ## Validation scope
 
-GitHub Actions passed shell syntax and ordinary-user synthetic Python broker transport [run 39026507585](https://github.com/Inforce855/focaltech-5955-linux/actions/runs/39026507585). No Windows MOH DLL, fingerprint enrollment, user-session root peer socket or live root service activation has been exercised by CI. **This is an actual experiment, not an assured final installation or secure fingerprint-login release.**
+GitHub Actions passed shell syntax and ordinary-user synthetic Python broker transport [run 39026507585](https://github.com/Inforce855/focaltech-5955-linux/actions/runs/39026507585). CI never exercised actual MOH DLL, fingerprint enrolment, user-session root peer socket or live root service activation. **Those separate system steps now have first user-reported success for device integration and KDE enrolment** (as recorded above). CI scope remains synthetic; no fingerprint verification/PAM login has yet been shown. This is still not a security-reviewed production login release.
