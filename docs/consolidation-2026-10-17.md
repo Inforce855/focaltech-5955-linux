@@ -18,9 +18,9 @@ The upstream clone showed an **annotated release tag** warning, followed by deta
 
 **What this closes:** the local-only Git-object build dependency. The full saved active source is now reconstructable from the public upstream release plus files committed to this project, on the user's Nobara environment. This does not prove cross-distribution packaging or reproducible machine-bit-for-bit binaries.
 
-**What remains:** the **new clean-clone-compiled** library has **not yet been tested against USB hardware**; the earlier private Claim/Release PASS used the prior GitHub-rebuilt library. No biometric enrolment, recognition, saved-template check, KDE GUI, system installation or authentication is validated by this new compile.
+**Hardware now also PASSED:** the fresh clean-clone-compiled library was subsequently loaded into private fprintd and successfully completed real USB Discover, Claim and Release. This was achieved after a temporary user-specific ACL corrected the initial USB node access denial. The **new clean-built binary has not undergone biometric enrolment/verification**; matching, saved-template security, KDE GUI, production system installation and authentication are still unvalidated.
 
-**Next isolated milestone:** from the existing clean GitHub checkout, execute `python3 "$HOME/Projects/ft5955-independent-build-check/tools/verify_ft5955_clean_clone.py" --claim-only`. This rebuilds privately and runs only device discovery, Claim and Release, with no fingerprint scan/enrolment and no PAM, system fprintd or KDE changes. A USB permission blocker can occur after reboot and should be diagnosed without blanket permission changes.
+**Subsequently completed:** the independent fresh-clone `--claim-only` PASS is documented in [the separate hardware result](independent-hardware-pass-2026-10-17.md). Current work shifts to offline security/reliability review; no additional hardware scan or enrolment requested.
 
 ## GitHub layout: what is current vs historical
 
@@ -139,7 +139,7 @@ The new [`tools/verify_ft5955_clean_clone.py`](../tools/verify_ft5955_clean_clon
 
 The SHA-verified builder uses a **pinned libfprint Git commit** `c8e01dc26cedb2d97779a314a7260f1c33e02bfa`, currently present in `~/Projects/libfprint-ft5955` on the user's Nobara system. Its availability from a fresh external clone has **not** been established. The build can be recreated on this machine even with a dirty worktree because `git archive` reads the commit object, not the working files.
 
-**Resolved:** the independent clean-clone `--build` passed on Nobara. The next test uses `--claim-only` to check physical USB Claim without biometric operations. The previous read-only Git provenance audit is complete. If it is local-only, reconstruct its modifications against an identified public upstream libfprint tag/commit or provide a reviewed reproducible base-patch chain. Do **not** assume a random public libfprint checkout contains our scaffold. Do not publish a full fork or vendor arbitrary upstream source without license/build review.
+**Resolved:** the independent clean-clone `--build` and private real-device `--claim-only` both PASSED on Nobara. The next phase is source-only security and error-recovery review. The previous read-only Git provenance audit is complete. If it is local-only, reconstruct its modifications against an identified public upstream libfprint tag/commit or provide a reviewed reproducible base-patch chain. Do **not** assume a random public libfprint checkout contains our scaffold. Do not publish a full fork or vendor arbitrary upstream source without license/build review.
 
 ## Working boundaries
 
@@ -150,6 +150,6 @@ The SHA-verified builder uses a **pinned libfprint Git commit** `c8e01dc26cedb2d
 
 ## Safe next check
 
-Both historical patches are preserved and SHA-256 verified, and the original pre-scaffold commit exactly equals the local `v1.94.100` tag. The independent clean-clone builder now has a hardware-free `--build` PASS; the next milestone is its private no-enrolment `--claim-only` mode. This is source-only work; no biometric or system-auth operations.
+Both historical patches are preserved and SHA-256 verified, and the original pre-scaffold commit exactly equals the local `v1.94.100` tag. The independent clean-clone builder now has both a hardware-free `--build` PASS and a private USB `--claim-only` PASS. Next: source-only security/cancellation review. This is source-only work; no biometric or system-auth operations.
 
 Source provenance and the external-clone build are resolved for the tested Nobara environment. **No system driver package, fingerprint login, or cross-machine reliability assurance has yet been demonstrated.**
