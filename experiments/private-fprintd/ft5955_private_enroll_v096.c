@@ -257,6 +257,7 @@ int main(int argc, char **argv)
          g_strcmp0(argv[1], "--controls") != 0 &&
          g_strcmp0(argv[1], "--diagnose") != 0 &&
          g_strcmp0(argv[1], "--enroll-only") != 0 &&
+         g_strcmp0(argv[1], "--verify-baseline") != 0 &&
          g_strcmp0(argv[1], "--verify-saved") != 0) ||
         !private_environment_ok()) {
         g_printerr("STOP: requires an approved private launcher mode; "
@@ -267,6 +268,7 @@ int main(int argc, char **argv)
     const gboolean controls = g_strcmp0(argv[1], "--controls") == 0;
     const gboolean diagnose = g_strcmp0(argv[1], "--diagnose") == 0;
     const gboolean enroll_only = g_strcmp0(argv[1], "--enroll-only") == 0;
+    const gboolean verify_baseline = g_strcmp0(argv[1], "--verify-baseline") == 0;
     const gboolean verify_saved = g_strcmp0(argv[1], "--verify-saved") == 0;
 
     Client c = {0};
@@ -305,14 +307,21 @@ int main(int argc, char **argv)
         c.bus, DEST, DEVICE_IFACE, NULL, c.path, NULL,
         G_DBUS_SIGNAL_FLAGS_NONE, on_status, &c, NULL);
 
-    if (verify_saved) {
-        /* A new client after private fprintd restart, using the same
-         * isolated RAM-backed state directory. */
+    if (verify_baseline || verify_saved) {
+        /* Both modes start a NEW D-Bus client and read the SAVED print.
+         * Only the shell wrapper controls whether the private fprintd
+         * process was restarted. A successful baseline is essential:
+         * otherwise a post-restart NO_MATCH cannot be attributed to
+         * persistence rather than an already failing genuine match. */
         if (!right_index_listed(&c)) goto out;
-        if (!compare_finger(&c, "SAVED right index after daemon restart",
+        if (!compare_finger(&c,
+                            verify_baseline
+                                ? "SAVED right index, same daemon (baseline)"
+                                : "SAVED right index, after daemon restart",
                             TRUE, 1, 1, 3))
             goto out;
-        g_print("PASS: SAVED TEMPLATE MATCH after private fprintd restart.\n");
+        g_print("PASS: saved template MATCH %s private fprintd restart.\n",
+                verify_baseline ? "BEFORE" : "AFTER");
         result = 0;
         goto out;
     }
