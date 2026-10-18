@@ -6,10 +6,10 @@ set -Eeuo pipefail
 umask 022
 [[ $# -ge 1 && $# -le 2 &&
    ( "$1" == --activate || "$1" == --rollback ) ]] || {
-  echo "Usage: sudo bash $0 --activate [--poll-100ms|--early-capture] | --rollback" >&2; exit 2
+  echo "Usage: sudo bash $0 --activate [--poll-100ms|--early-capture|--timingtrace] | --rollback" >&2; exit 2
 }
 [[ $# -eq 1 || ( "$1" == --activate &&
-   ( "$2" == --poll-100ms || "$2" == --early-capture ) ) ]] || {
+   ( "$2" == --poll-100ms || "$2" == --early-capture || "$2" == --timingtrace ) ) ]] || {
   echo "STOP: invalid timing experiment argument." >&2; exit 2
 }
 [[ $EUID -eq 0 && -n "${SUDO_USER:-}" && "$SUDO_USER" != root ]] || {
