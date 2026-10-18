@@ -6,7 +6,6 @@ No enrolment, PAM changes, driver writes, or biometric data capture.
 """
 import argparse
 import os
-import queue
 import re
 import shutil
 import subprocess
@@ -22,43 +21,51 @@ def delta(start, finish):
         return "n/a"
     return f"{(finish-start)/1000:.1f} ms"
 
-def follow_journal(events, halt):
-    proc = None
-    try:
-        proc = subprocess.Popen(
-            ["sudo", "-n", "journalctl", "--follow", "--lines=0",
-             "--output=cat", "--unit=fprintd.service"],
-            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-            text=True, bufsize=1)
-        for line in proc.stdout:
-            if halt.is_set():
-                break
-            match = EVENT.search(line)
-            if match:
-                events.put((match.group(1), int(match.group(2))))
-    except OSError as error:
-        events.put(("reader_error", str(error)))
-    finally:
-        if proc is not None and proc.poll() is None:
-            proc.terminate()
-            try:
-                proc.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                proc.wait()
+def journal_cursor():
+    """Snapshot journal position immediately before each verification."""
+    result = subprocess.run(
+        ["sudo", "-n", "journalctl", "-b", "-u", "fprintd.service",
+         "--no-pager", "--show-cursor", "-n", "1", "-o", "cat"],
+        text=True, capture_output=True, timeout=10, check=True)
+    matches = re.findall(r"-- cursor: (\S+)", result.stdout)
+    if not matches:
+        raise RuntimeError("No fprintd journal cursor; cannot correlate timing")
+    return matches[-1]
 
-def drain(events):
-    trace = {}
-    while True:
-        try:
-            key, value = events.get_nowait()
-        except queue.Empty:
-            break
-        if key == "reader_error":
-            print(f"Journal reader error: {value}", file=sys.stderr)
-        else:
-            trace[key] = value
-    return trace
+
+def read_trace(cursor, expected_verdict):
+    """Read only NEW records and require exactly one complete scan group."""
+    result = subprocess.run(
+        ["sudo", "-n", "journalctl", "-b", "-u", "fprintd.service",
+         "--no-pager", "--after-cursor", cursor, "-o", "cat"],
+        text=True, capture_output=True, timeout=10, check=True)
+    groups = []
+    current = None
+    for line in result.stdout.splitlines():
+        found = EVENT.search(line)
+        if not found:
+            continue
+        phase, stamp = found.group(1), int(found.group(2))
+        if phase == "worker_start":
+            current = {"worker_start": stamp}
+            groups.append(current)
+        elif current is not None:
+            current[phase] = stamp
+    complete = [g for g in groups if
+                "contact_on_observed" in g and
+                "matcher_reply_received" in g and
+                "verify_finish_done" in g and
+                g["worker_start"] <= g["contact_on_observed"]
+                <= g["matcher_reply_received"]
+                <= g["verify_finish_done"]]
+    category = "matcher_match" if expected_verdict == "verify-match" else "matcher_no_match"
+    matching = [g for g in complete if category in g]
+    if len(groups) != 1 or len(matching) != 1:
+        print(f"Timing unavailable: {len(groups)} scan group(s), "
+              f"{len(matching)} complete matching group(s).")
+        return {}
+    return matching[0]
+
 
 def verify(finger, timeout):
     started = time.monotonic()
@@ -112,15 +119,8 @@ def main():
     if not args.no_journal and (shutil.which("sudo") is None or
                                 shutil.which("journalctl") is None):
         parser.error("journalctl/sudo missing (or use --no-journal)")
-    events = queue.Queue()
-    halt = threading.Event()
-    follower = None
     if not args.no_journal:
         subprocess.run(["sudo", "-v"], check=True)
-        follower = threading.Thread(target=follow_journal,
-                                    args=(events, halt), daemon=True)
-        follower.start()
-        time.sleep(0.5)
     print("\nFT5955 RETRY TIMER (lab only; Ctrl+C to cancel)")
     print("Use separate deliberate contacts; no automatic enrolment.\n")
     rounds = []
@@ -134,7 +134,7 @@ def main():
             round_start = time.monotonic()
             outcomes = []
             for attempt in range(1, args.retries + 1):
-                drain(events)
+                cursor = journal_cursor() if not args.no_journal else None
                 print(f"\n--- Fingerprint attempt {attempt}/{args.retries} ---", flush=True)
                 verdict, seconds, infrastructure_error = verify(args.finger, args.timeout)
                 if infrastructure_error:
@@ -142,7 +142,7 @@ def main():
                     aborted = True
                     break
                 time.sleep(0.3)
-                trace = drain(events)
+                trace = read_trace(cursor, verdict) if cursor and verdict in ("verify-match", "verify-no-match") else {}
                 contact = trace.get("contact_on_observed")
                 reply = trace.get("matcher_reply_received")
                 print(f"Result: {verdict or 'no terminal verdict'} | CLI: {seconds:.3f} s")
@@ -189,10 +189,6 @@ def main():
     except KeyboardInterrupt:
         print("\nCancelled; no configuration changed.")
         aborted = True
-    finally:
-        halt.set()
-        if follower:
-            follower.join(timeout=2)
     successes = sum(ok for ok, _, _ in rounds)
     total_attempts = sum(len(attempts) for _, attempts, _ in rounds)
     no_matches = sum(v == "verify-no-match" for _, attempts, _ in rounds
