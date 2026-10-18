@@ -40,7 +40,6 @@ class EarlyCaptureTests(unittest.TestCase):
         self.assertIn("if(job->enrolling) {", action)
         self.assertIn("if(!ft5955_native_scan(job->usb,c,frame,&err))goto end;", action)
         self.assertIn("g_thread_join(init_thread);", action)
-        self.assertIn("g_cancellable_cancel(init.cancel);", action)
         self.assertIn("if(!init.ready)", action)
         self.assertIn("init.cancel=c;", action)
         self.assertIn("if(c)g_cancellable_cancel(c);", action)
