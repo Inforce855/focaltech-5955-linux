@@ -69,7 +69,7 @@ The KDE scripts are **lab-only** and require the exact known Nobara packages, a 
 
 ## Next technical priorities
 
-1. Improve **single deliberate press** reliability; investigate finger-off / capture rearming and frame selection before changing the matcher or collecting more enrolments.
+1. Improve **single deliberate press** reliability. The user clarified (18 October) that **rapid tapping** works better than a deliberate lift, wait and press. The present driver checks contact every **500 ms**, requires an observed release before accepting a press, and then waits only **10 ms** before requesting an image. A separate opt-in **100-ms polling / 1,200-check** test build now exists with a **separate staged library**, keeping the original two-minute bound and original snapshot unchanged. It passed offline source checks but **not yet** real sensor recognition testing. See the [timing handoff](docs/next-session-handoff.md) and `--poll-100ms` builder option; no new enrolments are necessary to test it.
 2. Review authenticating and storing templates, cancellation/timeout behavior and the trust boundary before any PAM/SDDM/login integration. Do not silently weaken the fprintd service or interpret a no-match as success.
 3. Develop and verify the native matcher. The Windows MOH DLL (although pinned and isolated in laboratory testing) remains a proprietary dependency, and the current experimental attach flags are not approved for production login.
 4. Once secure and reliable, design a **maintained, reversible installer** tested on the actual system. Do not equate the successful one-off lab trial with a finished distribution package.
