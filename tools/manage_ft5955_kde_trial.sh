@@ -4,8 +4,12 @@
 # NEVER enable PAM/fingerprint login. Uses proven staged-lib installer/rollback.
 set -Eeuo pipefail
 umask 022
-[[ $# == 1 && ( "$1" == --activate || "$1" == --rollback ) ]] || {
-  echo "Usage: sudo bash $0 --activate | --rollback" >&2; exit 2
+[[ $# -ge 1 && $# -le 2 &&
+   ( "$1" == --activate || "$1" == --rollback ) ]] || {
+  echo "Usage: sudo bash $0 --activate [--poll-100ms] | --rollback" >&2; exit 2
+}
+[[ $# -eq 1 || ( "$1" == --activate && "$2" == --poll-100ms ) ]] || {
+  echo "STOP: invalid timing experiment argument." >&2; exit 2
 }
 [[ $EUID -eq 0 && -n "${SUDO_USER:-}" && "$SUDO_USER" != root ]] || {
   echo "STOP: use sudo from normal login, never root login" >&2; exit 2
@@ -113,7 +117,11 @@ cleanup_on_failure() {
   exit "$rc"
 }
 trap cleanup_on_failure ERR
-bash "$DISCOVERY" --activate
+if [[ $# -eq 2 ]]; then
+  bash "$DISCOVERY" --activate --poll-100ms
+else
+  bash "$DISCOVERY" --activate
+fi
 stage_live=1
 install -m 0644 -o root -g root "$BROKER" "$LIVE_BROKER"
 printf '%s\n' FT5955_LAB_V1 > "$MARK"
