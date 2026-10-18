@@ -34,3 +34,17 @@ The user's previous source-only inventory reported 58 candidate files. The class
 - Secure persistent templates and match result origin before ever changing PAM.
 
 Do not modify the immutable driver snapshot or the 110-import check; do not delete any historical test files.
+
+## Hardware-host classification result — 18 October 2026
+
+The user's original MOH checkout produced **58** matching candidate files:
+- **DIRECT_BUILD: 21** (20 engine C units and `tools/moh_engine_live_identify.c`).
+- **LAUNCH_SECURITY: 2** (`tools/moh_engine_preflight.py`, `tools/test_moh_isolated_live_identify.sh`).
+- **ENGINE_DEPENDENCY_REVIEW: 24** (engine headers, needed by C includes; do not omit without compiler validation).
+- **HISTORICAL_DIAGNOSTIC: 11** (other tools C diagnostic probes; preserve in source repository).
+
+**Provisional protected staging set: 47 files**, excluding 11 historical diagnostic tools. This is a source classification, not yet a successful isolated UID 955 build. In addition, the repository's `driver/live-snapshot-2026-10-16/engine/template_runner.py`, `engine_gateway.py` and `template_session.c` form part of the **working libfprint↔MOH gateway path**, and must not be forgotten in a real deployment.
+
+The current installer staged only three files. Do not replace an existing staged path blindly; compare hashes, verify dependencies and preserve rollback.
+
+**Important:** Existing runner uses `-DFT5955_ALLOW_UNVERIFIED_ATTACH` and offline mock flags. Even if it builds and produces matches, that alone does not establish production PAM security. No production promotion has been authorised.
