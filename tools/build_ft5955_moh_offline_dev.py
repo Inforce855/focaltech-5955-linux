@@ -28,12 +28,26 @@ def main():
         ap.error("output directory must exist and be owned by caller")
     if out == ROOT or ROOT in out.parents:
         ap.error("build output must not be inside protected source")
-    data=runner.read_text()
-    match=re.search(r"(?m)^gcc [^\n]*(?:\\\n[^\n]*)*",data)
-    if not match:
+    # Follow shell line continuations explicitly; the previous regex stopped
+    # after a trailing backslash and shlex raised 'No escaped character'.
+    lines=runner.read_text().splitlines()
+    first=next((i for i,line in enumerate(lines) if line.startswith("gcc ")),None)
+    if first is None:
         ap.error("GCC command not found")
-    command=match.group().replace("\\\n"," ")
-    argv=shlex.split(command)
+    parts=[]
+    for line in lines[first:]:
+        stripped=line.rstrip()
+        continuation=stripped.endswith(chr(92))
+        parts.append(stripped[:-1] if continuation else stripped)
+        if not continuation:
+            break
+    else:
+        ap.error("unfinished GCC line continuation")
+    command=" ".join(parts)
+    try:
+        argv=shlex.split(command)
+    except ValueError as exc:
+        ap.error("invalid GCC shell syntax: "+str(exc))
     if argv[0]!="gcc" or "-o" not in argv:
         ap.error("unrecognised command")
     idx=argv.index("-o")
