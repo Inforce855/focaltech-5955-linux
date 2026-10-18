@@ -100,7 +100,7 @@ class ProtocolTests(unittest.TestCase):
         spec.loader.exec_module(launcher)
         with tempfile.TemporaryDirectory() as tmp:
             fixture=Path(tmp)/"preflight.py"
-            fixture.write_text("PIN = "+repr("a"*64)+"\\n",encoding="utf-8")
+            fixture.write_text("PIN = "+repr("a"*64)+chr(10),encoding="utf-8")
             with mock.patch.object(launcher,"PREFLIGHT",fixture), \
                  mock.patch.object(launcher,"trusted",return_value=None):
                 self.assertEqual(launcher.dll_pin(),"a"*64)
