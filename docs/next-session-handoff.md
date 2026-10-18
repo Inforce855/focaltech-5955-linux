@@ -30,6 +30,28 @@
 3. **Finish native matching** to remove the Windows MOH DLL dependency when validated, building on [`native/`](../native/README.md).
 4. Prepare a maintained *reversible* package/installation path only after safety/reliability criteria. Preserve the known-good password login and original vendor libraries.
 
+## 18 October — timing experiment prepared, not yet tested on sensor
+
+The user clarified that **holding a finger continuously produced no apparent read**, and that **a deliberate lift, wait and press also tended to fail**, while **3–4 rapid taps** led to substantially more `verify-match` outcomes. This suggests a contact/rearm/capture timing problem, but terminal `verify-no-match` versus absence of any capture should be distinguished; the original user report does not prove the image was never acquired.
+
+The **existing, immutable** `ft5955_native_capture.c` requires an observed OFF (0x06) → ON (0x05) edge, polls at **500 ms**, then sleeps **10 ms** before a single readiness check and image request. Holding the finger at verify start, without any observed OFF, will not trigger this code. The previously observed readiness value 0x5AA5 does **not** prove a fresh stable image.
+
+A **separate opt-in 100-ms polling variant** is now supported by [`verify_ft5955_clean_clone.py`](../tools/verify_ft5955_clean_clone.py) using `--poll-100ms` alongside `--build` or `--stage`. It edits **only the disposable rebuilt source**, after verifying the original snapshot hashes. The polling cap changes from 240 to 1,200 (preserving the roughly two-minute wait), while USB command bytes, OFF→ON gate, 10-ms delay, image conversion and matcher remain exactly the same. An offline [source-transformation test](../tests/test_ft5955_poll_timing.py) passed in GitHub Actions. `--stage --poll-100ms` writes to **`~/.local/state/ft5955-system-trial/stage-poll100`** instead of overwriting the known-good `stage`.
+
+The existing lab KDE wrapper accepts opt-in `--start-poll100`, which passes only the specifically permitted variant stage name through both reversible activation scripts. **`--stop` remains the same as the user-tested rollback.** This is a new path that has passed offline syntax and source checks but **has not been compiled on Nobara or tested with live fprintd/USB**. Do not enable PAM or automatically enrol more fingers. If the two KDE enrolments still exist after rollback, compare one or two normal `fprintd-verify` results, especially whether it says `verify-no-match` or waits indefinitely. Only consider changing the 10-ms post-contact delay **later**, if 100-ms contact polling is insufficient. Do not claim improved recognition without the user's real test.
+
+**Build/stage preparation (normal user, offline except upstream source fetch):**
+
+```bash
+REPO="$HOME/Projects/ft5955-independent-build-check"
+git -C "$REPO" fetch origin main &&
+git -C "$REPO" switch main &&
+git -C "$REPO" pull --ff-only &&
+python3 "$REPO/tools/verify_ft5955_clean_clone.py" --stage --poll-100ms
+```
+
+This neither installs nor operates the fingerprint reader. Only after this build passes should the user elect to run `bash "$REPO/tools/ft5955_kde_trial.sh" --start-poll100`; the rollback is `bash "$REPO/tools/ft5955_kde_trial.sh" --stop`. Neither command changes PAM. The existing staged baseline binary and source checkout remain preserved.
+
 ## Completed alternatives to avoid revisiting
 
 - An extra hardened `ft5955-engine-smoke.service` with a fake engine **passed** non-root socket/UID tests, but **nested bubblewrap inside that service failed** (`ERROR BWRAP_NAMESPACE_UNAVAILABLE`). Temporary units, socket and service account were removed. The team deliberately **stopped pursuing double sandboxing** and succeeded with the existing user-session MOH/bwrap route instead.
