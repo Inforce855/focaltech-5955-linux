@@ -1,0 +1,26 @@
+# Development ONLY. Synthetic reply server; no biometric engine is loaded.
+# Run under a separately created non-login ft5955-engine account.
+[Unit]
+Description=FT5955 independent synthetic MOH development service
+Requires=ft5955-engine-dev.socket
+After=ft5955-engine-dev.socket
+[Service]
+Type=simple
+User=ft5955-engine
+Group=ft5955-engine
+ExecStart=/usr/bin/python3 -B /opt/ft5955-dev/ft5955_dev_mock_server.py
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectHome=yes
+ProtectSystem=strict
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX
+RestrictSUIDSGID=yes
+LockPersonality=yes
+IPAddressDeny=any
+TimeoutStopSec=10
