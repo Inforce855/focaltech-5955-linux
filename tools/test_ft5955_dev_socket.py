@@ -16,7 +16,14 @@ def main():
         p.error("Only the independent dev socket is supported")
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
         s.settimeout(3.0)
-        s.connect(a.socket)
+        try:
+            s.connect(a.socket)
+        except PermissionError:
+            if os.geteuid() != 0:
+                print("PASS: non-root client denied by socket permissions")
+                return 0
+            print("FAIL: root client unexpectedly denied")
+            return 1
         try:
             reply = s.recv(256)
         except ConnectionResetError:
