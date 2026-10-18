@@ -6,6 +6,8 @@ initial scanner scaffold, USB-descriptor validation, active driver/Meson patch.
 Default without flags validates local sources only. --build fetches the exact
 upstream tag into /tmp and compiles without installation, USB or enrolment.
 --claim-only additionally runs the existing private no-enrolment Claim test.
+Optional --poll-100ms builds an isolated, opt-in timing experiment ONLY;
+the source snapshot, 500ms default build and system service stay unchanged.
 Does not inspect or change ~/Projects/libfprint-ft5955 or system auth.
 """
 from __future__ import annotations
@@ -31,6 +33,37 @@ UPSTREAM_PATCHES = (
      "df8af5a8ac10b716266bb8bdc1107a74c4714079e506a083b2579efa4c5d44f9"),
 )
 REQUIRED_SOURCE = "libfprint/drivers/focaltech_5955.c"
+CAPTURE_SOURCE = "libfprint/drivers/ft5955_native_capture.c"
+
+
+def apply_poll100_variant(source: Path) -> None:
+    """Patch ONLY the reconstructed disposable source, after manifest validation.
+
+    100 ms x 1,200 polls = same approximate 120 second capture wait.
+    Finger-edge logic, 10 ms settle time, USB commands and MOH engine unchanged.
+    Refuse changed sources/ambiguous replacement rather than modifying more code.
+    """
+    target = source / CAPTURE_SOURCE
+    if target.is_symlink() or not target.is_file():
+        raise ValueError("Missing regular FT5955 capture source in disposable tree")
+    data = target.read_text(encoding="utf-8")
+    replacements = (
+        (" * 240 polls (two minutes)", " * 1200 polls (two minutes)"),
+        ("for(unsigned poll=0;poll<240;poll++) {",
+         "for(unsigned poll=0;poll<1200;poll++) {"),
+        ("gint64 pause=500000-(g_get_monotonic_time()-started);",
+         "gint64 pause=100000-(g_get_monotonic_time()-started);"),
+        ("No fresh FT5955 touch within 240 status checks",
+         "No fresh FT5955 touch within 1200 status checks"),
+    )
+    for old, new in replacements:
+        if data.count(old) != 1:
+            raise ValueError(f"Capture timing source changed: expected one {old!r}")
+        data = data.replace(old, new, 1)
+    if data.count("g_usleep(10000);") != 1:
+        raise ValueError("The original 10ms post-contact delay changed unexpectedly")
+    target.write_text(data, encoding="utf-8")
+
 
 
 def source_patch_path(snapshot: Path, rel: str, expected_sha256: str) -> Path:
@@ -52,7 +85,13 @@ def main() -> None:
                       help="Rebuild then private Discover/Claim/Release (NO ENROL/VERIFY)")
     mode.add_argument("--stage", action="store_true",
                       help="Rebuild and stage verified .so in PRIVATE user state; NO install/USB")
+    ap.add_argument("--poll-100ms", action="store_true",
+                    help="Opt-in build with 100ms (not 500ms) contact polling; NO system/USB changes")
     args = ap.parse_args()
+    if args.poll_100ms and args.claim_only:
+        ap.error("--poll-100ms is not available for hardware Claim-only tests")
+    if args.poll_100ms and not (args.build or args.stage):
+        ap.error("--poll-100ms requires --build or --stage")
     if os.geteuid() == 0:
         raise ValueError("Run as a normal user; never root")
     repo = Path(__file__).resolve().parent.parent
@@ -106,6 +145,11 @@ def main() -> None:
                 raise ValueError(f"Refusing overwrite: {rel}")
             shutil.copyfile(snapshot / rel, dest)
         print("PASS: exact active driver and all additional sources reconstructed")
+        if args.poll_100ms:
+            apply_poll100_variant(source)
+            print("TIMING VARIANT ONLY: 100ms contact polls, 1200 checks (~2 min).")
+            print("Unchanged: release-then-press gate, 10ms delay, USB protocol, matcher.")
+            print("Source snapshot, installed system and normal 500ms build are untouched.")
         build = work / "build"
         existing.execute([
             "meson", "setup", str(build), str(source),
@@ -120,7 +164,8 @@ def main() -> None:
             # User-owned staging only. Do not put the shared library where a
             # protected system fprintd service would load it. A separate
             # privileged trial tool will copy it into root-owned /opt later.
-            stage = Path.home() / ".local" / "state" / "ft5955-system-trial" / "stage"
+            stage_name = "stage-poll100" if args.poll_100ms else "stage"
+            stage = Path.home() / ".local" / "state" / "ft5955-system-trial" / stage_name
             if stage.exists() or stage.is_symlink():
                 raise ValueError(f"Stage already exists: {stage}; refusing overwrite")
             library = build / "libfprint" / "libfprint-2.so.2.0.0"
@@ -143,6 +188,9 @@ def main() -> None:
             os.chmod(manifest, 0o600)
             print("PASS: verified clean build STAGED to user-only location:", stage)
             print("STAGED_LIB_SHA256:", digest)
+            if args.poll_100ms:
+                print("TIMING VARIANT STAGED SEPARATELY: ordinary system trial installers")
+                print("do NOT load stage-poll100; never replace baseline stage by hand.")
             print("No files in /opt, /etc, /usr, no service/PAM edits and no USB operations.")
         if args.claim_only:
             env = os.environ.copy()
