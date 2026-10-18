@@ -14,6 +14,7 @@ from unittest import mock
 
 ROOT=Path(__file__).resolve().parents[1]
 GATEWAY=ROOT/"tools/ft5955_dev_template_gateway.py"
+LAUNCHER=ROOT/"tools/ft5955_dev_template_launcher.py"
 
 # Minimal subprocess speaking the exact binary protocol of template_session.c.
 # This FAKE must never be deployed or permitted to authenticate a user.
@@ -92,6 +93,17 @@ class ProtocolTests(unittest.TestCase):
     def test_wrong_finger_no_match(self):
         result=self.exchange(b"MODE V 3 0\nabcFRAME\n"+bytes(5120)+b"QUIT\n")
         self.assertEqual(result,b"READY 1\nNO_MATCH\nBYE\n")
+
+    def test_pinned_sha_ast_reader(self):
+        spec=importlib.util.spec_from_file_location("ft5955_pin_reader",LAUNCHER)
+        launcher=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(launcher)
+        with tempfile.TemporaryDirectory() as tmp:
+            fixture=Path(tmp)/"preflight.py"
+            fixture.write_text("PIN = "+repr("a"*64)+"\\n",encoding="utf-8")
+            with mock.patch.object(launcher,"PREFLIGHT",fixture), \
+                 mock.patch.object(launcher,"trusted",return_value=None):
+                self.assertEqual(launcher.dll_pin(),"a"*64)
 
     def test_service_unit_points_to_real_protocol(self):
         unit=(ROOT/"systemd/ft5955-engine-dev-protocol.service").read_text()
