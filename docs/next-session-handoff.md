@@ -125,6 +125,14 @@ The user reports that with the new early-capture variant, pressing the finger an
 
 **Useful next single controlled observation (no additional build or enrolment):** after `fprintd-verify -f left-index-finger` prompts, wait ~1 second, then press and **hold** for roughly 3 seconds without tapping; note whether `verify-match` prints while held or only after release. This distinguishes a possible release-trigger issue from feedback/teardown latency, though isn't conclusive without timestamps. Afterwards, instrument safely with monotonic timing *only*: touch observed, image completed, MOH matching reply, gateway cleanup start/end, and libfprint report. Do not log pixels, images, templates or biometric samples. Do not bypass cancellation/wipe/sandbox cleanup just to make a benchmark look fast.
 
+## 18 October — post-release response latency confirmed by user
+
+Following the early-capture variant's ~80–90% reported matches, the user clarified: **even after lifting their finger off the sensor, there is still roughly one second with no verification message**. This confirms a perceptible user-facing delay *after release*. It does **not** establish whether matching occurred before or after release, nor prove exactly which stage accounts for the second.
+
+**Important implementation order:** In the experimental `ft5955_native_action.c` worker, after reading MOH's `MATCH` or `NO_MATCH`, it sets `job->pending` then takes the common `end:` path. This sends `QUIT` to the gateway, waits for subprocess shutdown (up to 10 seconds before SIGTERM, a further 3 seconds before forced exit, then `g_subprocess_wait`), and only calls `g_task_return_boolean`. `finish()` subsequently calls `ft5955_fpi_apply_reply`, which reports/completes verification to libfprint/fprintd. This **guarantees cleanup is serialised before match reporting**, a plausible source of lag. MOH frame matching and broker round-trips can also take time.
+
+**Next smallest diagnostic change:** opt-in monotonic timestamps at `image read complete`, `MOH frame reply received`, `cleanup begin`, `gateway wait complete`, and `fprintd verify reported`. Log only stage labels/durations/result categories, never pixels, templates, matching scores or USB payloads. If teardown accounts for lag, move user-facing reporting ahead of sandbox cleanup **only with carefully audited worker lifetime, cancellation, and one-result-only semantics**, retaining guaranteed teardown and zeroing; never simply omit cleanup. No PAM login integration.
+
 ## Completed alternatives to avoid revisiting
 
 - An extra hardened `ft5955-engine-smoke.service` with a fake engine **passed** non-root socket/UID tests, but **nested bubblewrap inside that service failed** (`ERROR BWRAP_NAMESPACE_UNAVAILABLE`). Temporary units, socket and service account were removed. The team deliberately **stopped pursuing double sandboxing** and succeeded with the existing user-session MOH/bwrap route instead.
