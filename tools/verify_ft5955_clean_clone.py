@@ -83,7 +83,8 @@ def apply_earlycapture_variant(source: Path) -> None:
     """Only edit disposable native action; verify captures while matcher starts.
 
     Enrol remains completely unchanged. The image is consumed by MOH only
-    after READY; a cancelled or failed scan cancels/joins startup and cleans up.
+    after READY; the operation cancellable reaches both USB and MOH I/O.
+    A cancelled or failed scan cancels/joins startup and cleans up.
     No new hardware opcodes, template storage, PAM or alternate matching engine.
     """
     target = source / ACTION_SOURCE
@@ -119,7 +120,7 @@ static gpointer gateway_start_parallel (gpointer arg) {
   if(job->enrolling) {
     if(!start_gateway(job,&child,&in,&out,c,&err) || !startup(job,in,out,c,&err))goto end;
   } else {
-    init.cancel=g_cancellable_new();
+    init.cancel=c; /* shared cancellable also stops gateway on fprintd cancel */
     init_thread=g_thread_new("ft5955-gateway-start",gateway_start_parallel,&init);
   }"""
     old_scan = "    if(!ft5955_native_scan(job->usb,c,frame,&err))goto end;"
@@ -143,13 +144,12 @@ static gpointer gateway_start_parallel (gpointer arg) {
   /* If a capture fails or is cancelled during startup, cancel the MOH
    * handshake then join it BEFORE freeing the job or closing the process. */
   if(init_thread) {
-    g_cancellable_cancel(init.cancel);
+    if(c)g_cancellable_cancel(c);
     g_thread_join(init_thread);
     init_thread=NULL;
     child=init.child; in=init.in; out=init.out;
   }
   g_clear_error(&init.error);
-  g_clear_object(&init.cancel);
   sensitive_clear(frame,sizeof frame);"""
     old_vars = "  Ft5955Action guard;\n  ft5955_action_begin"
     new_vars = "  FtGatewayStartup init={.job=job};\n  GThread *init_thread=NULL;\n  Ft5955Action guard;\n  ft5955_action_begin"
