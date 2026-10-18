@@ -31,7 +31,15 @@ def startup():
     ]
     # Discard vendor output: neither logs nor socket must disclose biometric data.
     result=subprocess.run(command,input=b"",stdout=subprocess.DEVNULL,
-                          stderr=subprocess.DEVNULL,timeout=21,check=False)
+                          stderr=subprocess.PIPE,timeout=21,check=False)
+    # Emit only a fixed-category failure code; never forward vendor logs,
+    # samples, paths or subprocess stderr to the journal or the socket.
+    if result.returncode != 0:
+        stderr=result.stderr or b""
+        category=("NAMESPACE_DENIED" if b"Creating new namespace failed" in stderr or b"Operation not permitted" in stderr else
+                  "EXEC_PATH" if b"No such file or directory" in stderr else
+                  "TIMEOUT" if result.returncode in (124,137) else "OTHER")
+        print(f"FT5955_DEV_STARTUP_FAILED category={category} exit={result.returncode}",file=sys.stderr,flush=True)
     return result.returncode==0
 
 def main():
