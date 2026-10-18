@@ -7,10 +7,10 @@
 set -Eeuo pipefail
 umask 077
 [[ $EUID -ne 0 && $# == 1 ]] || {
-  echo "Usage (normal user, NEVER sudo): bash $0 --start | --start-poll100 | --start-earlycapture | --stop" >&2; exit 2
+  echo "Usage (normal user, NEVER sudo): bash $0 --start | --start-poll100 | --start-earlycapture | --start-timingtrace | --stop" >&2; exit 2
 }
 case "$1" in
-  --start|--start-poll100|--start-earlycapture|--stop) MODE="$1";;
+  --start|--start-poll100|--start-earlycapture|--start-timingtrace|--stop) MODE="$1";;
   *) echo "Usage: bash $0 --start | --start-poll100 | --stop" >&2; exit 2;;
 esac
 REPO="$(cd -- "$(dirname -- "$0")/.." && pwd)"
@@ -99,7 +99,10 @@ if [[ $ready -ne 1 ]]; then
   stop_broker
   exit 1
 fi
-if [[ "$MODE" == --start-earlycapture ]]; then
+if [[ "$MODE" == --start-timingtrace ]]; then
+  echo "TIMING TRACE: request separate early-capture diagnostic library (no biometric data logged)."
+  activate_args=(--activate --timingtrace)
+elif [[ "$MODE" == --start-earlycapture ]]; then
   echo "EARLY CAPTURE: request separately staged verification pipeline (10Hz)."
   activate_args=(--activate --early-capture)
 elif [[ "$MODE" == --start-poll100 ]]; then
@@ -115,7 +118,9 @@ if ! sudo bash "$INSTALLER" "${activate_args[@]}"; then
   exit 1
 fi
 echo "PASS: FT5955 system driver and USER-session MOH broker active."
-if [[ "$MODE" == --start-earlycapture ]]; then
+if [[ "$MODE" == --start-timingtrace ]]; then
+  echo "PASS: using early-capture with event-only journald timing. Do NOT re-enrol."
+elif [[ "$MODE" == --start-earlycapture ]]; then
   echo "PASS: using experimental early-capture verify variant; DO NOT re-enrol."
 elif [[ "$MODE" == --start-poll100 ]]; then
   echo "PASS: using experimental 100ms poll variant; DO NOT re-enrol fingers."

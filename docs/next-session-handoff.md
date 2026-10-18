@@ -133,6 +133,12 @@ Following the early-capture variant's ~80–90% reported matches, the user clari
 
 **Next smallest diagnostic change:** opt-in monotonic timestamps at `image read complete`, `MOH frame reply received`, `cleanup begin`, `gateway wait complete`, and `fprintd verify reported`. Log only stage labels/durations/result categories, never pixels, templates, matching scores or USB payloads. If teardown accounts for lag, move user-facing reporting ahead of sandbox cleanup **only with carefully audited worker lifetime, cancellation, and one-result-only semantics**, retaining guaranteed teardown and zeroing; never simply omit cleanup. No PAM login integration.
 
+## 18 October — timing-only diagnostic is implemented (no live trace yet)
+
+User reports ~1 second additional delay **after lifting finger off the sensor**, even when early-capture returned `verify-match` roughly 80–90% of attempts. The next tool to isolate the bottleneck is [`docs/timingtrace-2026-10-18.md`](timingtrace-2026-10-18.md) on branch `feature/ft5955-timingtrace`: an opt-in **`--trace-timing`** builder using exactly the early-capture controls and separate `stage-timingtrace` library. It logs **only fixed stage names and monotonic microseconds** for initial USB status, accepted contact, captured image, MOH ready/reply, common gateway shutdown, worker task return and libfprint final verify callback. No raw images/templates, additional USB commands, direct PAM integration, or changed result/cleanup order.
+
+GitHub Actions synthetic tests succeeded for source transformation and reversible-script syntax. The code **still needs independent compilation** and one controlled local `fprintd-verify -f left-index-finger` to produce actual stage durations; do not claim the delay is conclusively MOH or cleanup yet. See the [full safe build, test, filtered journal and rollback instructions](timingtrace-2026-10-18.md). User's currently active early-capture status and rollback are not independently confirmed after their most recent observation.
+
 ## Completed alternatives to avoid revisiting
 
 - An extra hardened `ft5955-engine-smoke.service` with a fake engine **passed** non-root socket/UID tests, but **nested bubblewrap inside that service failed** (`ERROR BWRAP_NAMESPACE_UNAVAILABLE`). Temporary units, socket and service account were removed. The team deliberately **stopped pursuing double sandboxing** and succeeded with the existing user-session MOH/bwrap route instead.
