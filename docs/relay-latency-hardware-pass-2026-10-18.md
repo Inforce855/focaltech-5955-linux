@@ -20,3 +20,9 @@ Earlier baseline cleanup took approximately 1,040 ms; this trial reduced it by a
 User confirmed rollback of the *previous* trial, then activated this relay-fixed trial. A rollback of this latest live trial has not yet been reported. The reversible command is `bash "$HOME/Projects/ft5955-relay-latency-test/tools/ft5955_kde_trial.sh" --stop`.
 
 No new enrolment needed. This bridge remains lab-only and must not be used for PAM/SDDM authentication without separate security work.
+
+## Informal repeated-use check, 18 October 2026
+
+User subsequently ran 15 `fprintd-verify -f left-index-finger` commands with the relay fix active. Results, in order: NO_MATCH, NO_MATCH, MATCH, MATCH, MATCH, MATCH, MATCH, NO_MATCH, NO_MATCH, MATCH, MATCH, MATCH, NO_MATCH, MATCH, MATCH. **10/15 match (66.7%); 5/15 no-match (33.3%)**. The final match was visible but its shell timing was truncated. User said the reader now feels **very fast**, but physical finger placement is sometimes awkward because the sensor is recessed/positioned in the power button and requires stretching. This is an uncontrolled usability observation, not an independent measure of false-rejection probability or an accuracy improvement. The previous relay fix affects verdict-delivery latency, not the matcher itself.
+
+User prefers an ordinary authentication UX with a bounded retry after NO_MATCH, rather than restarting the CLI command. Do not implement PAM/SDDM login at this stage; first design bounded retries with password fallback and preserve terminal no-match semantics. No new enrolment or further speed tuning required. Latest experimental installation remains active until explicit reported rollback.
