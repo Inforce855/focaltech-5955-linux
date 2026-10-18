@@ -42,7 +42,9 @@ class EarlyCaptureTests(unittest.TestCase):
         self.assertIn("g_thread_join(init_thread);", action)
         self.assertIn("g_cancellable_cancel(init.cancel);", action)
         self.assertIn("if(!init.ready)", action)
-        self.assertIn("g_clear_object(&init.cancel)", action)
+        self.assertIn("init.cancel=c;", action)
+        self.assertIn("if(c)g_cancellable_cancel(c);", action)
+        self.assertNotIn("g_clear_object(&init.cancel)", action)
         self.assertIn('write_all(out,"FRAME\\n",6,c,&err)', action)
         # In verify worker, USB acquisition happens before waiting for READY.
         worker = action[action.index("static void worker ("):]
