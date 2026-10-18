@@ -28,7 +28,7 @@ def trusted(path: Path) -> None:
 def dll_pin() -> str:
     trusted(PREFLIGHT)
     tree=ast.parse(PREFLIGHT.read_text(encoding="utf-8"))
-    values=[n.value.value for node in tree.body if isinstance(node,ast.Assign)
+    values=[node.value.value for node in tree.body if isinstance(node,ast.Assign)
             for n in node.targets if isinstance(n,ast.Name) and n.id=="PIN"
             if isinstance(node.value,ast.Constant) and isinstance(node.value.value,str)]
     if len(values)!=1 or len(values[0])!=64 or any(x not in "0123456789abcdefABCDEF" for x in values[0]):
@@ -67,7 +67,7 @@ def main():
 if __name__=="__main__":
     try:
         main()
-    except (OSError,ValueError,RuntimeError,KeyError,SyntaxError):
+    except (OSError,ValueError,RuntimeError,KeyError,SyntaxError,AttributeError):
         # Do not emit the vendor DLL's content or any fingerprint material.
         print("FT5955 protected template runner preflight failed",file=sys.stderr)
         sys.exit(2)
