@@ -40,3 +40,17 @@ User specifically wants **between-finger-press timing**, rather than only total 
 User ran `ft5955_retry_timer.py --finger left-index-finger --rounds 5 --retries 3` with the experimental driver active. Results: five of five rounds eventually MATCHED, four on the first verification, one after two terminal NO_MATCH results. Total seven verifications: 5 MATCH, 2 NO_MATCH. User deliberately presented a wrong finger during one negative result (the exact attempt is not labelled). Per-round elapsed: 2.176 s, 1.269 s, 1.169 s, 5.765 s, 1.218 s. Full tester elapsed: 16.799 s. **Five out of five completed rounds does not imply 100% per-press recognition**; the bounded retry UX succeeded on this small test.
 
 Timing traces intermittently returned `n/a`; in round 4 the reported previous-verdict-to-next-contact of 6798.6 ms exceeded previous-contact-to-next-contact of 5390.1 ms. Those comparisons cannot both refer to the same preceding physical scan. Current follower queue/last-event map is not robustly correlating complete event groups to individual verification operations, likely due to delayed events. Do NOT present inter-press timing values as trustworthy until event grouping is fixed. Next engineering priority: session-scoped event collection/correlation and a synthetic multi-attempt delayed-journal test, not sensor/matcher speed tuning. No biometric data logging, no PAM/SDDM changes.
+
+## Right-index five-round test with cursor-based timing collector (18 October)
+
+User re-enrolled right index finger in KDE with markedly less placement-error feedback (one such error by user report), then ran the GitHub timing tester from commit `75ceaaa` with `--finger right-index-finger --rounds 5 --retries 3`. **All five rounds matched on their first verification, no NO_MATCH**; a small, uncontrolled test, not a formal accuracy or negative-finger test. The cursor-based timing collector delivered all four per-attempt stages across five rounds, with no `n/a` values. Previous-contact intervals were 7066.1, 2698.9, 2069.9, 2022.0 ms; these are contact-to-contact, **not release-to-next-contact**.
+
+| Round | CLI duration (s) | Gateway startup (ms) | Contact→image (ms) | Image→reply (ms) | Reply→verify finish (ms) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | 4.448 | 742.2 | 29.3 | 7.2 | 40.4 |
+| 2 | 5.909 | 788.1 | 30.4 | 6.9 | 40.8 |
+| 3 | 1.521 | 780.0 | 28.4 | 6.5 | 40.6 |
+| 4 | 0.916 | 774.8 | 25.6 | 55.0 | 40.9 |
+| 5 | 0.916 | 780.2 | 25.9 | 127.7 | 40.4 |
+
+Summary: 5/5 rounds matched first attempt; 18.908 s total tester elapsed, 3.141 s average round time (includes journald retrieval and waits). Mean gateway startup 773.06 ms; mean contact→image 27.92 ms, image→reply 40.66 ms, reply→finish 40.62 ms, total contact→finish about 109.2 ms. Timing stage collection is **observationally improved**; no NO_MATCH occurred in this run, so the post-rejection event-correlation path still warrants a focused test if needed. No driver changes or PAM/SDDM login.
