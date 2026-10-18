@@ -6,15 +6,17 @@ set -Eeuo pipefail
 umask 022
 
 usage() {
-  echo "Usage: sudo bash $0 --activate [--poll-100ms] | --rollback | --status" >&2
+  echo "Usage: sudo bash $0 --activate [--poll-100ms|--early-capture] | --rollback | --status" >&2
   exit 2
 }
 [[ $# -ge 1 && $# -le 2 ]] || usage
 MODE="$1"
 [[ "$MODE" == --activate || "$MODE" == --rollback || "$MODE" == --status ]] || usage
-[[ $# -eq 1 || ( "$MODE" == --activate && "$2" == --poll-100ms ) ]] || usage
+[[ $# -eq 1 || ( "$MODE" == --activate &&
+  ( "$2" == --poll-100ms || "$2" == --early-capture ) ) ]] || usage
 STAGE_NAME=stage
-if [[ $# -eq 2 ]]; then STAGE_NAME=stage-poll100; fi
+if [[ $# -eq 2 && "$2" == --poll-100ms ]]; then STAGE_NAME=stage-poll100; fi
+if [[ $# -eq 2 && "$2" == --early-capture ]]; then STAGE_NAME=stage-earlycapture; fi
 if (( EUID != 0 )) || [[ -z "${SUDO_USER:-}" || "$SUDO_USER" == root ]]; then
   echo "STOP: invoke using sudo from an ordinary user account; never a root shell." >&2
   exit 2
