@@ -1,5 +1,22 @@
 # FocalTech 2808:5955 — development roadmap
 
+> **18 October 2026 hardware milestone — PASS:** previously enrolled left index
+> finger produced `verify-match (done)` through the new dedicated systemd
+> MOH service under `ft5955-engine` UID955, reached via root-only Unix socket
+> and the existing experimental normal-system fprintd. The first right-index
+> verification returned `verify-no-match`, consistent with difficult physical
+> reach; user reported left-index match on first attempt. No reenrolment, PAM,
+> SDDM, sudo or authselect changes. The isolated development trial has **not**
+> been rolled back in the user report. See the
+> [updated dev hardware record](ft5955-dev-real-service-handoff-2026-10-18.md).
+>
+> **Next mandatory gates before KDE fingerprint unlock:** validate account
+> identity and saved-template authenticity (unkeyed SHA256 is not sufficient),
+> rejection/tamper/failure cases, and vendor MOH sandbox/UNVERIFIED_ATTACH risk.
+> Then test KDE-only fingerprint PAM with password fallback and an independently
+> confirmed rollback. Successful dev matching alone is not login security.
+
+
 > **Current milestone (17 October 2026):** the complete **real normal-`fprintd` → KDE enrol both index fingers → observed `verify-match` → experimental uninstall/rollback** cycle PASSED. The packaged Nobara system has been restored, with no PAM/SDDM changes. Verification is inconsistent on the first press (~85% user-estimated success only after 3–4 deliberate taps), and this is **not a production authentication release**. See the [one-page next-session handoff](next-session-handoff.md), [full test record](kde-short-lived-trial-2026-10-17.md), and [documentation index](index.md). The historical checklist below intentionally retains earlier failures and intermediate steps — its dated statements are not independent current release claims.
 
 
