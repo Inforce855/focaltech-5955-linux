@@ -75,3 +75,63 @@ A complete analysis will determine whether the delay is *before image acquisitio
 - The on-wire commands remain `0x82 73 01`, `0x80 01 02`, `0x81`; the finger-off then finger-on rule, 100-ms polling, and 10-ms image settle are unchanged.
 - MOH remains isolated as a user process, and the trusted PAM/login path remains unmodified. No Windows driver GPIO `0x37` or `0x80` selector `0x02` introduced.
 - Original `--stop` cleanup is unchanged. The diagnostic logs timestamps but **does not remove or bypass subprocess cleanup**.
+
+## First actual timing result and isolated relay-latency patch
+
+**User's first real timing trace** (units are monotonic microseconds):
+
+```
+worker_start            242966795
+first_status_absent     242967509
+contact_off_observed    242967528
+gateway_ready           243809668
+contact_on_observed     244540113
+image_captured          244571106
+matcher_reply_received  244578627
+matcher_no_match        244578638
+cleanup_begin           244578642
+gateway_wait_complete   245618893
+worker_return           245619039
+verify_finish_start     245619139
+verify_finish_done      245619337
+```
+
+**Measurements:**
+
+- Initial worker → gateway ready: **842.9 ms**; readiness occurs **730.4 ms before** the captured touch in this test.
+- Finger contact observed → image captured: **31.0 ms**.
+- Image captured → MOH reply: **7.5 ms** (**NO_MATCH** in this one run).
+- Worker cleanup start → gateway subprocess reaped: **1,040.3 ms**.
+- Cleanup start → worker returned: **1,040.4 ms**.
+- Worker returned → verification callback starts: **0.1 ms**. This decisively localises the apparent one-second post-capture wait to **post-MOH shutdown**, not matching or libfprint callback dispatch, on this run.
+
+**Source audit additionally found** an exact **one-second wait** at the end of the root-side `tools/ft5955_engine_broker.py::relay()`:
+
+```python
+with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as remote:
+    ...
+    up.start()  # daemon input forwarding thread
+    copy_stream(remote.recv, write_stdout_all)
+up.join(timeout=1)  # potentially waits 1 second on still-open fprintd stdin
+return 0
+```
+
+The relay's daemon input thread can be blocked in `os.read(0, n)` because its caller holds stdin open until the relay exits. But the downstream gateway has already finished its protocol and closed the socket. Waiting for that daemon *after* remote EOF therefore causes the same delay observed in the real trace. This is the leading causal explanation; the specific instance will be confirmed after installing the changed relay and repeating the trace.
+
+**Low-risk isolated patch:** the branch `feature/ft5955-relay-latency` removes only that `up.join(timeout=1)` after remote EOF, leaving daemon thread exit to the normal per-session relay process exit. All matching, image acquisition, USB commands, MOH gateway close/wipe, broker-side bounded shutdown, authentication callbacks, and original .so remain untouched. A dedicated synthetic test opens a fake `fprintd` input pipe and deliberately **leaves it open after gateway BYE**, requiring the relay to exit promptly; the test and previous synthetic tests pass in CI without biometric data.
+
+**No C rebuild necessary for this patch:** the staged `stage-timingtrace` library is reusable. With no existing cloned fix checkout:
+
+```bash
+FIX="$HOME/Projects/ft5955-relay-latency-test"
+git clone --depth 1 --branch feature/ft5955-relay-latency \
+  https://github.com/Inforce855/focaltech-5955-linux.git "$FIX"
+# Switch the lab install atomically through existing rollback, then restart.
+bash "$HOME/Projects/ft5955-timingtrace-build/tools/ft5955_kde_trial.sh" --stop &&
+sudo systemctl stop fprintd.service &&
+bash "$FIX/tools/ft5955_kde_trial.sh" --start-timingtrace
+```
+
+After successful activation, do a normal `fprintd-verify -f left-index-finger`, then collect only `FT5955TIMING` journal lines from `sudo journalctl -b -u fprintd.service --since "5 minutes ago" --no-pager -o cat | grep FT5955TIMING`. Compare `cleanup_begin` → `gateway_wait_complete` (previously 1,040.3 ms), and `image_captured` → `matcher_reply_received` (previously 7.5 ms). The gateway shutdown must still complete and the final verification result must be reported once. Roll back with `bash "$FIX/tools/ft5955_kde_trial.sh" --stop`.
+
+**Status:** CI passes; live hardware test with the fast relay has **not yet been performed**. Do not claim a responsiveness improvement until new user trace confirms it. This test remains experimental and must not be used for PAM authentication.
