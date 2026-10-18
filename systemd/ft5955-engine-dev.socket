@@ -1,0 +1,13 @@
+# Development ONLY. Separate from live /run/ft5955-engine.
+# Source file, not enabled or installed automatically.
+[Unit]
+Description=FT5955 independent synthetic MOH development socket
+[Socket]
+ListenStream=/run/ft5955-engine-dev/engine.sock
+SocketUser=ft5955-engine
+SocketGroup=root
+SocketMode=0660
+DirectoryMode=0755
+RemoveOnStop=yes
+[Install]
+WantedBy=sockets.target
