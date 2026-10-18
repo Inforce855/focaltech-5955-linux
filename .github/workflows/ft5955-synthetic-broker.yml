@@ -13,6 +13,8 @@ on:
       - "README.md"
       - "docs/**"
       - "tools/check_ft5955_navigation.py"
+      - "tools/verify_ft5955_clean_clone.py"
+      - "tests/test_ft5955_poll_timing.py"
       - "tools/ft5955_kde_trial.sh"
       - "tools/manage_ft5955_kde_trial.sh"
       - ".github/workflows/ft5955-synthetic-broker.yml"
@@ -51,6 +53,8 @@ jobs:
           CHECK_EMBEDDED
       - name: Validate current repository Markdown links (offline only)
         run: python3 tools/check_ft5955_navigation.py
+      - name: Offline 100ms polling variant regression (NO hardware/USB)
+        run: python3 -m unittest discover -s tests -p test_ft5955_poll_timing.py -v
       - name: Non-root synthetic transport smoke test
         run: |
           test "$(id -u)" -ne 0
