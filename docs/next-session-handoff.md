@@ -44,9 +44,9 @@ The existing lab KDE wrapper accepts opt-in `--start-poll100`, which passes only
 
 ```bash
 REPO="$HOME/Projects/ft5955-independent-build-check"
-git -C "$REPO" fetch origin main &&
-git -C "$REPO" switch main &&
-git -C "$REPO" pull --ff-only &&
+# The initial checkout was single-branch; fetch main into an explicit tracking ref.
+git -C "$REPO" fetch origin main:refs/remotes/origin/main &&
+git -C "$REPO" switch -c main --track origin/main &&
 python3 "$REPO/tools/verify_ft5955_clean_clone.py" --stage --poll-100ms
 ```
 
