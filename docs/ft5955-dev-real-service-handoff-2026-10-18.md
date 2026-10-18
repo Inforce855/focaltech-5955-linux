@@ -1,5 +1,43 @@
 # FT5955 dedicated MOH development service — verified 2026-10-18
 
+## Update — real dedicated-service hardware verification PASS, 18 October 2026
+
+**Hardware-host result reported by user:** the guarded `run_ft5955_dev_hardware_trial.sh --start`
+completed the 21-C-file protocol engine build, root-owned staging, socket-based
+`READY 1 → BYE` smoke test and switch of the existing *experimental* system
+`fprintd` gateway to the UID955 MOH development service. The installed
+`ft5955-engine-dev-protocol.service` runs the real protocol gateway inside
+the hardened dedicated account, not the prior startup-only probe.
+
+The subsequent actual `fprintd-verify` enumerated both saved fingers. The
+first user-run right-index attempt returned `verify-no-match`; **this is
+expected to occur on some contacts** because the reader's location makes
+finger positioning difficult, especially on the right hand. **A new
+`fprintd-verify -f left-index-finger` run returned `verify-match (done)`
+on the first attempt**, confirming an actual successful biometric decision
+end-to-end through the independent MOH service.
+
+This supersedes the earlier below statement saying no verification exchange
+exists through the separate engine; that paragraph is retained as a dated
+pre-integration description. **No new enrolment was required.**
+
+**Current host state:** the independent dev hardware trial has been started;
+there is no reported rollback after this successful verification. Its
+activation explicitly left PAM, KDE password unlock, SDDM, sudo and authselect
+unchanged. Roll back this trial with:
+`sudo bash /opt/ft5955-dev/run_ft5955_dev_hardware_trial.sh --stop`.
+
+**Not production-approved:** a successful match does not fix the unkeyed
+libfprint template envelope, ownership/identity binding of saved templates,
+the proprietary runner's `FT5955_ALLOW_UNVERIFIED_ATTACH`, and the dev
+sandbox's read-only host `/proc` exposure. The raw template still passes
+through `MODE V` from fprintd; verification of stored-template authenticity,
+user-account separation, negative cases and cancellation remains to be done.
+**Do not enable KDE PAM or sudo yet.** This completes the real-hardware
+matching milestone, not secure-login approval.
+
+---
+
 ## Demonstrated on host
 
 The standalone MOH runner started under UID 955 and the independent systemd
