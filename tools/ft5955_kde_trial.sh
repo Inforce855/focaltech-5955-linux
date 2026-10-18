@@ -7,11 +7,11 @@
 set -Eeuo pipefail
 umask 077
 [[ $EUID -ne 0 && $# == 1 ]] || {
-  echo "Usage (normal user, NEVER sudo): bash $0 --start | --stop" >&2; exit 2
+  echo "Usage (normal user, NEVER sudo): bash $0 --start | --start-poll100 | --stop" >&2; exit 2
 }
 case "$1" in
-  --start|--stop) MODE="$1";;
-  *) echo "Usage: bash $0 --start | --stop" >&2; exit 2;;
+  --start|--start-poll100|--stop) MODE="$1";;
+  *) echo "Usage: bash $0 --start | --start-poll100 | --stop" >&2; exit 2;;
 esac
 REPO="$(cd -- "$(dirname -- "$0")/.." && pwd)"
 BROKER="$REPO/tools/ft5955_engine_broker.py"
@@ -99,13 +99,24 @@ if [[ $ready -ne 1 ]]; then
   stop_broker
   exit 1
 fi
-if ! sudo bash "$INSTALLER" --activate; then
+if [[ "$MODE" == --start-poll100 ]]; then
+  echo "TIMING TRIAL: request staged poll100 library (10Hz status, same 2min bound)."
+  activate_args=(--activate --poll-100ms)
+else
+  activate_args=(--activate)
+fi
+if ! sudo bash "$INSTALLER" "${activate_args[@]}"; then
   echo "STOP: fprintd laboratory activation failed; attempting rollback." >&2
   sudo bash "$INSTALLER" --rollback || true
   stop_broker || true
   exit 1
 fi
 echo "PASS: FT5955 system driver and USER-session MOH broker active."
-echo "Only now try KDE > System Settings > Users > Fingerprint authentication."
+if [[ "$MODE" == --start-poll100 ]]; then
+  echo "PASS: using experimental 100ms poll variant; DO NOT re-enrol fingers."
+else
+  echo "PASS: using previously proven 500ms polling baseline."
+fi
+echo "For the timing trial, use normal fprintd-verify with an already enrolled finger."
 echo "This is experimental ENROL/VERIFY, NOT fingerprint login. No PAM changes."
 echo "ROLLBACK: bash '$REPO/tools/ft5955_kde_trial.sh' --stop"
