@@ -44,10 +44,11 @@ The existing lab KDE wrapper accepts opt-in `--start-poll100`, which passes only
 
 ```bash
 REPO="$HOME/Projects/ft5955-independent-build-check"
-# The initial checkout was single-branch; fetch main into an explicit tracking ref.
-git -C "$REPO" fetch origin main:refs/remotes/origin/main &&
-git -C "$REPO" switch -c main --track origin/main &&
-python3 "$REPO/tools/verify_ft5955_clean_clone.py" --stage --poll-100ms
+# Original checkout has local changes; DO NOT switch, reset or stash it.
+# origin/main was already fetched into the original checkout.
+TEST="$HOME/Projects/ft5955-poll100-build"
+git -C "$REPO" worktree add --detach "$TEST" origin/main &&
+python3 "$TEST/tools/verify_ft5955_clean_clone.py" --stage --poll-100ms
 ```
 
 This neither installs nor operates the fingerprint reader. Only after this build passes should the user elect to run `bash "$REPO/tools/ft5955_kde_trial.sh" --start-poll100`; the rollback is `bash "$REPO/tools/ft5955_kde_trial.sh" --stop`. Neither command changes PAM. The existing staged baseline binary and source checkout remain preserved.
