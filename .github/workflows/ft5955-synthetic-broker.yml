@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - feature/ft5955-driver-consolidation-20261017
+      - feature/ft5955-early-contact-parallel
     paths:
       - "tools/ft5955_engine_broker.py"
       - "tools/test_ft5955_engine_broker_synthetic.py"
