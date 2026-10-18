@@ -52,7 +52,7 @@ def collect() -> tuple[list[tuple[str, str]], list[str]]:
         blockers.append("protected engine/vendor installation not yet provisioned")
     for path in (PROTECTED_ROOT, PROTECTED_VENDOR):
         if path_status(path) != "ABSENT":
-            from tools.audit_ft5955_auth_paths import audit_path
+            from audit_ft5955_auth_paths import audit_path
             blockers.extend(f"{path}: {issue}" for issue in audit_path(path, kind="dir"))
     blockers.append("privileged matcher/template integrity, ABI and sandbox not validated")
     blockers.append("PAM activation remains prohibited")
