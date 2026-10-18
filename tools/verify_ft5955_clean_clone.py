@@ -9,7 +9,7 @@ upstream tag into /tmp and compiles without installation, USB or enrolment.
 Optional --poll-100ms builds a 100ms poll-only variant.
 Optional --early-capture builds a SECOND isolated variant (100ms polling plus
 parallel MOH startup and immediate finger monitoring on VERIFY only).
-The source snapshot, earlier stages and system service stay unchanged.
+Optional --trace-timing builds a third isolated early-capture variant with\nnon-biometric timing-only journal events; no changed control flow.\nThe source snapshot, earlier stages and system service stay unchanged.
 Does not inspect or change ~/Projects/libfprint-ft5955 or system auth.
 """
 from __future__ import annotations
@@ -168,6 +168,108 @@ static gpointer gateway_start_parallel (gpointer arg) {
     target.write_text(data,encoding="utf-8")
 
 
+def apply_timingtrace_variant(source: Path) -> None:
+    """Instrument the disposable early-capture build, without altering its decisions.
+
+    Only stage names and elapsed monotonic microsecond timestamps are logged.
+    No fingerprint bytes, template data, USB payloads, outcome scores or identity.
+    Must be applied AFTER the 100-ms and early-capture transformations.
+    """
+    sources = (ACTION_SOURCE, CAPTURE_SOURCE)
+    trace_fn = (
+        'static void ft5955_trace (const char *phase) {\n'
+        '  g_message ("FT5955TIMING phase=%s mono_us=%" G_GINT64_FORMAT,\n'
+        '             phase, g_get_monotonic_time ());\n'
+        '}\n\n'
+    )
+    replacements = {
+        ACTION_SOURCE: (
+            ('#define MAX_LINE 127\n', '#define MAX_LINE 127\n\n' + trace_fn),
+            ('  FtJob *job=user;\n  GError *err=NULL;',
+             '  FtJob *job=user;\n  ft5955_trace ("worker_start");\n  GError *err=NULL;'),
+            ('  s->ready=start_gateway(s->job,&s->child,&s->in,&s->out,s->cancel,&s->error) &&\n'
+             '           startup(s->job,s->in,s->out,s->cancel,&s->error);\n'
+             '  return NULL;',
+             '  s->ready=start_gateway(s->job,&s->child,&s->in,&s->out,s->cancel,&s->error) &&\n'
+             '           startup(s->job,s->in,s->out,s->cancel,&s->error);\n'
+             '  if(s->ready)ft5955_trace ("gateway_ready");\n'
+             '  return NULL;'),
+            ('    if(!ft5955_native_scan(job->usb,c,frame,&err))goto end;\n'
+             '    if(init_thread) {',
+             '    ft5955_trace ("scan_begin");\n'
+             '    if(!ft5955_native_scan(job->usb,c,frame,&err))goto end;\n'
+             '    ft5955_trace ("image_captured");\n'
+             '    if(init_thread) {'),
+            ('    if(!reply)goto end;\n    unsigned stage=0;',
+             '    if(!reply)goto end;\n'
+             '    ft5955_trace ("matcher_reply_received");\n'
+             '    unsigned stage=0;'),
+            ('    if(event==FT5955_DRIVER_PROGRESS || event==FT5955_DRIVER_RETRY) {\n'
+             '      post_progress(task,job,reply);',
+             '    if(event==FT5955_DRIVER_PROGRESS || event==FT5955_DRIVER_RETRY) {\n'
+             '      if(event==FT5955_DRIVER_RETRY)ft5955_trace ("matcher_quality_retry");\n'
+             '      post_progress(task,job,reply);'),
+            ('      job->pending=event==FT5955_DRIVER_MATCHED;\n'
+             '      done=TRUE;break;',
+             '      job->pending=event==FT5955_DRIVER_MATCHED;\n'
+             '      ft5955_trace (job->pending ? "matcher_match" : "matcher_no_match");\n'
+             '      done=TRUE;break;'),
+            ('end:\n  /* If a capture fails or is cancelled during startup, cancel the MOH',
+             'end:\n  ft5955_trace ("cleanup_begin");\n'
+             '  /* If a capture fails or is cancelled during startup, cancel the MOH'),
+            ('    g_subprocess_wait(child,NULL,NULL);\n'
+             '    g_object_unref(child);',
+             '    g_subprocess_wait(child,NULL,NULL);\n'
+             '    ft5955_trace ("gateway_wait_complete");\n'
+             '    g_object_unref(child);'),
+            ('  if(err)g_task_return_error(task,err);\n'
+             '  else g_task_return_boolean(task,TRUE);',
+             '  ft5955_trace ("worker_return");\n'
+             '  if(err)g_task_return_error(task,err);\n'
+             '  else g_task_return_boolean(task,TRUE);'),
+            ('  gboolean ok=g_task_propagate_boolean(task,&err);\n'
+             '  if(job->enrolling) {',
+             '  gboolean ok=g_task_propagate_boolean(task,&err);\n'
+             '  if(!job->enrolling)ft5955_trace ("verify_finish_start");\n'
+             '  if(job->enrolling) {'),
+            ('  (void)unused;\n}\nstatic void launch',
+             '  if(!job->enrolling)ft5955_trace ("verify_finish_done");\n'
+             '  (void)unused;\n}\nstatic void launch'),
+        ),
+        CAPTURE_SOURCE: (
+            ('static const uint8_t status_cmd[]=',
+             trace_fn + 'static const uint8_t status_cmd[]='),
+            ('    if(!status(usb,c,&touch,error))return FALSE;\n'
+             '    if(touch==6)armed=TRUE;\n'
+             '    if(armed && touch==5) {\n',
+             '    if(!status(usb,c,&touch,error))return FALSE;\n'
+             '    if(poll==0)ft5955_trace(touch==5 ? "first_status_present" : "first_status_absent");\n'
+             '    if(touch==6 && !armed) {\n'
+             '      armed=TRUE;\n'
+             '      ft5955_trace("contact_off_observed");\n'
+             '    }\n'
+             '    if(armed && touch==5) {\n'
+             '      ft5955_trace("contact_on_observed");\n'),
+        ),
+    }
+    outputs = {}
+    for rel in sources:
+        target = source / rel
+        if target.is_symlink() or not target.is_file():
+            raise ValueError(f"Missing regular FT5955 timing source: {rel}")
+        data = target.read_text(encoding="utf-8")
+        for old, new in replacements[rel]:
+            if data.count(old) != 1:
+                raise ValueError(f"Unexpected timing-instrumentation anchor: {rel} {old[:75]!r}")
+            data = data.replace(old, new, 1)
+        if data.count("FT5955TIMING phase=") != 1:
+            raise ValueError(f"Unexpected timing marker count: {rel}")
+        outputs[target] = data
+    # Both inputs validated before either disposable file is touched.
+    for target, content in outputs.items():
+        target.write_text(content, encoding="utf-8")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     mode = ap.add_mutually_exclusive_group()
@@ -181,13 +283,15 @@ def main() -> None:
                     help="Opt-in build with 100ms (not 500ms) contact polling; NO system/USB changes")
     ap.add_argument("--early-capture", action="store_true",
                     help="100ms status polling + parallel verify matcher startup/early USB capture (experimental)")
+    ap.add_argument("--trace-timing", action="store_true",
+                    help="Early-capture verify with non-biometric monotonic stage timings (separate staged build)")
     args = ap.parse_args()
-    if args.poll_100ms and args.early_capture:
-        ap.error("Select only one of --poll-100ms and --early-capture")
+    if sum((args.poll_100ms, args.early_capture, args.trace_timing)) > 1:
+        ap.error("Select only one timing experiment")
 
-    if (args.poll_100ms or args.early_capture) and args.claim_only:
+    if (args.poll_100ms or args.early_capture or args.trace_timing) and args.claim_only:
         ap.error("timing experiments are not available for hardware Claim-only tests")
-    if (args.poll_100ms or args.early_capture) and not (args.build or args.stage):
+    if (args.poll_100ms or args.early_capture or args.trace_timing) and not (args.build or args.stage):
         ap.error("timing experiment requires --build or --stage")
     if os.geteuid() == 0:
         raise ValueError("Run as a normal user; never root")
@@ -242,16 +346,19 @@ def main() -> None:
                 raise ValueError(f"Refusing overwrite: {rel}")
             shutil.copyfile(snapshot / rel, dest)
         print("PASS: exact active driver and all additional sources reconstructed")
-        if args.poll_100ms or args.early_capture:
+        if args.poll_100ms or args.early_capture or args.trace_timing:
             apply_poll100_variant(source)
             print("TIMING VARIANT: 100ms contact polls, 1200 checks (~2 min).")
             print("Unchanged: release-then-press gate, 10ms delay, USB commands, matcher.")
-        if args.early_capture:
+        if args.early_capture or args.trace_timing:
             apply_earlycapture_variant(source)
             print("EARLY CAPTURE (verify only): start matcher init on separate thread;")
             print("poll/capture USB immediately, then await matcher READY before FRAME.")
             print("ENROLL path unchanged. All images kept in worker memory.")
-        if args.poll_100ms or args.early_capture:
+        if args.trace_timing:
+            apply_timingtrace_variant(source)
+            print("TRACE VARIANT: event-only monotonic journal timings, no frame/template data.")
+        if args.poll_100ms or args.early_capture or args.trace_timing:
             print("Source snapshot, installed system and baseline stages are untouched.")
         build = work / "build"
         existing.execute([
@@ -267,7 +374,8 @@ def main() -> None:
             # User-owned staging only. Do not put the shared library where a
             # protected system fprintd service would load it. A separate
             # privileged trial tool will copy it into root-owned /opt later.
-            stage_name = ("stage-earlycapture" if args.early_capture else
+            stage_name = ("stage-timingtrace" if args.trace_timing else
+                          "stage-earlycapture" if args.early_capture else
                           "stage-poll100" if args.poll_100ms else "stage")
             stage = Path.home() / ".local" / "state" / "ft5955-system-trial" / stage_name
             if stage.exists() or stage.is_symlink():
@@ -292,9 +400,9 @@ def main() -> None:
             os.chmod(manifest, 0o600)
             print("PASS: verified clean build STAGED to user-only location:", stage)
             print("STAGED_LIB_SHA256:", digest)
-            if args.poll_100ms or args.early_capture:
+            if args.poll_100ms or args.early_capture or args.trace_timing:
                 print("TIMING VARIANT STAGED SEPARATELY: never replace earlier stages by hand.")
-                print("Installer loads the new stage ONLY via explicit --start-earlycapture.")
+                print("Installer loads this stage only via the corresponding explicit --start option.")
             print("No files in /opt, /etc, /usr, no service/PAM edits and no USB operations.")
         if args.claim_only:
             env = os.environ.copy()
