@@ -10,6 +10,7 @@ on:
       - "tools/build_ft5955_moh_template_dev.py"
       - "tools/activate_ft5955_dev_protocol.sh"
       - "tools/switch_ft5955_hardware_to_dev_gateway.sh"
+      - "tools/run_ft5955_dev_hardware_trial.sh"
       - "systemd/ft5955-engine-dev-protocol.service"
       - "tests/test_ft5955_dev_protocol_offline.py"
       - ".github/workflows/ft5955-dev-protocol.yml"
@@ -31,6 +32,7 @@ jobs:
           python3 -m py_compile tools/ft5955_dev_template_gateway.py tools/ft5955_dev_template_launcher.py tools/ft5955_dev_protocol_server.py tools/ft5955_dev_relay.py tools/ft5955_engine_broker.py tools/build_ft5955_moh_template_dev.py
           bash -n tools/activate_ft5955_dev_protocol.sh
           bash -n tools/switch_ft5955_hardware_to_dev_gateway.sh
+          bash -n tools/run_ft5955_dev_hardware_trial.sh
       - name: Offline protocol tests (fake subprocess only)
         run: python3 -m unittest discover -s tests -p test_ft5955_dev_protocol_offline.py -v
       - name: Existing non-root synthetic broker regression
