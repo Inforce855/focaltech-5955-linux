@@ -23,7 +23,7 @@ def startup():
         "/usr/bin/bwrap","--unshare-all","--die-with-parent","--new-session",
         "--clearenv","--ro-bind","/usr","/usr",
         "--symlink","usr/lib64","/lib64",
-        "--proc","/proc","--dev","/dev","--tmpfs","/tmp",
+        "--ro-bind","/proc","/proc","--dev","/dev","--tmpfs","/tmp",
         "--ro-bind",ELF,"/tmp/live-identify",
         "--ro-bind",DLL,"/tmp/engine.dll",
         "--chdir","/tmp","--","/tmp/live-identify",
