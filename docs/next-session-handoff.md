@@ -53,6 +53,18 @@ python3 "$TEST/tools/verify_ft5955_clean_clone.py" --stage --poll-100ms
 
 This neither installs nor operates the fingerprint reader. Only after this build passes should the user elect to run `bash "$REPO/tools/ft5955_kde_trial.sh" --start-poll100`; the rollback is `bash "$REPO/tools/ft5955_kde_trial.sh" --stop`. Neither command changes PAM. The existing staged baseline binary and source checkout remain preserved.
 
+## 18 October — separate 100-ms variant independent build: PASS (user terminal)
+
+The first attempt to switch the single-branch `~/Projects/ft5955-independent-build-check` checkout to `main` failed: it had no local `main` reference; a second attempt failed safely because locally modified `docs/next-session-handoff.md` would have been overwritten. **No changes were discarded.** Instead, the user created a separate detached Git worktree at `~/Projects/ft5955-poll100-build` tracking the fetched `origin/main`, and ran:
+
+```bash
+python3 "$HOME/Projects/ft5955-poll100-build/tools/verify_ft5955_clean_clone.py" --stage --poll-100ms
+```
+
+**User-reported PASS:** Meson 27 targets, Ninja `[109/109]`, pinned upstream + all 3 verified patches, isolated source adjustment, and independently compiled staged library at `/home/tim/.local/state/ft5955-system-trial/stage-poll100`. **SHA-256 `8deff4de7a1d7e85cae0dbfd415e388d76347d1e61e85a6fe2fa4e241aedd8ec`.** The disposable source was cleaned automatically; original `stage`, normal packaged libfprint/fprintd and PAM were unchanged. This confirms **build/stage only**, not improved sensor recognition.
+
+**Next opt-in real trial**: `bash "$HOME/Projects/ft5955-poll100-build/tools/ft5955_kde_trial.sh" --start-poll100`. The **unchanged rollback** is `bash "$HOME/Projects/ft5955-poll100-build/tools/ft5955_kde_trial.sh" --stop`. After successful activation, compare a small number of deliberate single presses using previously enrolled fingers with `fprintd-verify -f left-index-finger`, checking whether it waits, retries or emits `verify-no-match` / `verify-match`. No re-enrolment, PAM changes, driver-flashing or matcher changes. New 100-ms activation is **not yet hardware-tested** at this checkpoint.
+
 ## Completed alternatives to avoid revisiting
 
 - An extra hardened `ft5955-engine-smoke.service` with a fake engine **passed** non-root socket/UID tests, but **nested bubblewrap inside that service failed** (`ERROR BWRAP_NAMESPACE_UNAVAILABLE`). Temporary units, socket and service account were removed. The team deliberately **stopped pursuing double sandboxing** and succeeded with the existing user-session MOH/bwrap route instead.
