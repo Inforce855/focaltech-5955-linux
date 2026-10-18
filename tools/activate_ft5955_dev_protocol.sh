@@ -49,9 +49,20 @@ if [[ "$MODE" == --rollback ]]; then
 fi
 
 # ACTIVATION: do not replace an unknown or previously modified service.
-[[ ! -e "$MARKER" && ! -L "$MARKER" && ! -e "$BACKUP" && ! -L "$BACKUP" ]] || {
-  echo "STOP: previous protocol trial or backup exists; inspect instead of overwriting" >&2; exit 2;
+[[ ! -e "$MARKER" && ! -L "$MARKER" ]] || {
+  echo "STOP: protocol trial already marked active" >&2; exit 2;
 }
+# A prior failed startup restores the original unit but intentionally leaves
+# its backup behind. Reuse only when the two files match byte for byte.
+if [[ -e "$BACKUP" || -L "$BACKUP" ]]; then
+  [[ -f "$BACKUP" && ! -L "$BACKUP" && "$(stat -c %u "$BACKUP")" == 0 ]] || {
+    echo "STOP: untrusted previous unit backup" >&2; exit 2;
+  }
+  cmp -s "$BACKUP" "$UNIT" || {
+    echo "STOP: current dev unit differs from saved backup; manual review required" >&2; exit 2;
+  }
+  echo "PASS: previous failed-attempt unit backup matches restored service."
+fi
 grep -Fq 'ft5955_dev_real_startup_server.py' "$UNIT" || {
   echo "STOP: expected real-startup dev unit is not installed" >&2; exit 2;
 }
@@ -82,7 +93,32 @@ stage() {
     [[ -f "$to" && ! -L "$to" && "$(stat -c %u "$to")" == 0 ]] || {
       echo "STOP: unexpected staged file" >&2; exit 2;
     }
-    cmp -s -- "$from" "$to" || { echo "STOP: staged source differs; review first" >&2; exit 2; }
+    if ! cmp -s -- "$from" "$to"; then
+      if [[ "$to" == "$APP/ft5955_dev_template_launcher.py" ]]; then
+        # Upgrade ONLY the exact prior faulty AST-pin parser. Refuse every
+        # unrelated local change. This is not a generic overwrite operation.
+        python3 -I -B - "$to" "$from" <<'PY_PIN'
+from pathlib import Path
+import sys
+installed=Path(sys.argv[1]).read_text(encoding="utf-8")
+source=Path(sys.argv[2]).read_text(encoding="utf-8")
+fixed=installed.replace(
+    "values=[n.value.value for node",
+    "values=[node.value.value for node",
+).replace(
+    "except (OSError,ValueError,RuntimeError,KeyError,SyntaxError):",
+    "except (OSError,ValueError,RuntimeError,KeyError,SyntaxError,AttributeError):",
+)
+if fixed!=source or fixed==installed:
+    raise SystemExit("STOP: launcher differs beyond known AST parser fix")
+PY_PIN
+        install -o root -g root -m 0644 "$from" "$to"
+        echo "PASS: repaired exact known launcher parser defect."
+      else
+        echo "STOP: staged source differs; review first" >&2
+        exit 2
+      fi
+    fi
   else
     install -o root -g root -m 0644 "$from" "$to"
   fi
@@ -121,15 +157,25 @@ runuser -u "$ACCOUNT" -- /usr/bin/python3 -I -B   "$APP/build_ft5955_moh_templat
   echo "STOP: compiled protected MOH protocol binary missing" >&2; exit 2;
 }
 if [[ -e "$APP/live-template" || -L "$APP/live-template" ]]; then
-  echo "STOP: existing live-template; inspect before overwriting" >&2; exit 2
+  [[ -f "$APP/live-template" && ! -L "$APP/live-template" &&
+     "$(stat -c %u "$APP/live-template")" == 0 &&
+     "$(stat -c %g "$APP/live-template")" == "$(id -g "$ACCOUNT")" &&
+     "$(stat -c %a "$APP/live-template")" == 550 ]] || {
+    echo "STOP: existing protocol executable has unexpected ownership/mode" >&2; exit 2;
+  }
+  cmp -s "$BUILD/live-template" "$APP/live-template" || {
+    echo "STOP: rebuilt protocol binary differs from previous attempt" >&2; exit 2;
+  }
+  echo "PASS: reused byte-identical, protected MOH template executable."
+else
+  install -o root -g "$ACCOUNT" -m 0550 "$BUILD/live-template" "$APP/live-template"
+  cmp -s "$BUILD/live-template" "$APP/live-template" || {
+    echo "STOP: binary staging mismatch" >&2; exit 2;
+  }
 fi
-install -o root -g "$ACCOUNT" -m 0550 "$BUILD/live-template" "$APP/live-template"
-cmp -s "$BUILD/live-template" "$APP/live-template" || {
-  echo "STOP: binary staging mismatch" >&2; exit 2;
-}
 
 # Preserve the currently-working REAL startup service, never the mock file.
-cp -a -- "$UNIT" "$BACKUP"
+if [[ ! -e "$BACKUP" ]]; then cp -a -- "$UNIT" "$BACKUP"; fi
 restore_on_error() {
   echo "FAIL: restoring prior independent dev service" >&2
   cp -a -- "$BACKUP" "$UNIT"
@@ -155,7 +201,7 @@ with socket.socket(socket.AF_UNIX) as conn:
         if not part: break
         incoming+=part
     if incoming != b"READY 1\n":
-        raise RuntimeError("protected MOH template protocol did not initialise")
+        raise RuntimeError("protected MOH template protocol did not initialise; reply="+repr(incoming[:96]))
     conn.sendall(b"QUIT\n")
     incoming=b""
     while not incoming.endswith(b"\n") and len(incoming)<128:
