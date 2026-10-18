@@ -114,6 +114,15 @@ if fixed!=source or fixed==installed:
 PY_PIN
         install -o root -g root -m 0644 "$from" "$to"
         echo "PASS: repaired exact known launcher parser defect."
+      elif [[ "$to" == "$APP/activate_ft5955_dev_protocol.sh" ]]; then
+        # Previous failed attempt installed the original, root-owned installer.
+        # It is safe to advance only this exact, pinned Git object version.
+        [[ "$(git hash-object -- "$to")" == ab9e82774f2bc7773a83ca04d7b0b5b509f64172 ]] || {
+          echo "STOP: installed installer is not the known previous version" >&2
+          exit 2
+        }
+        install -o root -g root -m 0644 "$from" "$to"
+        echo "PASS: upgraded the exact known development installer version."
       else
         echo "STOP: staged source differs; review first" >&2
         exit 2
