@@ -86,7 +86,8 @@ def verify(finger, timeout):
     reader.join(timeout=2)
     verdict = next((m.group(1) for line in output
                     if (m := VERDICT.search(line))), None)
-    return verdict, time.monotonic() - started
+    infrastructure_error = any("NoSuchDevice" in line or "No devices available" in line or "Impossible to verify:" in line for line in output)
+    return verdict, time.monotonic() - started, infrastructure_error
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -123,7 +124,10 @@ def main():
         for index in range(1, args.attempts + 1):
             drain(events)
             print(f"\n=== Verification {index}/{args.attempts} ===", flush=True)
-            verdict, seconds = verify(args.finger, args.timeout)
+            verdict, seconds, infrastructure_error = verify(args.finger, args.timeout)
+            if infrastructure_error:
+                print("STOP: fingerprint service/device unavailable; not a failed finger match.")
+                break
             time.sleep(0.3)  # Allow the journald reader to receive late events.
             trace = drain(events)
             contact = trace.get("contact_on_observed")
@@ -150,6 +154,9 @@ def main():
             if reply is not None:
                 previous_verdict = reply
             if verdict == "verify-match":
+                break
+            if verdict != "verify-no-match":
+                print("STOP: no valid terminal fingerprint verdict; do not retry.")
                 break
             if index != args.attempts:
                 print("No match. Lift and reposition for another try.")
