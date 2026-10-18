@@ -39,6 +39,11 @@ def startup():
         category=("NAMESPACE_DENIED" if b"Creating new namespace failed" in stderr or b"Operation not permitted" in stderr else
                   "EXEC_PATH" if b"No such file or directory" in stderr else
                   "TIMEOUT" if result.returncode in (124,137) else "OTHER")
+        # Only reveal a bounded bubblewrap error, never vendor output.
+        bwrap_line=next((line for line in stderr.splitlines() if line.startswith(b"bwrap: ")),None)
+        if bwrap_line:
+            safe="".join(chr(ch) if 32 <= ch <= 126 else "?" for ch in bwrap_line[:180])
+            print("FT5955_DEV_BWRAP_ERROR "+safe,file=sys.stderr,flush=True)
         print(f"FT5955_DEV_STARTUP_FAILED category={category} exit={result.returncode}",file=sys.stderr,flush=True)
     return result.returncode==0
 
