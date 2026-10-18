@@ -1,0 +1,26 @@
+# Development ONLY. Real MOH startup probe; NEVER grants fingerprint authentication.
+# Run under a separately created non-login ft5955-engine account.
+[Unit]
+Description=FT5955 independent real MOH startup development probe
+Requires=ft5955-engine-dev.socket
+After=ft5955-engine-dev.socket
+[Service]
+Type=simple
+User=ft5955-engine
+Group=ft5955-engine
+ExecStart=/usr/bin/python3 -B /opt/ft5955-dev/ft5955_dev_real_startup_server.py
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectHome=yes
+ProtectSystem=strict
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
+RestrictSUIDSGID=yes
+LockPersonality=yes
+IPAddressDeny=any
+TimeoutStopSec=10
