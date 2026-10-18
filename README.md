@@ -2,7 +2,9 @@
 
 Linux `libfprint` driver research for the built-in FocalTech USB fingerprint reader **VID:PID `2808:5955`**, tested on **Nobara 44**. The code includes a reproducible driver build, a reversible system-`fprintd` trial and a user-session bridge to the proprietary Windows MOH matching engine.
 
-**Status (17 October 2026): an end-to-end KDE experiment succeeded — enrolment, fingerprint verification and rollback. This is *not* a production-ready fingerprint-login driver.** The original packaged Nobara `libfprint` and `fprintd` have been restored. Fingerprint PAM/SDDM login was never enabled.
+**Update (18 October 2026): REAL HARDWARE VERIFY-MATCH through the separate UID955 systemd MOH service PASSED.** The guarded development service and root-only relay successfully operated with existing system `fprintd`, returning `verify-match (done)` for the previously enrolled left index finger on its first attempt. The original right-index attempt returned `verify-no-match` with difficult reader positioning. The development trial remains active unless explicitly rolled back; **this is not a secure KDE/PAM unlock release**. See [dated hardware handoff](docs/ft5955-dev-real-service-handoff-2026-10-18.md).
+
+**Previous milestone (17 October 2026): an end-to-end KDE experiment succeeded — enrolment, fingerprint verification and rollback. This is *not* a production-ready fingerprint-login driver.** The original packaged Nobara `libfprint` and `fprintd` have been restored. Fingerprint PAM/SDDM login was never enabled.
 
 ## Verified on the actual device
 
