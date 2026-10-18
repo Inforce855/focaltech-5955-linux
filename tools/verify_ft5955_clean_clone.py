@@ -34,6 +34,7 @@ UPSTREAM_PATCHES = (
 )
 REQUIRED_SOURCE = "libfprint/drivers/focaltech_5955.c"
 CAPTURE_SOURCE = "libfprint/drivers/ft5955_native_capture.c"
+VERIFY_SOURCE = "libfprint/drivers/ft5955_native_action.c"
 
 
 def apply_poll100_variant(source: Path) -> None:
@@ -64,6 +65,60 @@ def apply_poll100_variant(source: Path) -> None:
         raise ValueError("The original 10ms post-contact delay changed unexpectedly")
     target.write_text(data, encoding="utf-8")
 
+
+
+
+def apply_bounded_verify(source: Path) -> None:
+    """Implement four fresh NO_MATCH touches per ONE fprintd verify operation.
+
+    The immutable, hash-pinned driver snapshot is reconstructed first. Only its
+    disposable build copy changes. Quality retries continue independently;
+    at most 16 total captures and 4 actual NO_MATCH replies are permitted.
+    The MOH service stays in the same imported-template verification session.
+    No partial NO_MATCH is reported to KDE; only a terminal match/failure.
+    """
+    target = source / VERIFY_SOURCE
+    if target.is_symlink() or not target.is_file():
+        raise ValueError("Missing regular FT5955 action source in disposable tree")
+    data = target.read_text(encoding="utf-8")
+    changes = (
+        ("#define MAX_CAPTURES_VERIFY 16\n",
+         "#define MAX_CAPTURES_VERIFY 16\n"
+         "#define MAX_NO_MATCH_VERIFY 4 /* separate fresh finger contacts */\n"),
+        ("  gboolean done=FALSE;\n  Ft5955Action guard;\n",
+         "  gboolean done=FALSE;\n  unsigned no_match_attempts=0;\n  Ft5955Action guard;\n"),
+        (
+            "    if(!job->enrolling && (event==FT5955_DRIVER_MATCHED ||\n"
+            "                            event==FT5955_DRIVER_NOT_MATCHED)) {\n"
+            "      job->pending=event==FT5955_DRIVER_MATCHED;\n"
+            "      done=TRUE;break;\n"
+            "    }\n",
+            "    if(!job->enrolling && event==FT5955_DRIVER_NOT_MATCHED) {\n"
+            "      /* A mismatch is an ordinary imperfect touch, not an entire\n"
+            "       * failed KDE unlock. The USB scanner requires a NEW OFF->ON\n"
+            "       * transition for the next frame. Never reuse a held image.\n"
+            "       * Preserve the global 16-frame bound and emit just one final\n"
+            "       * libfprint verify report after success or four mismatches. */\n"
+            "      if(++no_match_attempts<MAX_NO_MATCH_VERIFY && i+1<max) {\n"
+            "        g_message(\"FT5955 no match; lift and press again (%u/%u)\",\n"
+            "                  no_match_attempts,MAX_NO_MATCH_VERIFY);\n"
+            "        ft5955_action_begin(&guard,FT5955_ACTION_VERIFY);\n"
+            "        continue;\n"
+            "      }\n"
+            "      job->pending=FALSE;\n"
+            "      done=TRUE;break;\n"
+            "    }\n"
+            "    if(!job->enrolling && event==FT5955_DRIVER_MATCHED) {\n"
+            "      job->pending=TRUE;\n"
+            "      done=TRUE;break;\n"
+            "    }\n"
+        ),
+    )
+    for old, new in changes:
+        if data.count(old) != 1:
+            raise ValueError("FT5955 verify source changed; refusing unsafe retry patch")
+        data = data.replace(old, new, 1)
+    target.write_text(data, encoding="utf-8")
 
 
 def source_patch_path(snapshot: Path, rel: str, expected_sha256: str) -> Path:
@@ -145,6 +200,9 @@ def main() -> None:
                 raise ValueError(f"Refusing overwrite: {rel}")
             shutil.copyfile(snapshot / rel, dest)
         print("PASS: exact active driver and all additional sources reconstructed")
+        apply_bounded_verify(source)
+        print("VERIFY IMPLEMENTED: up to 4 fresh touches in one fprintd/KDE request;")
+        print("one final result, max 16 captures, cancellation preserved.")
         if args.poll_100ms:
             apply_poll100_variant(source)
             print("TIMING VARIANT ONLY: 100ms contact polls, 1200 checks (~2 min).")
@@ -159,7 +217,7 @@ def main() -> None:
                          stream=True)
         if not list((build / "libfprint").glob("libfprint-2.so*")):
             raise ValueError("Build finished without a libfprint shared library")
-        print("PASS: CLEAN upstream clone + 3 GitHub patches built independently")
+        print("PASS: CLEAN upstream clone + 3 GitHub patches and bounded verification built")
         if args.stage:
             # User-owned staging only. Do not put the shared library where a
             # protected system fprintd service would load it. A separate
