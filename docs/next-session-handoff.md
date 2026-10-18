@@ -65,6 +65,26 @@ python3 "$HOME/Projects/ft5955-poll100-build/tools/verify_ft5955_clean_clone.py"
 
 **Next opt-in real trial**: `bash "$HOME/Projects/ft5955-poll100-build/tools/ft5955_kde_trial.sh" --start-poll100`. The **unchanged rollback** is `bash "$HOME/Projects/ft5955-poll100-build/tools/ft5955_kde_trial.sh" --stop`. After successful activation, compare a small number of deliberate single presses using previously enrolled fingers with `fprintd-verify -f left-index-finger`, checking whether it waits, retries or emits `verify-no-match` / `verify-match`. No re-enrolment, PAM changes, driver-flashing or matcher changes. New 100-ms activation is **not yet hardware-tested** at this checkpoint.
 
+## 18 October — REAL 100-ms system KDE verification timing comparison (user-reported)
+
+**Activation PASS:** The first `--start-poll100` attempt stopped at the existing fprintd preflight guard because normal `fprintd` was already running; its cleanup confirmed no experimental installation remained. After the user explicitly ran `sudo systemctl stop fprintd.service`, `bash "$HOME/Projects/ft5955-poll100-build/tools/ft5955_kde_trial.sh" --start-poll100` **PASSED**. The new staged SHA-256 `8deff4de7a1d7e85cae0dbfd415e388d76347d1e61e85a6fe2fa4e241aedd8ec` was verified; normal fprintd initially mapped the experimental .so (PID 61087) and restarted with the working lab bridge (PID 61263), and the standard system D-Bus manager returned a fingerprint device. No PAM changes. A subsequent `systemctl show` reported `ActiveState=inactive`, `MainPID=0` while the experimental drop-in still existed. This is compatible with an idle D-Bus-activated fprintd service; do not treat it as proof the experimental override vanished.
+
+**Actual user-reported behavioural comparison with this new 100-ms version:**
+
+| Finger action relative to `fprintd-verify` prompt | Informal outcome |
+| --- | --- |
+| Wait for verify message, then press/hold | **~80% failures or no apparent capture** |
+| Wait an additional ≥1 second after message, then press/hold | **~30% failures**, sometimes a long wait |
+| Immediately tap **2–3 times per second** after message | **~95% success within 1–2 seconds** |
+
+Sample counts and the precise terminal messages on the failing cases were not captured. Percentages are informal observational estimates, **not a statistically controlled acceptance/error benchmark**. Earlier 500-ms trial had an approximately **85% multi-tap success** observation using 3–4 taps; the reported ~95% success in the 100-ms trial is encouraging but not a controlled one-variable recognition accuracy comparison.
+
+**Code-grounded hypothesis:** In [`ft5955_native_action.c`](../driver/live-snapshot-2026-10-16/libfprint/drivers/ft5955_native_action.c), the worker starts and waits for its MOH subprocess `READY 1` **before starting the first** [`ft5955_native_scan()`](../driver/live-snapshot-2026-10-16/libfprint/drivers/ft5955_native_capture.c). The CLI's verification prompt need not indicate this worker has already armed status polling. The scan requires an observed OFF (`0x06`) followed by ON (`0x05`); if the first finger contact occurs before scanning begins, the code can start with ON while `armed=FALSE` and will ignore held contact until a later OFF→ON edge. Waiting after the CLI prompt plausibly makes the first valid edge easier to observe; repeated taps provide later edges after startup. An additional early-image/10-ms settling issue remains possible. These **explanations are hypotheses, not proof** without event timing / terminal status evidence.
+
+**Next engineering step, without more enrolment or random delays:** add opt-in, no-biometric-content **monotonic-timestamp tracing** of (a) worker start, (b) successful MOH `READY`, (c) first observed OFF, (d) first observed ON, (e) image transfer completion, and (f) matcher outcome category (MATCH, NO_MATCH, RETRY QUALITY). Trace **timing/state only**, not pixels or templates, and preserve the current staged build and original immutable snapshot. First check whether prompt precedes scan arming. Only then choose an isolated fix, such as separating readiness/arming from capture or adjusting post-contact settling. **Do not remove the OFF→ON gate blindly**: it prevents accidental reuse of a held/stale frame.
+
+The user's experimental trial currently appears **active (override installed)**, despite fprintd being idle when queried. The user-tested rollback is `bash "$HOME/Projects/ft5955-poll100-build/tools/ft5955_kde_trial.sh" --stop`. **No rollback has yet been reported for this later 100-ms trial**, so do not claim restored packaged libfprint until it runs and confirms success.
+
 ## Completed alternatives to avoid revisiting
 
 - An extra hardened `ft5955-engine-smoke.service` with a fake engine **passed** non-root socket/UID tests, but **nested bubblewrap inside that service failed** (`ERROR BWRAP_NAMESPACE_UNAVAILABLE`). Temporary units, socket and service account were removed. The team deliberately **stopped pursuing double sandboxing** and succeeded with the existing user-session MOH/bwrap route instead.
