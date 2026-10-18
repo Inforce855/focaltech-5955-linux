@@ -15,6 +15,7 @@ on:
       - "tools/check_ft5955_navigation.py"
       - "tools/verify_ft5955_clean_clone.py"
       - "tests/test_ft5955_poll_timing.py"
+      - "tools/manage_ft5955_system_trial.sh"
       - "tools/ft5955_kde_trial.sh"
       - "tools/manage_ft5955_kde_trial.sh"
       - ".github/workflows/ft5955-synthetic-broker.yml"
@@ -40,6 +41,7 @@ jobs:
         run: |
           bash -n tools/ft5955_kde_trial.sh
           bash -n tools/manage_ft5955_kde_trial.sh
+          bash -n tools/manage_ft5955_system_trial.sh
       - name: Validate embedded mock gateway source syntax (never execute)
         run: |
           python3 - <<'CHECK_EMBEDDED'
