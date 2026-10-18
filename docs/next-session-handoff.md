@@ -111,6 +111,12 @@ Do not switch or reset the original checkout with local changes. **After** a suc
 
 **Windows comparison remains intentionally outside this experiment:** Windows' native driver used status `0x80` selector `0x02` (seen `00→01→00`) and a companion GPIO `0x37`; our Linux capture uses `0x82 73 01` (`06/05`). These are different host queries to the sensor, but Windows and Linux are not concurrently polling it in our setup. Whether `0x37` affects sensor state, images or readiness remains unproven. Do **not** add these commands just to make this experiment pass.
 
+## 18 October — early-capture variant independently compiled and staged: PASS
+
+User reported pinned clean source build **109/109**, Meson 27 targets, and separate staged library at `/home/tim/.local/state/ft5955-system-trial/stage-earlycapture`. **SHA-256: `e644f579206736aa92deffae5c10e25c94f5b432e8750bc6f77eb32f7d79b7da`.** The disposable source/build was removed. Installed Nobara drivers and PAM were unchanged by this build; **no runtime early-capture recognition test yet**.
+
+As the previously successful 100-ms trial may still be installed, the next step is to stop it safely using `bash "$HOME/Projects/ft5955-poll100-build/tools/ft5955_kde_trial.sh" --stop`, stop idle/active packaged `fprintd` service as required by installer, and invoke the isolated new trial with `bash "$HOME/Projects/ft5955-earlycapture-build/tools/ft5955_kde_trial.sh" --start-earlycapture`. Test a single finger press after verify message, then compare tapping only if necessary. Roll back new trial using its own `--stop`. Continue without enrolment.
+
 ## Completed alternatives to avoid revisiting
 
 - An extra hardened `ft5955-engine-smoke.service` with a fake engine **passed** non-root socket/UID tests, but **nested bubblewrap inside that service failed** (`ERROR BWRAP_NAMESPACE_UNAVAILABLE`). Temporary units, socket and service account were removed. The team deliberately **stopped pursuing double sandboxing** and succeeded with the existing user-session MOH/bwrap route instead.
