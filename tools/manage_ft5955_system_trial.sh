@@ -6,12 +6,15 @@ set -Eeuo pipefail
 umask 022
 
 usage() {
-  echo "Usage: sudo bash $0 --activate | --rollback | --status" >&2
+  echo "Usage: sudo bash $0 --activate [--poll-100ms] | --rollback | --status" >&2
   exit 2
 }
-[[ $# == 1 ]] || usage
+[[ $# -ge 1 && $# -le 2 ]] || usage
 MODE="$1"
 [[ "$MODE" == --activate || "$MODE" == --rollback || "$MODE" == --status ]] || usage
+[[ $# -eq 1 || ( "$MODE" == --activate && "$2" == --poll-100ms ) ]] || usage
+STAGE_NAME=stage
+if [[ $# -eq 2 ]]; then STAGE_NAME=stage-poll100; fi
 if (( EUID != 0 )) || [[ -z "${SUDO_USER:-}" || "$SUDO_USER" == root ]]; then
   echo "STOP: invoke using sudo from an ordinary user account; never a root shell." >&2
   exit 2
@@ -30,7 +33,7 @@ STAGE_USER_HOME="$(getent passwd "$SUDO_USER" | cut -d: -f6)"
   echo "STOP: could not validate sudo invoking user's home directory" >&2
   exit 2
 }
-STAGE="$STAGE_USER_HOME/.local/state/ft5955-system-trial/stage"
+STAGE="$STAGE_USER_HOME/.local/state/ft5955-system-trial/$STAGE_NAME"
 SRC="$STAGE/lib/$SONAME"
 MANIFEST="$STAGE/SHA256"
 
@@ -145,6 +148,7 @@ actual="$(sha256sum "$SRC" | cut -d' ' -f1)"
   echo "STOP: staged library SHA-256 mismatch." >&2; exit 2
 }
 echo "PASS: packaged service unchanged; staged library verified ($actual)"
+echo "TRIAL SOURCE: $STAGE_NAME (original 'stage' is never replaced)"
 echo "Installing isolated, root-owned trial files; NO RPM replacement or PAM edits."
 
 IN_PROGRESS=0
