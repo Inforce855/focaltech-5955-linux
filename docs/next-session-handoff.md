@@ -85,6 +85,32 @@ Sample counts and the precise terminal messages on the failing cases were not ca
 
 The user's experimental trial currently appears **active (override installed)**, despite fprintd being idle when queried. The user-tested rollback is `bash "$HOME/Projects/ft5955-poll100-build/tools/ft5955_kde_trial.sh" --stop`. **No rollback has yet been reported for this later 100-ms trial**, so do not claim restored packaged libfprint until it runs and confirms success.
 
+## 18 October — independent early-contact experiment prepared (NOT YET HARDWARE TESTED)
+
+**Reason:** On the verified 100-ms libfprint driver the user reports about 80% first-press failures if pressing immediately after the verify message, about 30% if waiting an additional second, and about 95% success using fast tapping. The original worker waited for MOH `READY 1` before first querying the USB status (which requires observed OFF `06` → ON `05`). There is a plausible startup race, but no timestamp trace has yet proved the precise cause.
+
+**Opt-in source experiment:** On branch `feature/ft5955-early-contact-parallel`, `verify_ft5955_clean_clone.py --stage --early-capture` reconstructs the same hash-pinned upstream libfprint from verified patches and then edits **only its disposable source**:
+
+- Keeps **100-ms / 1,200-poll** bounded finger queries, same `0x82` status / `0x80` readiness / `0x81` capture commands, 10-ms settle delay and OFF→ON re-arm gate.
+- On **verify**, starts the MOH gateway handshake in a **separate cancellable GThread** while the operation worker **immediately polls/captures the physical USB device**. The first image stays in the worker's private RAM; it is sent over the existing gateway protocol only after `READY 1` from MOH. All further re-try captures use existing path. The **enrol** sequence is untouched.
+- Uses operation-scoped `GCancellable` on both I/O flows; failures and cancellation cancel/join gateway initialisation before cleaning the subprocess and wiping the worker's frame buffer. No new image persistence, templates, permission changes, PAM, USB commands or bypass of the MOH matcher.
+- Stages separate library only at `~/.local/state/ft5955-system-trial/stage-earlycapture`; the known-good `stage` and 100-ms `stage-poll100` remain untouched. The existing guarded installer loads this only via `--start-earlycapture`; `--stop` remains unchanged.
+- **CI source-transformation tests + wrapper syntax are passing.** This does **not** replace a real C compilation and sensor recognition test. Any first touch that occurs *before USB monitoring begins* may still require another OFF→ON; the fix isolates MOH startup from detection, but does not promise to accept a pre-held finger.
+
+**User build preparation (safe, no system changes):**
+
+```bash
+BASE="$HOME/Projects/ft5955-independent-build-check"
+NEW="$HOME/Projects/ft5955-earlycapture-build"
+git -C "$BASE" fetch origin feature/ft5955-early-contact-parallel:refs/remotes/origin/feature/ft5955-early-contact-parallel &&
+git -C "$BASE" worktree add --detach "$NEW" origin/feature/ft5955-early-contact-parallel &&
+python3 "$NEW/tools/verify_ft5955_clean_clone.py" --stage --early-capture
+```
+
+Do not switch or reset the original checkout with local changes. **After** a successful build, if the 100-ms system trial is still installed, first `bash "$HOME/Projects/ft5955-poll100-build/tools/ft5955_kde_trial.sh" --stop`. Stop the packaged system `fprintd` service if it is active, then explicitly start the new short-lived experiment using `bash "$NEW/tools/ft5955_kde_trial.sh" --start-earlycapture`. Use `bash "$NEW/tools/ft5955_kde_trial.sh" --stop` to restore the original service. No re-enrolment and no PAM login configuration.
+
+**Windows comparison remains intentionally outside this experiment:** Windows' native driver used status `0x80` selector `0x02` (seen `00→01→00`) and a companion GPIO `0x37`; our Linux capture uses `0x82 73 01` (`06/05`). These are different host queries to the sensor, but Windows and Linux are not concurrently polling it in our setup. Whether `0x37` affects sensor state, images or readiness remains unproven. Do **not** add these commands just to make this experiment pass.
+
 ## Completed alternatives to avoid revisiting
 
 - An extra hardened `ft5955-engine-smoke.service` with a fake engine **passed** non-root socket/UID tests, but **nested bubblewrap inside that service failed** (`ERROR BWRAP_NAMESPACE_UNAVAILABLE`). Temporary units, socket and service account were removed. The team deliberately **stopped pursuing double sandboxing** and succeeded with the existing user-session MOH/bwrap route instead.
