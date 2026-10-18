@@ -92,14 +92,21 @@ def verify(finger, timeout):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--finger", default="left-index-finger")
-    parser.add_argument("--attempts", type=int, default=3)
+    parser.add_argument("--rounds", type=int, default=5,
+                        help="Independent tests to run, even after a match")
+    parser.add_argument("--retries", type=int, default=3,
+                        help="Maximum verification operations per round")
+    parser.add_argument("--attempts", type=int, default=None,
+                        help="Deprecated alias for --retries")
     parser.add_argument("--timeout", type=int, default=35)
     parser.add_argument("--no-journal", action="store_true")
     args = parser.parse_args()
     if os.geteuid() == 0:
         parser.error("Run as your normal user, never root")
-    if not 1 <= args.attempts <= 10 or not 5 <= args.timeout <= 120:
-        parser.error("attempts must be 1–10 and timeout 5–120 seconds")
+    if args.attempts is not None:
+        args.retries = args.attempts
+    if not 1 <= args.rounds <= 30 or not 1 <= args.retries <= 10 or not 5 <= args.timeout <= 120:
+        parser.error("rounds 1–30, retries 1–10, timeout 5–120 seconds")
     if shutil.which("fprintd-verify") is None:
         parser.error("fprintd-verify is unavailable")
     if not args.no_journal and (shutil.which("sudo") is None or
@@ -116,64 +123,89 @@ def main():
         time.sleep(0.5)
     print("\nFT5955 RETRY TIMER (lab only; Ctrl+C to cancel)")
     print("Use separate deliberate contacts; no automatic enrolment.\n")
-    results = []
+    rounds = []
     previous_contact = None
     previous_verdict = None
     session_start = time.monotonic()
+    aborted = False
     try:
-        for index in range(1, args.attempts + 1):
-            drain(events)
-            print(f"\n=== Verification {index}/{args.attempts} ===", flush=True)
-            verdict, seconds, infrastructure_error = verify(args.finger, args.timeout)
-            if infrastructure_error:
-                print("STOP: fingerprint service/device unavailable; not a failed finger match.")
+        for round_num in range(1, args.rounds + 1):
+            print(f"\n######## ROUND {round_num}/{args.rounds} ########", flush=True)
+            round_start = time.monotonic()
+            outcomes = []
+            for attempt in range(1, args.retries + 1):
+                drain(events)
+                print(f"\n--- Fingerprint attempt {attempt}/{args.retries} ---", flush=True)
+                verdict, seconds, infrastructure_error = verify(args.finger, args.timeout)
+                if infrastructure_error:
+                    print("STOP: fingerprint service/device unavailable; no further retries.")
+                    aborted = True
+                    break
+                time.sleep(0.3)
+                trace = drain(events)
+                contact = trace.get("contact_on_observed")
+                reply = trace.get("matcher_reply_received")
+                print(f"Result: {verdict or 'no terminal verdict'} | CLI: {seconds:.3f} s")
+                if trace:
+                    print("Gateway startup:            ",
+                          delta(trace.get("worker_start"), trace.get("gateway_ready")))
+                    print("Contact → image:            ",
+                          delta(contact, trace.get("image_captured")))
+                    print("Image → matcher reply:      ",
+                          delta(trace.get("image_captured"), reply))
+                    print("Matcher → verify finished:  ",
+                          delta(reply, trace.get("verify_finish_done")))
+                    if previous_contact is not None:
+                        print("Previous contact → contact: ", delta(previous_contact, contact))
+                    if previous_verdict is not None:
+                        print("Previous verdict → contact: ", delta(previous_verdict, contact))
+                else:
+                    print("No timing trace events captured for this verification.")
+                outcomes.append((verdict, seconds))
+                if contact is not None:
+                    previous_contact = contact
+                if reply is not None:
+                    previous_verdict = reply
+                if verdict == "verify-match":
+                    break
+                if verdict != "verify-no-match":
+                    print("STOP: no valid terminal verdict; no further retries.")
+                    aborted = True
+                    break
+                if attempt < args.retries:
+                    print("NO_MATCH: lift and reposition for the next attempt.")
+                    time.sleep(0.65)
+            if outcomes:
+                successful = outcomes[-1][0] == "verify-match"
+                duration = time.monotonic() - round_start
+                rounds.append((successful, outcomes, duration))
+                print(f"\nROUND {round_num}: {'MATCH' if successful else 'NO MATCH'} "
+                      f"after {len(outcomes)} verification(s), {duration:.3f} s")
+            if aborted:
                 break
-            time.sleep(0.3)  # Allow the journald reader to receive late events.
-            trace = drain(events)
-            contact = trace.get("contact_on_observed")
-            reply = trace.get("matcher_reply_received")
-            print(f"Result: {verdict or 'no terminal verdict'} | CLI: {seconds:.3f} s")
-            if trace:
-                print("Gateway startup:          ",
-                      delta(trace.get("worker_start"), trace.get("gateway_ready")))
-                print("Contact → image:          ",
-                      delta(contact, trace.get("image_captured")))
-                print("Image → matcher reply:    ",
-                      delta(trace.get("image_captured"), reply))
-                print("Matcher → verify finished:",
-                      delta(reply, trace.get("verify_finish_done")))
-                if previous_contact is not None:
-                    print("Previous contact → next:  ", delta(previous_contact, contact))
-                if previous_verdict is not None:
-                    print("Previous verdict → contact:", delta(previous_verdict, contact))
-            else:
-                print("No trace events collected for this verification.")
-            results.append((verdict, seconds))
-            if contact is not None:
-                previous_contact = contact
-            if reply is not None:
-                previous_verdict = reply
-            if verdict == "verify-match":
-                break
-            if verdict != "verify-no-match":
-                print("STOP: no valid terminal fingerprint verdict; do not retry.")
-                break
-            if index != args.attempts:
-                print("No match. Lift and reposition for another try.")
-                time.sleep(0.65)
+            if round_num < args.rounds:
+                print("Next independent round: lift your finger until prompted.")
+                time.sleep(0.8)
     except KeyboardInterrupt:
         print("\nCancelled; no configuration changed.")
+        aborted = True
     finally:
         halt.set()
         if follower:
             follower.join(timeout=2)
-    matched = sum(v == "verify-match" for v, _ in results)
-    rejected = sum(v == "verify-no-match" for v, _ in results)
-    print(f"\nSUMMARY: {len(results)} verifications, {matched} match, "
-          f"{rejected} no-match; {time.monotonic()-session_start:.3f} s elapsed")
-    print("Inter-contact timing includes press duration and retry startup.")
+    successes = sum(ok for ok, _, _ in rounds)
+    total_attempts = sum(len(attempts) for _, attempts, _ in rounds)
+    no_matches = sum(v == "verify-no-match" for _, attempts, _ in rounds
+                     for v, _ in attempts)
+    print(f"\nSUMMARY: {len(rounds)}/{args.rounds} rounds completed, "
+          f"{successes} successful; {total_attempts} verifications, "
+          f"{no_matches} no-match; {time.monotonic()-session_start:.3f} s elapsed")
+    if rounds:
+        print(f"First-attempt successes: {sum(ok and len(a) == 1 for ok,a,_ in rounds)}")
+        print(f"Average round duration: {sum(d for _,_,d in rounds)/len(rounds):.3f} s")
+    print("Inter-contact intervals include finger contact, human positioning, and new verification startup.")
     print("Exact release-to-next-contact awaits separate driver instrumentation.")
-    return 0 if matched else 1
+    return 0 if successes == len(rounds) == args.rounds and not aborted else 1
 
 if __name__ == "__main__":
     sys.exit(main())
