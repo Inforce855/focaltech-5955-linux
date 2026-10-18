@@ -88,7 +88,7 @@ stage() {
   fi
 }
 stage "$SOURCE/driver/live-snapshot-2026-10-16/engine/template_session.c" "$STAGED/tools/ft5955_template_session.c"
-for name in build_ft5955_moh_template_dev.py ft5955_dev_template_launcher.py ft5955_dev_template_gateway.py ft5955_dev_protocol_server.py ft5955_dev_relay.py ft5955_engine_broker.py; do
+for name in build_ft5955_moh_template_dev.py ft5955_dev_template_launcher.py ft5955_dev_template_gateway.py ft5955_dev_protocol_server.py ft5955_dev_relay.py ft5955_engine_broker.py activate_ft5955_dev_protocol.sh switch_ft5955_hardware_to_dev_gateway.sh run_ft5955_dev_hardware_trial.sh; do
   stage "$SOURCE/tools/$name" "$APP/$name"
 done
 
@@ -172,4 +172,4 @@ chmod 0600 "$MARKER"
 trap - ERR
 echo "PASS: independent REAL MOH enrol/verify protocol installed; NO PAM."
 echo "PRESERVED: original live broker, existing fprintd configuration and KDE passwords."
-echo "ROLLBACK: sudo bash $0 --rollback"
+echo "ROLLBACK: sudo bash /opt/ft5955-dev/run_ft5955_dev_hardware_trial.sh --stop"
