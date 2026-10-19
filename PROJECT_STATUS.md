@@ -42,6 +42,15 @@ This is a fingerprint **hardware/libfprint driver** project, **not** a project t
 
 At this checkpoint, GitHub reports **9 branches including `main`**. The `feature/kde-lock-auth-preflight-20261018` branch contains recent MOH service and KDE work. Consolidation into `main` should be planned **after** reconciling the known-good local driver and running code; do not add more branches or delete history reflexively. The branch/commit count alone is not a progress metric.
 
+## 19 OCTOBER 2026 — restored backend and re-enrolment result
+
+- During earlier `fprintd-verify` attempts, the USB/handshake/contact/capture stages passed, but verification ended in `verify-unknown-error`. Journals reported `Error writing to file descriptor: Broken pipe`, with no `gateway_ready` marker. Both `ft5955-engine-dev.socket` and the service showed `inactive`; service `Result=success` did **not** indicate a running listener.
+- The protected development protocol and fprintd gateway routing were still marked active. User explicitly ran `sudo systemctl start ft5955-engine-dev.socket` and confirmed the socket was `active`. This manually started it; no evidence yet that it is enabled persistently after reboot.
+- Subsequent normal `fprintd-verify -f left-index-finger` attempts reached real `verify-no-match` and `verify-match` decisions, confirming that the earlier broken-pipe failure no longer blocked the matching path.
+- User reported unsatisfactory matching and then **re-enrolled the left-index finger**. Submitted chronological terminal output contains **18** normal verifications: first 11 show **2 MATCH / 9 NO_MATCH**; final 7 show **7 consecutive MATCH / 0 NO_MATCH**, consistent with the user's before/after account. The re-enrolment operation itself is not included in the pasted terminal logs, so the grouping boundary is inferred from their explanation.
+- Seven final command timings: **1.713 s, 0.554 s, 0.487 s, 0.395 s, 0.518 s, 0.594 s, 0.433 s** (median **0.518 s**). These are shell elapsed times, **not** isolated matcher or sensor latencies. This small uncontrolled run suggests re-enrolment materially improved matching for this finger; it does not establish overall accuracy or a production authentication safety guarantee.
+- **Do not repeat the completed matching/timing baselines**, re-enrol again, change USB polling, rebuild the libfprint stack, or modify KDE/PAM to explain this now-working experiment. The protected Windows-MOH service still has previously documented security limitations for production use; preserve password fallback and the saved relay backup.
+
 ## NEW 19 OCTOBER 2026 post-installation observation
 
 - User's installation script reported `PASS: Proven one-second relay fix installed. Original safely backed up.` Root-owned installed broker replaced previously measured old `68035014...` blob with hash-checked `6fa2dcf7...` code; no service restart or PAM/libfprint configuration edits.
@@ -51,14 +60,14 @@ At this checkpoint, GitHub reports **9 branches including `main`**. The `feature
 
 ## REMAINING — only the actual project work
 
-1. **Post-installation functional check only**: the previously verified one-second cleanup fix is now installed in `/opt/ft5955-dev/ft5955_engine_broker.py`, and the previous file is backed up. Confirm a single ordinary `fprintd-verify` completes via the existing working service. This is post-change validation, not a new timing or reliability investigation. No new enrolment or full baseline.
+1. **Confirmed on the live host:** corrected relay installed with backup, development MOH socket restored to active, end-to-end verification regained, and the final seven left-index checks after user re-enrolment all returned MATCH. No more verification baseline work for this milestone. Check only the socket's reboot activation policy before consolidating the maintainable install/rollback instructions.
 2. Consolidate the existing working libfprint driver, build/installation/rollback and documentation into a maintainable project state, using existing Linux services.
 3. Record realistic operating/security limitations without endlessly introducing new subsystems. Keep normal password authentication available.
 4. Later, as a separate explicitly authorised phase, build a **native Linux fingerprint matcher** to remove the proprietary Windows MOH dependency.
 
 ## NEXT ACTION
 
-**Post-change verification failed on 19 October:** after successful guarded installation of known-good broker SHA `6fa2dcf7` (backup kept), one ordinary `fprintd-verify -f left-index-finger` enumerated both fingers and started verification but ended with `verify-unknown-error (done)` (NOT `verify-no-match`). This is a newly observed integration/runtime error; cause is **not established**. Next collect narrowly scoped journal entries from **that same attempt**, before changing source, PAM, services or repeating fingerprint scans. Preserve rollback file and previously verified timing result. Do not represent source-only CI as a successful post-deployment test.
+**Verified operating state (19 October):** the protected MOH socket was found inactive despite the development trial being marked active; manually starting `ft5955-engine-dev.socket` restored end-to-end verification. After re-enrolment the last **7/7** reported left-index attempts matched (median command time **518 ms**). No more fingerprint scans or speed tuning are needed for this milestone. **Next:** read-only inspection of whether the existing socket unit will start after reboot, then consolidate and document the already-working reversible libfprint/fprintd integration and review pre-existing MOH/template trust limitations *before* treating KDE/PAM authentication as production-ready. Preserve the original relay backup and password unlock.
 
 At the start of each new chat, read this file and report **COMPLETED / REMAINING / NEXT ACTION**. Never silently convert a hypothesis into a fault or repeat earlier testing. Update this file when a significant result changes the project state.
 
