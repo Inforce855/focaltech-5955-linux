@@ -73,6 +73,18 @@ At this checkpoint, GitHub reports **9 branches including `main`**. The `feature
 - Unknown error differs from a biological `verify-no-match`; there is no evidence yet that the restored fix caused it or that matching accuracy changed. Consult existing journal messages **before** proposing changes or a repeat scan.
 - Historical 18 October 5/5 results remain valid evidence of the previously tested code. Do not delete the `.before-1s-fix` backup.
 
+## 19 OCTOBER 2026 — follow-up authselect and KDE configuration (user supplied)
+
+Read-only host output:
+- `authselect current`: profile `local`; features `with-silent-lastlog`, `with-mdns4` (no `with-fingerprint`). `authselect check`: `Current configuration is valid.`
+- `/etc/pam.d/kde`: `auth substack password-auth`; `auth include postlogin`. Password-based lock screen remains configured.
+- `/etc/pam.d/system-auth`: `pam_env.so`, `pam_faildelay.so delay=2000000`, `pam_unix.so nullok` (sufficient), `pam_deny.so`. No `pam_fprintd.so` in displayed rules.
+- `/etc/pam.d/fingerprint-auth`: `auth required pam_debug.so auth=authinfo_unavail`; the KDE-specific fingerprint route currently cannot use enrolled prints.
+- `kreadconfig6 --file kscreenlockerrc --group Authenticators --key Fingerprint --default false`: `false`. This is a relevant opt-in setting, but source/runtime behaviour on the user's exact KDE build must be confirmed before treating it as definitive.
+- Package `fprintd-pam` **is installed** (from preceding diagnostic), and Polkit `polkit-1` includes `system-auth`; no fingerprint module is in the shown `system-auth` configuration.
+
+**Decision:** do NOT blindly enable authselect `with-fingerprint`: that would alter shared `system-auth` used by Polkit and other components. The protected MOH service still has an unauthenticated SHA256 template envelope and pending vendor sandbox/identity review. Narrow KDE-only fingerprint activation and Polkit authorisation remain explicit goals, **pending the trust boundary review and guarded rollback**. Do not replace `pam_debug` directly in generated authselect files; they are authselect-managed. No fingerprint hardware retests.
+
 ## 19 OCTOBER 2026 — current PAM diagnostic supplied by user
 
 User read-only command output from current Nobara host:
