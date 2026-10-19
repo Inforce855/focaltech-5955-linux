@@ -208,3 +208,16 @@ User ran `fprintd-verify -f any` as an ordinary user after confirmed v2 install;
 | worker start → callback done | **2861.589 ms** |
 
 **Conclusion:** The previously eliminated ~1-second gateway cleanup delay is not recurring: each observed cleanup is ~20 ms. Both serial templates require only ~0.24 seconds total after image capture in this attempt. Most wall time (~2.63 seconds) was spent awaiting the first usable image and can include user placement time or release-to-contact polling. No reliable physical-press timestamp is present. **No MATCH so the first v2 hardware recognition test is a negative sample.** Next: controlled additional `any` attempt with **right index first** (gallery #0), repeat trace capture and distinguish success/no-match versus repeated quality. Then try left index independently after checking result. Preserve the active known-good backup and password fallback. Avoid premature optimisation of parallel gateway starts or old join; use observations first.
+
+## Four left-index v2 trials and rollback recommendation
+
+October 19 user-confirmed left-index trials: four consecutive `fprintd-verify -f any` results NO_MATCH, NO_MATCH, NO_MATCH, MATCH. Each NO_MATCH checked two gallery candidates. The match occurred after checking the second candidate. No quality-retry event observed.
+
+| Trial | Before image capture | Image to finish | Total |
+|---|---:|---:|---:|
+| No match 1 | 458.2 ms | 262.3 ms | 720.5 ms |
+| No match 2 | 1235.4 ms | 266.4 ms | 1501.8 ms |
+| No match 3 | 436.2 ms | 241.4 ms | 677.6 ms |
+| Match 4 | 375.6 ms | 245.3 ms | 620.9 ms |
+
+One match in four small, informal left-index trials is not a reliable statistical estimate but raises concern about consistency. Earlier one-template match was previously attributed to the right finger without confirmed gallery-label mapping; user clarification that tests involved the left finger makes that attribution unsafe. A one-template MATCH confirms the first candidate only, not independently its named finger. Before further live tests: recommend guarded v2 rollback while fprintd inactive and non-interactive sudo available, then audit actual gallery order and matching/cross-match behavior offline. Preserve protected matcher, PAM, prior staged candidate, timing logs and original enrollment records; do not tune acceptance thresholds.
