@@ -76,8 +76,13 @@ def relay(path: str) -> int:
         )
         up.start()
         copy_stream(remote.recv, write_stdout_all)
-        # Never keep the service running after the client has finished.
-    up.join(timeout=1)
+        # The remote gateway has already closed its output. Once the socket
+        # closes, the per-session relay should exit immediately. The daemon
+        # forwarding thread may still be blocked on fprintd's open stdin:
+        # joining it for 1 second delayed every completed verification even
+        # though the fingerprint verdict had already arrived. Daemon thread
+        # exits with this short-lived relay process; gateway/broker teardown
+        # remains independently supervised.
     return 0
 
 
