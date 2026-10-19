@@ -145,6 +145,20 @@ The user wants a maintained, normal FocalTech 5955 Linux driver and **does not w
 - After closing the recorded MOH matcher trust/template security questions, create one documented, maintainable non-development service and installer/upgrade/rollback path from the existing verified code; only then retire the `-dev` service names, paths, development markers and obsolete scripts.
 - Do not mistake a rename for security or completion; no premature rename, parallel runtime or destructive cleanup. Keep the fully native Linux matcher as a separately planned later milestone.
 
+## 19 OCTOBER 2026 — fingerprint verification cancellation/claim leak observed
+
+**Live host symptom:** After successful Polkit and sudo fingerprint PAM trials, user attempted sudo with a password instead of fingerprint and used Ctrl+C / Ctrl+Z, then closed the terminal. New user terminal showed no processes matching `[s]udo`. `ft5955-engine-dev.socket` remained `active`. `fprintd-verify -f right-index-finger` immediately returned `GDBus.Error:net.reactivated.Fprint.Error.AlreadyInUse: Device was already claimed`.
+
+**Relevant fprintd journal evidence:**
+- Earlier completed live verification attempts had `matcher_no_match` / `matcher_match`, `cleanup_begin`, `gateway_wait_complete`, `worker_return`, `verify_finish_start`, `verify_finish_done`.
+- In the later incomplete attempt, `worker_start` → `scan_begin` → `gateway_ready` occurred, followed by `Verification was in progress, stopping it`, **without a visible `worker_return` or `verify_finish_done`**.
+- At least six subsequent independent calls to `Claim` were rejected with `Device was already claimed`. `fprintd` itself remained running; only ordinary polkit daemon and KDE agent processes appeared in the filtered process listing (not evidence those two owned the claim).
+- **Working hypothesis, not established root cause:** cancelled/incomplete verification or outstanding client claim left fprintd's device claimed; distinguish libfprint cancellation callback behaviour from a still-live client or fprintd state. Do not misdiagnose as MOH socket startup, USB driver damage or missing enrolment.
+
+**Safe recovery recommendation issued:** first try `sudo -n systemctl restart fprintd.service` to avoid initiating fingerprint/password PAM while device already claimed. **Recovery not yet confirmed**. If `sudo -n` reports an authentication requirement, do not loop interactive sudo or make unmanaged PAM edits. Preserve the known authselect backup `ft5955-pre-fingerprint-20261019-113538`, password fallback and existing installed runtime.
+
+**New completion criterion:** cancellation/timeouts/aborted sudo/Polkit PAM verification must release the device and permit the next operation, without restarting fprintd. Add a focused code/test inspection of cancellation and cleanup paths after recovering operation, not broad re-enrolment or speed tuning. This is a *separate, newly observed reliability issue*, not a return of the solved one-second relay teardown delay.
+
 ## 19 OCTOBER 2026 — real global PAM authorisation success
 
 **User-confirmed live result:** After enabling `authselect with-fingerprint` (with preserved password profile and backup `ft5955-pre-fingerprint-20261019-113538`), the standard KDE Polkit request from `pkexec /usr/bin/id -u` **accepted the right index fingerprint**, and a separate **`sudo` authentication using the fingerprint also worked**. These are actual privileged PAM-path authentication successes through the current FocalTech driver and protected UID955 MOH service, not just `fprintd-verify` checks. The user's latest message does not include the exact `pkexec` output value, nor has password fallback been explicitly rechecked *since* global PAM activation.
