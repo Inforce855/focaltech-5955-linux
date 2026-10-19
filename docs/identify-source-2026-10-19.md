@@ -162,3 +162,16 @@ After the known-good live rollback, implementation is proceeding **exclusively o
 New `tools/ft5955_identify_v2_trial.sh` has `--status`, `--activate`, `--rollback`; it pins v2 candidate SHA and original baseline SHA independently from historical v1 installer. It **requires** the already existing root-owned `/opt/ft5955-system-trial/.identify-rollback-20261019` backup from the first trial to pass its checksum, ownership and permissions checks; it never creates or overwrites that backup. Only root-owned experimental `/opt/ft5955-system-trial/lib/libfprint-2.so.2.0.0` and its existing SHA marker are eligible for atomic replacement. The v2 trial script checks the configured 90-/95- overrides, effective protected MOH routing and `fprintd.service` being inactive. Never use the v1 installer to roll back a v2 binary; use v2's exact installer and original backup. No PAM, `authselect`, enrollment records, sockets or vendor process modifications. A separate `tests/test_ft5955_identify_v2_live_trial.py` and existing offline GitHub Actions CI step check the new script's anchors and Bash syntax (not yet locally tested by the user).
 
 **Next safe action:** update the existing clean detached-HEAD `~/Projects/ft5955-relay-latency-test` checkout with `git fetch` + `git merge --ff-only FETCH_HEAD`, run `bash -n tools/ft5955_identify_v2_trial.sh` and the new offline unit tests. If they pass, run `sudo -n bash tools/ft5955_identify_v2_trial.sh --status` only to verify the existing original backup and installed original checksum before any activation. Candidate v2's extra timing markers measure the serial matcher startup/teardown delay but **do not** yet fix it. Actual matched finger is not reported by standard `fprintd-verify -f any` CLI; do not log per-finger identifiers in journal timings.
+
+## User-confirmed guarded identify v2 activation — 19 October 2026
+
+User executed the dedicated `tools/ft5955_identify_v2_trial.sh --activate` after its read-only `--status` showed known-good live library SHA and marker `02403d764535bc77a83c62c4f696af3e5d4dc8df8b087e74f70989cfa96b1a28`, `ROLLBACK_BACKUP=verified`, and `FPRINTD_STATE=active` (the activation command waited for inactivity). The installer reported:
+
+```
+PASS: pre-existing root-owned original libfprint and marker backup verified.
+PASS: identify v2 library selected for next on-demand fprintd start.
+PAM, both service overrides, protected MOH and enrolled prints unchanged.
+ROLLBACK: sudo -n bash /home/tim/Projects/ft5955-relay-latency-test/tools/ft5955_identify_v2_trial.sh --rollback
+```
+
+**Exact v2 candidate SHA-256** `ad0ff83b5e515711eba822dc7ab69f24ab6f6c5764b0f5daed96a609c96666a9`, previously built with Meson/Ninja 109/109 and separately staged. This is installer-reported success; independent installed SHA readback and actual live identify timing measurements are **not yet reported**. **Next single step:** `sudo -n bash "$HOME/Projects/ft5955-relay-latency-test/tools/ft5955_identify_v2_trial.sh" --status`. Expect both candidate library and marker SHA equal to v2, plus `ROLLBACK_BACKUP=verified`. Before testing a finger, retain the root-only known-good backup; if hardware detection is unreliable, wait for fprintd inactive and use v2-specific `--rollback`. Do not use v1 installer for a v2 installation or modify saved fingerprints.
