@@ -73,6 +73,16 @@ At this checkpoint, GitHub reports **9 branches including `main`**. The `feature
 - Unknown error differs from a biological `verify-no-match`; there is no evidence yet that the restored fix caused it or that matching accuracy changed. Consult existing journal messages **before** proposing changes or a repeat scan.
 - Historical 18 October 5/5 results remain valid evidence of the previously tested code. Do not delete the `.before-1s-fix` backup.
 
+## 19 OCTOBER 2026 — current PAM diagnostic supplied by user
+
+User read-only command output from current Nobara host:
+- `rpm -q fprintd-pam` -> `fprintd-pam-1.94.5-5.fc44.x86_64` (**installed**; supersedes the dated 18 Oct statement that the package was absent).
+- `/etc/pam.d/kde-fingerprint`: `auth substack fingerprint-auth`; `auth include postlogin`.
+- `/etc/pam.d/fingerprint-auth`: `auth required pam_debug.so auth=authinfo_unavail` (**placeholder, not pam_fprintd.so**).
+- `/usr/lib/pam.d/polkit-1`: `auth include system-auth`. No current `system-auth` content was supplied; **do not infer Polkit fingerprint support from this line alone**.
+- Dedicated KDE fingerprint PAM rule currently cannot call fprintd through the shown `fingerprint-auth` stack. Historical experimental KDE unlocking is a separate observation and does not establish which PAM rules are currently active.
+- **Next (read-only):** inspect `authselect current`, `authselect check`, actual `system-auth` and `kde` authentication includes, and any KScreenLocker fingerprint flag, without changing or enabling PAM. Preserve old complete PAM backup and password unlock. Production activation still gated on matcher/template trust boundary.
+
 ## Explicit user completion goal — KDE screen unlock and authorisation (19 October 2026)
 
 The user explicitly confirmed that **finishing this driver includes enabling fingerprint authentication for the KDE screen locker/screensaver and authorisation dialogs**, not merely obtaining `fprintd-verify` matches. Target these existing OS components with password fallback:
