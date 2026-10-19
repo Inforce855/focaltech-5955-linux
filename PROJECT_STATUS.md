@@ -1,7 +1,7 @@
 # PROJECT STATUS — FocalTech USB 2808:5955 Linux driver
 
-**Updated:** 18 October 2026  
-**Source branch:** `feature/kde-lock-auth-preflight-20261018` (existing; no new branch)  
+**Updated:** 19 October 2026  
+**Repository entry point:** `main`. Latest dedicated-service work remains on existing `feature/kde-lock-auth-preflight-20261018`; no new branch created.  
 **Purpose:** The first document to consult before proposing or implementing ANY change. This is a checkpoint, not a request to reopen resolved problems.
 
 ## Original objective (do not expand)
@@ -16,7 +16,7 @@ This is a fingerprint **hardware/libfprint driver** project, **not** a project t
 - A libfprint driver and real system fprintd have enumerated and operated the reader.
 - Both **left and right index fingers** were successfully enrolled via KDE.
 - Real MOH fingerprint matching works; standard `fprintd-verify` returned `verify-match`.
-- **One-second timing error was identified and removed** during development. **User-reported result after the fix: 5 matches out of 5.** This reliability issue was considered **resolved**. Do not invent another timing or retry fix. **The commit/binary containing that exact fix has NOT yet been mapped to the installed build**, which is a source/deployment-record question, not grounds to repeat the experiments.
+- **One-second timing error was identified and removed** during development. **User-reported result after the fix: 5 matches out of 5.** This reliability issue was considered **resolved**. Do not invent another timing or retry fix. **Known-good source:** `tools/ft5955_engine_broker.py` in `feature/ft5955-relay-latency`, commit `66e054c` (fixed by removing `up.join(timeout=1)` after gateway EOF). On 19 October this exact corrected broker was restored into both `main` and `feature/kde-lock-auth-preflight-20261018`, with the previously successful synthetic regression test. **The installed `/opt/ft5955-dev/ft5955_engine_broker.py` version remains unverified**, which is a source/deployment-record question, not grounds to repeat the experiments.
 - On **18 October 2026**, the separate UID955 MOH service completed real hardware verification: `fprintd-verify -f left-index-finger` returned `verify-match` on the first attempt.
 - On **18 October 2026**, user confirmed **KDE screen unlocking actually succeeded with fingerprints**, including both fingers. Normal password unlock also still worked. The fingerprint option sometimes disappeared and required password fallback; **cause not established**. Do not presume a PAM retry limit or missing hardware reliability fix without checking installed code and live configuration.
 - Historical standalone experiment was rolled back successfully on 17 October without replacing RPM-owned vendor libraries. A later experimental dedicated-service trial was activated; **no confirmed rollback of that later trial has been reported**.
@@ -25,7 +25,7 @@ This is a fingerprint **hardware/libfprint driver** project, **not** a project t
 
 - GitHub is authoritative for **committed** source and documented outcomes, but may **not** exactly match the currently running `libfprint` library, protected `/opt` service or locally modified checkout.
 - The immutable driver source snapshot in `driver/live-snapshot-2026-10-16/` records earlier capture/verify logic. **Do not assume that historical snapshot contains the later one-second-delay fix or is identical to the running binary.**
-- The actual 5/5 success result is explicitly user reported; the **precise local file/commit/library SHA responsible is still to be identified from existing development history**, preferably without repeating hardware tests.
+- The exact 1-second cleanup fix is **identified**: `tools/ft5955_engine_broker.py` commit `66e054c`, originally trialled with staged timingtrace libfprint. The October 18 user-reported 5/5 result and subsequent right-index five-round test are documented in `feature/ft5955-relay-latency/docs/relay-latency-hardware-pass-2026-10-18.md`. What remains **unverified** is whether the copy currently installed in `/opt/ft5955-dev/` has the fix; do not confuse GitHub content with deployment.
 - User's inspection on 18 October found `/etc/pam.d/kde-fingerprint` identical to the saved original and `fingerprint-auth` containing `pam_debug.so auth=authinfo_unavail`, *even though* KDE fingerprint unlock had succeeded. **Do not infer effective PAM flow from an assumed rule.** Earlier attempts to modify `max-tries` stopped due to mismatched config, making no changes.
 - Experimental MOH trust/template integrity and sandbox decisions have **not** been approved as production authentication security. That remains separate from validating the operational driver. Never sacrifice password fallback.
 
@@ -44,14 +44,14 @@ At this checkpoint, GitHub reports **9 branches including `main`**. The `feature
 
 ## REMAINING — only the actual project work
 
-1. **Reconcile existing source with verified results**: locate the already-corrected one-second timing implementation and confirm which code/binary is installed. This is about identifying and consolidating **what already works**, not tuning it again. Preserve all local changes.
+1. **Reconcile the installed code with verified source**: the proven one-second cleanup fix is now restored on GitHub and protected by a regression test. Determine whether the root-owned `/opt/ft5955-dev/ft5955_engine_broker.py` copy is still the old version **using a read-only hash check**, before any guarded update. Preserve all local changes; do not run new fingerprint baseline tests.
 2. Consolidate the existing working libfprint driver, build/installation/rollback and documentation into a maintainable project state, using existing Linux services.
 3. Record realistic operating/security limitations without endlessly introducing new subsystems. Keep normal password authentication available.
 4. Later, as a separate explicitly authorised phase, build a **native Linux fingerprint matcher** to remove the proprietary Windows MOH dependency.
 
 ## NEXT ACTION
 
-**Do not implement or test any new proposed fix yet.** First use the existing GitHub history and relevant prior conversations to identify the exact **5/5-working implementation** and compare it with the current deployed driver. Report the difference (if any) before requesting a change.
+**Known-good relay fix is identified and restored in both active GitHub branches, no deployment performed.** Next use a read-only Git blob hash of `/opt/ft5955-dev/ft5955_engine_broker.py` to establish whether the *installed* root-owned relay has the one-second fix. Do not run enrolment, PAM changes, repeat USB diagnostics or reinstall anything. If older, plan a narrowly guarded upgrade preserving the active service and rollback.
 
 At the start of each new chat, read this file and report **COMPLETED / REMAINING / NEXT ACTION**. Never silently convert a hypothesis into a fault or repeat earlier testing. Update this file when a significant result changes the project state.
 
