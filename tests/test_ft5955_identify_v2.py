@@ -85,7 +85,8 @@ class IdentifyV2Tests(unittest.TestCase):
             "identify_finish_start", "identify_finish_done",
         )
         for phase in phases:
-            self.assertEqual(code.count(f'ft5955_trace ("{phase}");'), 1, phase)
+            expected = 2 if phase == "identify_finish_done" else 1
+            self.assertEqual(code.count(f'ft5955_trace ("{phase}");'), expected, phase)
         self.assertNotIn("FT5955TIMING template", code)
         self.assertNotIn("FT5955TIMING frame", code)
         # Historical snapshot is SHA-pinned and must remain immutable.
