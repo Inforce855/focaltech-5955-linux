@@ -102,3 +102,17 @@ ROLLBACK: sudo -n bash /home/tim/Projects/ft5955-relay-latency-test/tools/ft5955
 ```
 
 The installer reported making and checking a root-owned backup before replacing the experimental shared library and owner marker. **This confirms script-reported activation, not real identify behaviour**. Next read-only `sudo -n bash tools/ft5955_identify_live_trial.sh --status` should independently report `LIVE_SHA` and `MARKER_SHA` of `70609faa6783d9175c2925f1cccdcde9a81282fc275b2626185e3bfc2b365bdd` and `ROLLBACK_BACKUP=verified`. This status command does not restart fprintd, change authentication or touch the fingerprint sensor. If noninteractive sudo expired, status must fail rather than prompt fingerprint again. After confirming status, proceed to one controlled identify test, not fresh enrolment. Roll back on any abnormal denial, hang or wrong match; use password authentication to obtain root access if necessary, preserving the known-good SHA `02403d764535bc77a83c62c4f696af3e5d4dc8df8b087e74f70989cfa96b1a28`.
+
+## Successful independent installed-hash and backup readback — 19 October 2026
+
+The user ran `sudo -n bash tools/ft5955_identify_live_trial.sh --status` **after** activation. Reported results:
+
+```
+LIVE_SHA=70609faa6783d9175c2925f1cccdcde9a81282fc275b2626185e3bfc2b365bdd
+MARKER_SHA=70609faa6783d9175c2925f1cccdcde9a81282fc275b2626185e3bfc2b365bdd
+ROLLBACK_BACKUP=verified
+FPRINTD_STATE=inactive
+READ ONLY: no changes
+```
+
+**Confirmed:** active candidate and marker are the exact verified build; known-good baseline backup and marker passed guard verification; fprintd is stopped, so the next verification will activate a new process loading candidate. No hardware identify test yet, and not evidence either enrolled finger works under `any`. **Next:** run a single `fprintd-verify -f any` as normal user, deliberately press the **left** index finger first (previous driver only selected right for `any`); log `verify-match` / `verify-no-match`, hangs and any errors. If a failure occurs, do not launch repeated scans or use sudo repeatedly; inspect filtered diagnostics and roll back with the guarded script after inactive fprintd. Neither PAM nor enrolled data should be edited. The fprintd D-Bus `VerifyStart("any")` specification permits gallery search when the device supports identification.
