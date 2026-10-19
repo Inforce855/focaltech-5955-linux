@@ -145,6 +145,10 @@ The user wants a maintained, normal FocalTech 5955 Linux driver and **does not w
 - After closing the recorded MOH matcher trust/template security questions, create one documented, maintainable non-development service and installer/upgrade/rollback path from the existing verified code; only then retire the `-dev` service names, paths, development markers and obsolete scripts.
 - Do not mistake a rename for security or completion; no premature rename, parallel runtime or destructive cleanup. Keep the fully native Linux matcher as a separately planned later milestone.
 
+## 19 OCTOBER 2026 — identify live-vs-staged integrity preflight PASS
+
+User confirmed `sha256sum -c SHA256` for `stage-identify`: **OK**, SHA-256 `70609faa6783d9175c2925f1cccdcde9a81282fc275b2626185e3bfc2b365bdd` (owner `tim:tim`, mode 0600). Installed known-good `/opt/ft5955-system-trial/lib/libfprint-2.so.2.0.0`: SHA-256 `02403d764535bc77a83c62c4f696af3e5d4dc8df8b087e74f70989cfa96b1a28` (owner `root:root`, mode 0644). `fprintd.service` inactive with `MainPID=0`, and both 90-/95- custom override paths in `DropInPaths` (95 path truncated). No files changed. **Next: read-only full override/marker inventory, then guarded backup-and-rollback for live identify swap.** Old lab install guard against active `fprintd-pam` must not be bypassed. No real identify test yet.
+
 ## 19 OCTOBER 2026 — identify staged build SUCCESS, original authentication untouched
 
 The user ran `verify_ft5955_clean_clone.py --stage --trace-timing --identify` in existing `~/Projects/ft5955-relay-latency-test`. Verified pinned upstream and source patch manifest; Ninja **109/109 PASS**. New **user-only** `stage-identify` library created at `/home/tim/.local/state/ft5955-system-trial/stage-identify/lib/libfprint-2.so.2.0.0` with reported SHA-256 **`70609faa6783d9175c2925f1cccdcde9a81282fc275b2626185e3bfc2b365bdd`**. No file in `/opt`, `/etc` or `/usr` touched; no USB, active fprintd, global PAM, enrolled prints or MOH engine changed. **No hardware identify PASS yet.** Details: `docs/identify-source-2026-10-19.md` on existing `feature/ft5955-relay-latency`.
