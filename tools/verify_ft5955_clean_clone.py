@@ -25,6 +25,7 @@ import tempfile
 
 import verify_ft5955_rebuild as existing
 from ft5955_identify_overlay import apply_identify_variant
+from ft5955_identify_overlay_v2 import apply_identify_v2_variant
 
 UPSTREAM_URL = "https://gitlab.freedesktop.org/libfprint/libfprint.git"
 UPSTREAM_TAG = "v1.94.100"
@@ -287,10 +288,14 @@ def main() -> None:
     ap.add_argument("--trace-timing", action="store_true",
                     help="Early-capture verify with non-biometric monotonic stage timings (separate staged build)")
     ap.add_argument("--identify", action="store_true",
-                    help="SOURCE-ONLY opt-in gallery identify overlay for --trace-timing builds; no install")
+                    help="SOURCE-ONLY historical v1 gallery identify overlay; no install")
+    ap.add_argument("--identify-v2", action="store_true",
+                    help="v2: source-only identify quality handling + event-only timing; separate stage")
     args = ap.parse_args()
-    if args.identify and not args.trace_timing:
-        ap.error("--identify requires --trace-timing; preserve proven early-capture timing source")
+    if args.identify and args.identify_v2:
+        ap.error("Choose either historical --identify or experimental --identify-v2")
+    if (args.identify or args.identify_v2) and not args.trace_timing:
+        ap.error("Identify requires --trace-timing; preserve baseline source transforms")
     if sum((args.poll_100ms, args.early_capture, args.trace_timing)) > 1:
         ap.error("Select only one timing experiment")
 
@@ -363,9 +368,14 @@ def main() -> None:
         if args.trace_timing:
             apply_timingtrace_variant(source)
             print("TRACE VARIANT: event-only monotonic journal timings, no frame/template data.")
-        if args.identify:
+        if args.identify or args.identify_v2:
             apply_identify_variant(source)
-            print("IDENTIFY SOURCE VARIANT: one fresh capture checked against each enrolled gallery template.")
+            if args.identify_v2:
+                apply_identify_v2_variant(source)
+                print("IDENTIFY V2: gallery quality retries + event-only timing for each stage.")
+                print("V2 is DIAGNOSTIC; serial gateway startup is not yet optimised.")
+            else:
+                print("IDENTIFY V1 (historical): original slower serial gallery worker.")
             print("Existing verify/enroll workers, timing markers, saved templates and MOH socket unchanged.")
         if args.poll_100ms or args.early_capture or args.trace_timing:
             print("Source snapshot, installed system and baseline stages are untouched.")
@@ -383,7 +393,8 @@ def main() -> None:
             # User-owned staging only. Do not put the shared library where a
             # protected system fprintd service would load it. A separate
             # privileged trial tool will copy it into root-owned /opt later.
-            stage_name = ("stage-identify" if args.identify else
+            stage_name = ("stage-identify-v2" if args.identify_v2 else
+                          "stage-identify" if args.identify else
                           "stage-timingtrace" if args.trace_timing else
                           "stage-earlycapture" if args.early_capture else
                           "stage-poll100" if args.poll_100ms else "stage")
@@ -412,7 +423,7 @@ def main() -> None:
             print("STAGED_LIB_SHA256:", digest)
             if args.poll_100ms or args.early_capture or args.trace_timing:
                 print("EXPERIMENTAL VARIANT STAGED SEPARATELY: never replace earlier stages by hand.")
-                if args.identify:
+                if args.identify or args.identify_v2:
                     print("IDENTIFY STAGE IS NOT CONNECTED TO ANY PRIVILEGED INSTALLER.")
                     print("DO NOT replace the running /opt libfprint library or enable this for PAM yet.")
                 else:
