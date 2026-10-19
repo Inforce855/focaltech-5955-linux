@@ -73,6 +73,16 @@ At this checkpoint, GitHub reports **9 branches including `main`**. The `feature
 - Unknown error differs from a biological `verify-no-match`; there is no evidence yet that the restored fix caused it or that matching accuracy changed. Consult existing journal messages **before** proposing changes or a repeat scan.
 - Historical 18 October 5/5 results remain valid evidence of the previously tested code. Do not delete the `.before-1s-fix` backup.
 
+## Explicit user completion goal — KDE screen unlock and authorisation (19 October 2026)
+
+The user explicitly confirmed that **finishing this driver includes enabling fingerprint authentication for the KDE screen locker/screensaver and authorisation dialogs**, not merely obtaining `fprintd-verify` matches. Target these existing OS components with password fallback:
+1. **KScreenLocker / `kde-fingerprint` PAM** — reliable normal screen unlock. Historical 18 October unlocking succeeded experimentally; revalidate *configuration and security*, not sensor recognition. Prior PAM inventory showed `fingerprint-auth` had `pam_debug.so auth=authinfo_unavail` and `fprintd-pam` missing; do not assume those rules have since changed or that earlier unlock establishes a supported configuration.
+2. **Polkit KDE authorisation dialogs** — inspect effective Polkit PAM service configuration and selectively integrate when matcher/template trust is adequate.
+3. **`sudo`** — user said authorisation “etc.”; treat terminal sudo as an optional, separate last-stage integration, not implied permission to alter it immediately.
+4. **Initial display-manager login** — separate from unlocking; do not change SDDM or the Plasma login manager without an explicit scoped plan. Preserve password and wallet behaviour.
+
+**Safety gates before privileged PAM use:** the current UID955 MOH service is operational, but review saved-template integrity and user identity binding, control of matcher decisions, the vendor `FT5955_ALLOW_UNVERIFIED_ATTACH` option and sandbox isolation; fail closed on backend errors and wrong peers. Do not globally enable authselect `with-fingerprint` or install `fprintd-pam` blindly; the current guarded FT5955 lab launcher rejects such use. Use existing `docs/kde-screen-unlock-security-preflight-2026-10-18.md` and `tools/ft5955_kde_auth_preflight.sh` as the starting point for **read-only** OS state review. After gates are met, implement minimal per-service PAM adjustments and test password fallback with explicit rollback, without rewriting Linux authentication. No new driver baselines or extra branches.
+
 ## REMAINING — only the actual project work
 
 1. **Confirmed on the live host:** corrected relay installed with backup, development MOH socket restored to active, end-to-end verification regained, and the final seven left-index checks after user re-enrolment all returned MATCH. No more verification baseline work for this milestone. Check only the socket's reboot activation policy before consolidating the maintainable install/rollback instructions.
@@ -82,7 +92,7 @@ At this checkpoint, GitHub reports **9 branches including `main`**. The `feature
 
 ## NEXT ACTION
 
-**Boot persistence and the operating fingerprint verification path have been user-confirmed.** Do not request additional timing, USB, or repeat-enrolment tests without new evidence of regression. Move to a read-only, **source-vs-installed inventory** of the existing libfprint library, `/opt/ft5955-dev` components, fprintd unit drop-ins, and protected service, then document a single reproducible guarded installation/rollback procedure. Review the existing template integrity, identity binding, and vendor MOH sandbox limitations before considering production KDE/PAM authentication; keep password fallback. Preserve dirty local worktrees, backup relay and all unique Git history; no new branches or service architectures.
+**The reboot-surviving libfprint → fprintd → protected MOH service is operating; the user explicitly wants KDE lock-screen and Polkit authorisation integration as part of project completion.** Before changing PAM, run the existing read-only KDE authentication preflight and verify the current PAM package/service paths and protected MOH trust boundaries. Preserve the fixed relay, password fallback, rollback files, and dirty worktrees. Then use the existing KDE/PAM mechanisms in the narrowest safe scope: lock screen first, Polkit second, sudo only if separately appropriate. Simultaneously consolidate the known-good source vs installed components; do not add branches or re-run successful USB/timing experiments.
 
 At the start of each new chat, read this file and report **COMPLETED / REMAINING / NEXT ACTION**. Never silently convert a hypothesis into a fault or repeat earlier testing. Update this file when a significant result changes the project state.
 
