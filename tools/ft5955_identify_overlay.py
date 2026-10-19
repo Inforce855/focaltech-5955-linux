@@ -123,8 +123,17 @@ cleanup:
             g_usleep (20000);
         }
       if (g_subprocess_get_identifier (child) != NULL)
-        g_subprocess_force_exit (child);
-      (void) g_subprocess_wait (child, NULL, NULL);
+        {
+          /* A gateway that cannot exit promptly must not authorise anyone. */
+          if (err && !*err)
+            g_set_error_literal (err, G_IO_ERROR, G_IO_ERROR_TIMED_OUT,
+                                 "FT5955 identify gateway cleanup timed out");
+          g_subprocess_force_exit (child);
+        }
+      gboolean exited = g_subprocess_wait (child, NULL, NULL);
+      if ((!exited || !g_subprocess_get_successful (child)) && err && !*err)
+        g_set_error_literal (err, G_IO_ERROR, G_IO_ERROR_FAILED,
+                             "FT5955 identify gateway exited unsuccessfully");
       g_object_unref (child);
     }
   if (in)
