@@ -145,6 +145,14 @@ The user wants a maintained, normal FocalTech 5955 Linux driver and **does not w
 - After closing the recorded MOH matcher trust/template security questions, create one documented, maintainable non-development service and installer/upgrade/rollback path from the existing verified code; only then retire the `-dev` service names, paths, development markers and obsolete scripts.
 - Do not mistake a rename for security or completion; no premature rename, parallel runtime or destructive cleanup. Keep the fully native Linux matcher as a separately planned later milestone.
 
+## 19 OCTOBER 2026 — real global PAM authorisation success
+
+**User-confirmed live result:** After enabling `authselect with-fingerprint` (with preserved password profile and backup `ft5955-pre-fingerprint-20261019-113538`), the standard KDE Polkit request from `pkexec /usr/bin/id -u` **accepted the right index fingerprint**, and a separate **`sudo` authentication using the fingerprint also worked**. These are actual privileged PAM-path authentication successes through the current FocalTech driver and protected UID955 MOH service, not just `fprintd-verify` checks. The user's latest message does not include the exact `pkexec` output value, nor has password fallback been explicitly rechecked *since* global PAM activation.
+
+**Known limitation:** Polkit prompts for the **right index** even though both right and left are enrolled; source snapshot registers `verify` but no `identify`. fprintd's `any` request selects one print for a verify-only driver. Investigate multi-template `identify` in the existing libfprint driver rather than changing PAM or re-enrolling. Retain the currently working service/driver, do not run repeat USB/timing baselines, and do not drop the final requirement to migrate from `-dev` service/path names.
+
+**Remaining:** establish reliable KDE lock-screen authentication with password fallback; implement either-index-finger selection; review remaining MOH/template integrity and sandbox limitations before security signoff; consolidate a maintained non-`dev` installation with tested rollback. Successful Polkit and sudo tests prove functionality, **not** a complete security audit.
+
 ## 19 OCTOBER 2026 — multi-finger PAM selection gap
 
 - After global `authselect with-fingerprint` activation, a live `pkexec /usr/bin/id -u` Polkit prompt asked specifically for the **right index finger**, although both left/right index fingers are enrolled and the left has verified explicitly.
