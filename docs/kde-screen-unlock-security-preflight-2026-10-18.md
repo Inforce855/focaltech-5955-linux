@@ -2,6 +2,24 @@
 
 **State: read-only planning and diagnostics only. Not authorised for live PAM activation.**
 
+## Follow-up evidence — 19 October 2026 (supersedes parts of the 18 October baseline)
+
+This dated handoff originally described the earlier **user-session** broker. The host subsequently demonstrated a separate **UID955 MOH service** using `ft5955_dev_protocol_server.py`, `ft5955_engine_broker.py` and `ft5955_dev_template_launcher.py`. The connection's root UID is checked with `SO_PEERCRED`; service/broker/launcher source restricts execution to the dedicated account or root-owned relay, and the launcher checks a pinned DLL digest. User reported that the socket now starts after reboot and that seven sequential left-index verification operations matched after re-enrolment.
+
+User's **read-only** permissions check showed:
+- `/var/lib/fprint` and nested user/driver directories owned `root:root` with mode `0700`. The fingerprint files are mode `0644` but are not traversable through these parent directories by ordinary users; do not claim that file mode alone exposes them.
+- `/opt/ft5955-dev` owned by root; broker and protocol server Python files `root:root`, mode `0644`; `live-template` `root:ft5955-engine`, mode `0550`.
+- `fprintd-pam` is now installed, superseding the previous missing-package statement.
+- `authselect` profile `local` (features `with-silent-lastlog`, `with-mdns4`) passes `authselect check`, with `with-fingerprint` not enabled. `fingerprint-auth` still contains `pam_debug.so auth=authinfo_unavail`; `system-auth` has password rules and no `pam_fprintd.so`; KDE setting `Authenticators/Fingerprint` reads `false`. `polkit-1` includes `system-auth`.
+
+**Revised assessment:** The old claim that a normal login user owns the currently used matching service is superseded by the protected UID955 architecture and the above permissions evidence. However the installed paths, effective socket peer restrictions and unit sandbox policy still need a read-only consistency check. Source code has no cryptographic MAC on the fingerprint template envelope; root-only storage materially limits ordinary-user template editing but does not by itself prove account separation, absence of protocol mistakes, anti-spoofing or safety of the vendor `FT5955_ALLOW_UNVERIFIED_ATTACH` path. The vendor sandbox's read-only host `/proc` bind also remains a declared concern.
+
+**User-approved functional target:** enable **global** `authselect with-fingerprint` for password-alternative authentication, including KDE lock screen, Polkit authorisation and subsequently `sudo` as appropriate, keeping password fallback. Do not misstate this as a KDE-only goal. Activation still requires a trustworthy authentication path and tested recovery plan; no PAM changes were made during this review.
+
+**Next:** inspect effective installed `systemd` service and socket units and pathname permissions (read-only), then address any *specific* gap before a guarded `authselect` update. Do not repeat fingerprint enrolment, matching baselines or timing experiments. Once operational authentication and security gates pass, migrate from the `-dev` service/path names to a maintained installation with tested rollback.
+
+---
+
 ## User-verified Nobara 44 baseline
 
 - `kscreenlocker-6.7.5-1.fc44.x86_64`, `fprintd-1.94.5-5.fc44.x86_64`; `fprintd-pam` not installed. `authselect-1.7.1-1.fc44`, local profile with `with-silent-lastlog` and `with-mdns4`, with `authselect check` passing.
