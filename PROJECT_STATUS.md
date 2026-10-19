@@ -73,6 +73,30 @@ At this checkpoint, GitHub reports **9 branches including `main`**. The `feature
 - Unknown error differs from a biological `verify-no-match`; there is no evidence yet that the restored fix caused it or that matching accuracy changed. Consult existing journal messages **before** proposing changes or a repeat scan.
 - Historical 18 October 5/5 results remain valid evidence of the previously tested code. Do not delete the `.before-1s-fix` backup.
 
+## 19 OCTOBER 2026 — global authselect fingerprint enabled (live host)
+
+User explicitly ran the previously prepared guarded activation:
+
+```sh
+backup="ft5955-pre-fingerprint-$(date +%Y%m%d-%H%M%S)"
+sudo authselect enable-feature with-fingerprint --backup="$backup"
+authselect check
+authselect current
+grep -n 'pam_fprintd.so' /etc/pam.d/fingerprint-auth /etc/pam.d/system-auth
+```
+
+**Actual results:**
+- Backup created: `/var/lib/authselect/backups/ft5955-pre-fingerprint-20261019-113538`.
+- `authselect check`: **Current configuration is valid.**
+- Profile `local`; features `with-silent-lastlog`, `with-mdns4` **and `with-fingerprint`**.
+- `/etc/pam.d/fingerprint-auth:7`: `auth [success=done default=bad] pam_fprintd.so`.
+- `/etc/pam.d/system-auth:8`: `auth sufficient pam_fprintd.so`.
+- Existing working FocalTech driver and separate protected service were not changed as part of this authselect operation. **Do not describe activation as a successful KDE lock-screen, Polkit or sudo fingerprint test yet.** These are distinct pending checks.
+- **Rollback option:** `sudo authselect backup-restore ft5955-pre-fingerprint-20261019-113538` (this restores the previous authselect-generated files and selection). Keep password recovery available before any lock-screen experiment.
+- Security caveat: the protected UID955 MOH bridge is still experimental; global PAM now trusts it for potentially privileged authentication. This operational trial is not an independent audit of template authenticity, user binding or the proprietary engine's sandbox.
+
+**Next:** begin with a harmless, explicit Polkit test while the session remains unlocked; verify presence of password fallback, then evaluate KDE's `Authenticators/Fingerprint` configuration before risking screen locking. Preserve rollback name, all working binaries and `-dev` service until the maintained migration passes.
+
 ## 19 OCTOBER 2026 — verified root-owned fprintd path (user-supplied diagnostic)
 
 - `systemctl show fprintd.service -p User -p Group -p Environment -p DropInPaths`: `User=` and `Group=` unset (system default root service); `Environment=LD_LIBRARY_PATH=/opt/ft5955-system-trial/lib FT5955_EXPERIMENTAL_ENABLE=1 FT5955_ENGINE_GATEWAY=/opt/ft5955-dev/ft5955_dev_relay.py`. The output of `DropInPaths=` was **truncated** by the terminal, but showed at least distribution `10-timeout-abort.conf`, the existing trial `90-ft5955-system-trial.conf` and another `95-f...` override.
