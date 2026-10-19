@@ -74,3 +74,18 @@ Added `tests/test_ft5955_identify_live_trial.py` and extended the existing GitHu
 
 **Next user terminal step (safe):** Fast-forward the existing detached-HEAD `~/Projects/ft5955-relay-latency-test` checkout **only if clean**, then execute `bash -n tools/ft5955_identify_live_trial.sh` and `python3 -m unittest discover -s tests -p test_ft5955_identify_live_trial.py -v`. If those pass, run `sudo -n bash tools/ft5955_identify_live_trial.sh --status` (after obtaining a normal password sudo ticket if needed); inspect output before enabling `--activate`. No additional enrolment or PAM alteration.
 
+
+## User-verified guarded installer read-only --status — 19 October 2026
+
+The user invoked `sudo bash tools/ft5955_identify_live_trial.sh --status` and authenticated via a **right-index-finger** fingerprint prompt. The read-only output was:
+
+```
+LIVE_SHA=02403d764535bc77a83c62c4f696af3e5d4dc8df8b087e74f70989cfa96b1a28
+MARKER_SHA=02403d764535bc77a83c62c4f696af3e5d4dc8df8b087e74f70989cfa96b1a28
+ROLLBACK_BACKUP=not-yet-created
+FPRINTD_STATE=active
+READ ONLY: no changes
+```
+
+**Interpretation:** Current installed lib and checksum owner marker exactly match the original known-good baseline; no earlier trial backup conflict. `fprintd` was active *because sudo's successful fingerprint authorisation started it*. This is not a driver regression. The `--activate` script intentionally **refuses to swap while fprintd is active**. Do not restart it, change PAM or bypass the safety guard. Use an existing sudo authentication ticket with **`sudo -n`** to avoid another fingerprint scan, wait for fprintd's idle auto-deactivation with a bounded, read-only poll, then invoke guarded `--activate` only if inactive. If no cached sudo ticket or still-active fprintd, stop safely and re-evaluate. **No live swap has yet occurred.**
+
