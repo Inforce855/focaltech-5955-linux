@@ -2,7 +2,13 @@
 
 Linux `libfprint` driver research for the built-in FocalTech USB fingerprint reader **VID:PID `2808:5955`**, tested on **Nobara 44**. The code includes a reproducible driver build, a reversible system-`fprintd` trial and a user-session bridge to the proprietary Windows MOH matching engine.
 
-**Status (17 October 2026): an end-to-end KDE experiment succeeded — enrolment, fingerprint verification and rollback. This is *not* a production-ready fingerprint-login driver.** The original packaged Nobara `libfprint` and `fprintd` have been restored. Fingerprint PAM/SDDM login was never enabled.
+**Current project state (19 October 2026):** USB capture, `libfprint` / normal `fprintd`, enrolment, real MOH matching and **KDE fingerprint screen unlocking have all worked on the user's Nobara host**. The previously measured ~1-second verdict cleanup delay has a **verified fix**: remove `up.join(timeout=1)` from `tools/ft5955_engine_broker.py` (original commit `66e054c` on the latency branch). The exact previously tested source and the synthetic regression test have now been restored on `main` **and** the existing KDE development branch. **This only changes GitHub; the installed protected `/opt/ft5955-dev/` relay has not yet been identified or updated in this session.** The isolated engine is still experimental, and secure production authentication has not been approved. Do not reinstall, re-enrol, modify PAM or re-open old polling/retry investigations without evidence.
+
+[**Project status / next action**](PROJECT_STATUS.md) · [**All branches and their purpose**](docs/BRANCHES.md) · [**Measured relay timing and five-round tests**](https://github.com/Inforce855/focaltech-5955-linux/blob/feature/ft5955-relay-latency/docs/relay-latency-hardware-pass-2026-10-18.md) · [**Independent engine hardware verification**](https://github.com/Inforce855/focaltech-5955-linux/blob/feature/kde-lock-auth-preflight-20261018/docs/ft5955-dev-real-service-handoff-2026-10-18.md)
+
+**Historical milestone (17 October 2026):** an end-to-end KDE *enrol/verify* experiment succeeded, with successful rollback. The old deployment and PAM statements in the dated sections below describe that historical 17 October baseline, **not** the host's later 18 October status or current active service.
+
+
 
 ## Verified on the actual device
 
