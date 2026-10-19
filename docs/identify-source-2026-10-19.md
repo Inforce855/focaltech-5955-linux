@@ -129,3 +129,15 @@ User reports `fprintd-verify -f any` **eventually recognised both enrolled left 
 4. `FT5955TIMING` markers instrument `verify`, **not the separate identify worker**, so their absence during `any` cannot establish which step caused delay. Instrument future identify candidate startup/response/cleanup with event-only monotonic timing markers; never log raw frames, templates, finger labels or user identities. Existing `g_subprocess_get_identifier` timeout loops also merit review, but measured 10-second stalls are **not** confirmed.
 
 **Safe priority:** The current identify candidate is active in global PAM and is user-reported slower/less consistent. Prefer using the already verified known-good rollback `tools/ft5955_identify_live_trial.sh --rollback` during offline work; its safety guard requires inactive fprintd and validated exact original root-owned backup, and `sudo -n` avoids triggering a new fingerprint prompt when credentials are cached. Retain existing saved templates and both systemd overrides. Before another live candidate: correct gallery RETRY handling, recover concurrent startup timing, add event-only timing traces, compile/test offline, stage as a *new* artifact (never replace previously verified SHA or untracked local source), and validate negative/wrong-finger results in a controlled trial. No patch or rollback is yet deployed as a result of this audit.
+
+## Verified restoration after first identify performance trial — 19 October 2026
+
+User ran the existing guarded `sudo -n .../tools/ft5955_identify_live_trial.sh --rollback` after allowing `fprintd.service` to deactivate. Real terminal result:
+
+```
+PASS: original known-good libfprint and original marker restored.
+```
+
+The script's known-good checksum guard was expected to restore binary/marker SHA-256 `02403d764535bc77a83c62c4f696af3e5d4dc8df8b087e74f70989cfa96b1a28` from the earlier root-only verified rollback directory, leaving all enrolments, protected MOH service, systemd overrides and PAM unchanged. **No independent post-rollback `--status` readback has been reported yet.** The trial demonstrated both fingerprints eventually recognised using `any`, but with worse latency and consistency than the previous baseline. Do not treat a successful rollback exit as measured matching performance.
+
+**Source development next:** preserve the already compiled/staged v1 identify candidate (SHA `70609faa6783d9175c2925f1cccdcde9a81282fc275b2626185e3bfc2b365bdd`) for forensic reproducibility. Develop new v2 as a separate disposable overlay and separately named stage; specifically avoid cutting off remaining gallery entries on quality-retry and add non-biometric identification timing to see per-template gateway startup/matching/shutdown. Start/verify timing optimisations only once the event trace isolates delays; the current old `verify` early-capture path remains known good. No changes to live authentication during development.
