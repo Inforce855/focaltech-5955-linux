@@ -129,7 +129,7 @@ cleanup:
     }
   if (in)
     g_object_unref (in);
-  if (c && g_cancellable_set_error_if_cancelled (c, err))
+  if (c && err && !*err && g_cancellable_set_error_if_cancelled (c, err))
     return FT5955_IDENTIFY_ERROR;
   if (err && *err)
     return FT5955_IDENTIFY_ERROR;
