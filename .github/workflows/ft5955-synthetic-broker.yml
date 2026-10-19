@@ -7,6 +7,7 @@ on:
       - feature/ft5955-driver-consolidation-20261017
       - feature/ft5955-early-contact-parallel
       - feature/ft5955-timingtrace
+      - feature/ft5955-relay-latency
     paths:
       - "tools/ft5955_engine_broker.py"
       - "tools/test_ft5955_engine_broker_synthetic.py"
@@ -19,6 +20,15 @@ on:
       - "tests/test_ft5955_poll_timing.py"
       - "tests/test_ft5955_early_capture.py"
       - "tests/test_ft5955_timingtrace.py"
+      - "tests/test_ft5955_relay_latency.py"
+      - "tools/ft5955_identify_overlay.py"
+      - "tests/test_ft5955_identify_overlay.py"
+      - "tools/ft5955_identify_overlay_v2.py"
+      - "tests/test_ft5955_identify_v2.py"
+      - "tools/ft5955_identify_v2_trial.sh"
+      - "tests/test_ft5955_identify_v2_live_trial.py"
+      - "tools/ft5955_identify_live_trial.sh"
+      - "tests/test_ft5955_identify_live_trial.py"
       - "tools/manage_ft5955_system_trial.sh"
       - "tools/ft5955_kde_trial.sh"
       - "tools/manage_ft5955_kde_trial.sh"
@@ -65,6 +75,24 @@ jobs:
         run: python3 -m unittest discover -s tests -p test_ft5955_early_capture.py -v
       - name: Offline timing-only diagnostic regression (NO USB or biometric samples)
         run: python3 -m unittest discover -s tests -p test_ft5955_timingtrace.py -v
+      - name: Offline multi-finger identify overlay source tests (NO USB)
+        run: |
+          python3 -m py_compile tools/ft5955_identify_overlay.py
+          python3 -m unittest discover -s tests -p test_ft5955_identify_overlay.py -v
+      - name: Identify v2 quality-retry and timing-only offline regression (NO hardware)
+        run: |
+          python3 -m py_compile tools/ft5955_identify_overlay_v2.py
+          python3 -m unittest discover -s tests -p test_ft5955_identify_v2.py -v
+      - name: Identify v2 guarded swap and rollback offline contract checks (NO hardware)
+        run: |
+          bash -n tools/ft5955_identify_v2_trial.sh
+          python3 -m unittest discover -s tests -p test_ft5955_identify_v2_live_trial.py -v
+      - name: Guarded identify live swap syntax and offline source checks (NO root or hardware)
+        run: |
+          bash -n tools/ft5955_identify_live_trial.sh
+          python3 -m unittest discover -s tests -p test_ft5955_identify_live_trial.py -v
+      - name: Prove relay exits promptly after gateway BYE with open upstream stdin
+        run: python3 -m unittest discover -s tests -p test_ft5955_relay_latency.py -v
       - name: Non-root synthetic transport smoke test
         run: |
           test "$(id -u)" -ne 0
