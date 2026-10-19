@@ -73,6 +73,14 @@ At this checkpoint, GitHub reports **9 branches including `main`**. The `feature
 - Unknown error differs from a biological `verify-no-match`; there is no evidence yet that the restored fix caused it or that matching accuracy changed. Consult existing journal messages **before** proposing changes or a repeat scan.
 - Historical 18 October 5/5 results remain valid evidence of the previously tested code. Do not delete the `.before-1s-fix` backup.
 
+## 19 OCTOBER 2026 — verified root-owned fprintd path (user-supplied diagnostic)
+
+- `systemctl show fprintd.service -p User -p Group -p Environment -p DropInPaths`: `User=` and `Group=` unset (system default root service); `Environment=LD_LIBRARY_PATH=/opt/ft5955-system-trial/lib FT5955_EXPERIMENTAL_ENABLE=1 FT5955_ENGINE_GATEWAY=/opt/ft5955-dev/ft5955_dev_relay.py`. The output of `DropInPaths=` was **truncated** by the terminal, but showed at least distribution `10-timeout-abort.conf`, the existing trial `90-ft5955-system-trial.conf` and another `95-f...` override.
+- `namei -l /opt/ft5955-dev/ft5955_dev_relay.py`: parent directories root-owned, file `root:root 0644`, not writable by ordinary users.
+- `find /opt/ft5955-system-trial/lib -maxdepth 1`: directory `root:root 0755`; library `libfprint-2.so.2.0.0` `root:root 0644`; `libfprint-2.so.2` symlink `root:root`. The actual symlink destination was not printed; do not claim it was independently resolved.
+- Combined with the prior root-protected MOH service, `SO_PEERCRED` peer restriction and protected template directories, no unprivileged *writeable component* has been identified in the displayed privileged load path. This does **not** prove end-to-end security: keep the recorded concerns about identity/template authenticity, vendor DLL and read-only `/proc` sandbox boundary.
+- User's requested target is **global `authselect with-fingerprint`**, not KDE-only. Fedora authselect supports `enable-feature with-fingerprint --backup=NAME` and `backup-restore NAME` for controlled activation/rollback. At this checkpoint, **the feature has not yet been reported enabled**. Preserve password access, the existing `local` profile features, and the installed working service. No more reader baseline tests.
+
 ## 19 OCTOBER 2026 — follow-up authselect and KDE configuration (user supplied)
 
 Read-only host output:
