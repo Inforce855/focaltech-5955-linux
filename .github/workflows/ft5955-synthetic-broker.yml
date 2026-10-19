@@ -23,6 +23,8 @@ on:
       - "tests/test_ft5955_relay_latency.py"
       - "tools/ft5955_identify_overlay.py"
       - "tests/test_ft5955_identify_overlay.py"
+      - "tools/ft5955_identify_overlay_v2.py"
+      - "tests/test_ft5955_identify_v2.py"
       - "tools/ft5955_identify_live_trial.sh"
       - "tests/test_ft5955_identify_live_trial.py"
       - "tools/manage_ft5955_system_trial.sh"
@@ -75,6 +77,10 @@ jobs:
         run: |
           python3 -m py_compile tools/ft5955_identify_overlay.py
           python3 -m unittest discover -s tests -p test_ft5955_identify_overlay.py -v
+      - name: Identify v2 quality-retry and timing-only offline regression (NO hardware)
+        run: |
+          python3 -m py_compile tools/ft5955_identify_overlay_v2.py
+          python3 -m unittest discover -s tests -p test_ft5955_identify_v2.py -v
       - name: Guarded identify live swap syntax and offline source checks (NO root or hardware)
         run: |
           bash -n tools/ft5955_identify_live_trial.sh
