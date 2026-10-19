@@ -145,6 +145,18 @@ The user wants a maintained, normal FocalTech 5955 Linux driver and **does not w
 - After closing the recorded MOH matcher trust/template security questions, create one documented, maintainable non-development service and installer/upgrade/rollback path from the existing verified code; only then retire the `-dev` service names, paths, development markers and obsolete scripts.
 - Do not mistake a rename for security or completion; no premature rename, parallel runtime or destructive cleanup. Keep the fully native Linux matcher as a separately planned later milestone.
 
+## 19 OCTOBER 2026 — identify code committed source-only on existing latency branch
+
+**User-supplied SHA-256 source check conclusively matched historical GitHub snapshot:** `focaltech_5955.c` `40418e509506400a4118a35f76a0482ad614b855d285d88971e342b81ebad703`, `ft5955_native_action.c` `0f52c8de56f4ee524f1225bd0db559262505c21f906b4034def1e01d61ec94ab`, `ft5955_native_action.h` `4c7098d939e792540d82320dd9bcf2eb5899dec9571cc8172d22b9541c5629ee`. The installed libfprint binary *does* contain `FT5955TIMING`, which was added during a disposable timingtrace build on `feature/ft5955-relay-latency`. The apparent source discrepancy is therefore explained by that transform; do not rebuild from untransformed local files.
+
+**Code progress on already-existing `feature/ft5955-relay-latency` branch (no new branch):**
+- Added `tools/ft5955_identify_overlay.py`: source-only, opt-in `identify` callback in a disposable reconstructed libfprint tree, keeping current enrol/verify and timing transformations intact. Matches one fresh captured frame against each enrolled `FpPrint` provided by libfprint through isolated protected MODE V sessions. Reports gallery match or real no-match; bounds captures/gallery and fails closed on invalid template, timeout, cancellation and protocol faults.
+- Enhanced `tools/verify_ft5955_clean_clone.py` with `--trace-timing --identify --build` or `--stage`, the latter only a new **non-installable user-owned** `stage-identify` library. Neither changes live `/opt`, PAM or established staged variants.
+- Added `tests/test_ft5955_identify_overlay.py` and corresponding existing offline GitHub Actions test step.
+- Documented implementation, source provenance and gates in `docs/identify-source-2026-10-19.md` on the existing latency branch. All historical checksum-verified snapshot source remains unchanged.
+
+**Do not overclaim:** source commits exist; compiled build, CI success and live hardware identify have **not yet been confirmed**. Next is safe fast-forward of existing latency checkout if clean, offline unittest, then clean upstream v1.94.100 build without USB/installation. **Never replace the working installed library based on source-only tests.** After compilation, separately plan guarded backup/rollback and real identify validation with both enrolled index fingers. Maintain protection of all dirty local worktrees and the previously corrected broker.
+
 ## 19 OCTOBER 2026 — identify implementation entry point (source check required)
 
 User requested **implement multi-finger identification now**. Both index fingers are already enrolled; no re-enrolment. Treat `identify` as recognition against the *user-provided enrolled template gallery*, not a permissive generic fingerprint detector. Correct matching means one hardware touch, both saved templates considered, true `MATCH` only when the protected MOH matcher returns `MATCH` against one stored template.
