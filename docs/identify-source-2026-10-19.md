@@ -41,3 +41,12 @@ Implementation uses \`fpi_device_get_identify_data()\` to obtain only libfprint-
 
 **Next safe step**: `python3 "$HOME/Projects/ft5955-relay-latency-test/tools/verify_ft5955_clean_clone.py" --stage --trace-timing --identify`. This will perform another isolated compile and place a user-owned output under `~/.local/state/ft5955-system-trial/stage-identify`, refusing overwrite if it exists; it will not change running `/opt` libfprint, PAM, system fprintd, MOH service or user templates. Then validate the staged SHA-256 and plan guarded backup/rollback for a real test; no direct copy into /opt and no reliance on deprecated trial launchers.
 
+
+## User-verified identify staging PASS — 19 October 2026
+
+The user's real Nobara terminal run of `python3 "$repo/tools/verify_ft5955_clean_clone.py" --stage --trace-timing --identify` completed successfully in ~4.4 seconds. GitHub snapshot source/patch manifest verified; upstream pinned libfprint v1.94.100 at `80a4b5ec`; Ninja **109/109**; the private staged library was written to `/home/tim/.local/state/ft5955-system-trial/stage-identify/lib/libfprint-2.so.2.0.0`. Staged SHA-256 reported: **`70609faa6783d9175c2925f1cccdcde9a81282fc275b2626185e3bfc2b365bdd`**.
+
+The variant's own output explicitly confirms **nothing installed under `/opt`, `/etc`, or `/usr`**, and no USB, system fprintd or PAM operations. Original active library remains unchanged. No real identification performed yet. The optional introspection-dependent tests were skipped at Meson configuration and are **not** counted as passing.
+
+**Next immediate check, read-only:** verify the staged `SHA256` manifest and file with `sha256sum -c`, record checksum and physical ownership/type of the current `/opt/ft5955-system-trial/lib/libfprint-2.so.2.0.0`, check `fprintd.service` drop-ins and live paths, then prepare reversible, guarded live swap without touching `fprintd-pam`, `authselect`, global PAM, MOH, daemon configuration or prints. Existing lab install wrappers refuse when fprintd-pam is active and must not be reused or guard-bypassed. Never blindly overwrite current binary or delete historic staged libraries.
+
