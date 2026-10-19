@@ -145,6 +145,14 @@ The user wants a maintained, normal FocalTech 5955 Linux driver and **does not w
 - After closing the recorded MOH matcher trust/template security questions, create one documented, maintainable non-development service and installer/upgrade/rollback path from the existing verified code; only then retire the `-dev` service names, paths, development markers and obsolete scripts.
 - Do not mistake a rename for security or completion; no premature rename, parallel runtime or destructive cleanup. Keep the fully native Linux matcher as a separately planned later milestone.
 
+## 19 OCTOBER 2026 — sudo password fallback and fprintd restart succeeded
+
+- User tried `sudo -n systemctl restart fprintd.service`; it correctly refused: `sudo: a password is required`, because there was no cached authorisation.
+- In a fresh terminal, `sudo -v` **immediately prompted `[sudo] password for tim:`**, accepted the user's password and succeeded in **3.464 s**. This is positive evidence that password fallback remains accessible with global `with-fingerprint` enabled when the sensor is already claimed.
+- Immediately afterward `sudo -n systemctl restart fprintd.service` returned **success**, but the shell recorded **45.495 s**. Treat this unusually long restart as an important cancellation/teardown clue, not as proof of the cause. There is no new `fprintd-verify` success report yet after the restart.
+- **Next:** inspect *current* `fprintd.service` journal entries associated with restart (read only), plus service state. Look for systemd stop timeout, failed worker cancellation/cleanup, or a stuck client. Do not change PAM or the validated MOH service, and do not repeat general matching/timing tests. After diagnosing shutdown, check that the fprintd claim is cleared using the narrowest safe path.
+- Separate remaining issues: both-finger `identify` support; KDE screen unlock; maintained non-`dev` service; previously documented proprietary matcher security checks. Preserve authselect backup `ft5955-pre-fingerprint-20261019-113538` and password fallback.
+
 ## 19 OCTOBER 2026 — fingerprint verification cancellation/claim leak observed
 
 **Live host symptom:** After successful Polkit and sudo fingerprint PAM trials, user attempted sudo with a password instead of fingerprint and used Ctrl+C / Ctrl+Z, then closed the terminal. New user terminal showed no processes matching `[s]udo`. `ft5955-engine-dev.socket` remained `active`. `fprintd-verify -f right-index-finger` immediately returned `GDBus.Error:net.reactivated.Fprint.Error.AlreadyInUse: Device was already claimed`.
