@@ -42,6 +42,13 @@ This is a fingerprint **hardware/libfprint driver** project, **not** a project t
 
 At this checkpoint, GitHub reports **9 branches including `main`**. The `feature/kde-lock-auth-preflight-20261018` branch contains recent MOH service and KDE work. Consolidation into `main` should be planned **after** reconciling the known-good local driver and running code; do not add more branches or delete history reflexively. The branch/commit count alone is not a progress metric.
 
+## NEW 19 OCTOBER 2026 post-installation observation
+
+- User's installation script reported `PASS: Proven one-second relay fix installed. Original safely backed up.` Root-owned installed broker replaced previously measured old `68035014...` blob with hash-checked `6fa2dcf7...` code; no service restart or PAM/libfprint configuration edits.
+- The **first subsequent** `fprintd-verify -f left-index-finger` enumerated the enrolled left/right fingers, entered `Verifying: left-index-finger`, and returned **`verify-unknown-error (done)`**.
+- Unknown error differs from a biological `verify-no-match`; there is no evidence yet that the restored fix caused it or that matching accuracy changed. Consult existing journal messages **before** proposing changes or a repeat scan.
+- Historical 18 October 5/5 results remain valid evidence of the previously tested code. Do not delete the `.before-1s-fix` backup.
+
 ## REMAINING — only the actual project work
 
 1. **Post-installation functional check only**: the previously verified one-second cleanup fix is now installed in `/opt/ft5955-dev/ft5955_engine_broker.py`, and the previous file is backed up. Confirm a single ordinary `fprintd-verify` completes via the existing working service. This is post-change validation, not a new timing or reliability investigation. No new enrolment or full baseline.
@@ -51,7 +58,7 @@ At this checkpoint, GitHub reports **9 branches including `main`**. The `feature
 
 ## NEXT ACTION
 
-**Known-good relay fix restored in GitHub and installed, with guarded script reporting PASS and backup retained.** Next, validate once with normal `fprintd-verify -f left-index-finger` (no configuration changes). Once confirmed, focus on consolidating the existing integration and resolving any security-critical limitations required for safe authentication, not rebuilding solved functionality. Preserve existing PAM/password fallback.
+**Post-change verification failed on 19 October:** after successful guarded installation of known-good broker SHA `6fa2dcf7` (backup kept), one ordinary `fprintd-verify -f left-index-finger` enumerated both fingers and started verification but ended with `verify-unknown-error (done)` (NOT `verify-no-match`). This is a newly observed integration/runtime error; cause is **not established**. Next collect narrowly scoped journal entries from **that same attempt**, before changing source, PAM, services or repeating fingerprint scans. Preserve rollback file and previously verified timing result. Do not represent source-only CI as a successful post-deployment test.
 
 At the start of each new chat, read this file and report **COMPLETED / REMAINING / NEXT ACTION**. Never silently convert a hypothesis into a fault or repeat earlier testing. Update this file when a significant result changes the project state.
 
