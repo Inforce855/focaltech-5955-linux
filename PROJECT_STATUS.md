@@ -105,6 +105,14 @@ The user explicitly confirmed that **finishing this driver includes enabling fin
 
 **Safety gates before privileged PAM use:** the current UID955 MOH service is operational, but review saved-template integrity and user identity binding, control of matcher decisions, the vendor `FT5955_ALLOW_UNVERIFIED_ATTACH` option and sandbox isolation; fail closed on backend errors and wrong peers. Do not globally enable authselect `with-fingerprint` or install `fprintd-pam` blindly; the current guarded FT5955 lab launcher rejects such use. Use existing `docs/kde-screen-unlock-security-preflight-2026-10-18.md` and `tools/ft5955_kde_auth_preflight.sh` as the starting point for **read-only** OS state review. After gates are met, implement minimal per-service PAM adjustments and test password fallback with explicit rollback, without rewriting Linux authentication. No new driver baselines or extra branches.
 
+## Release transition — retire the `-dev` designation (explicit user requirement)
+
+The user wants a maintained, normal FocalTech 5955 Linux driver and **does not want the working installation permanently labelled or operated as `dev`**. This requirement must not be dropped when consolidating source into `main` or completing KDE/Polkit/PAM integration.
+
+- Preserve the currently functioning `ft5955-engine-dev.service`, `ft5955-engine-dev.socket` and `/opt/ft5955-dev` until a replacement has passed installation, restart, matching, password-fallback and rollback checks.
+- After closing the recorded MOH matcher trust/template security questions, create one documented, maintainable non-development service and installer/upgrade/rollback path from the existing verified code; only then retire the `-dev` service names, paths, development markers and obsolete scripts.
+- Do not mistake a rename for security or completion; no premature rename, parallel runtime or destructive cleanup. Keep the fully native Linux matcher as a separately planned later milestone.
+
 ## REMAINING — only the actual project work
 
 1. **Confirmed on the live host:** corrected relay installed with backup, development MOH socket restored to active, end-to-end verification regained, and the final seven left-index checks after user re-enrolment all returned MATCH. No more verification baseline work for this milestone. Check only the socket's reboot activation policy before consolidating the maintainable install/rollback instructions.
