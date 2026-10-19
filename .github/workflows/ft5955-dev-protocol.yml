@@ -13,6 +13,8 @@ on:
       - "tools/run_ft5955_dev_hardware_trial.sh"
       - "systemd/ft5955-engine-dev-protocol.service"
       - "tests/test_ft5955_dev_protocol_offline.py"
+      - "tests/test_ft5955_relay_latency.py"
+      - "tools/test_ft5955_engine_broker_synthetic.py"
       - ".github/workflows/ft5955-dev-protocol.yml"
   workflow_dispatch:
 
@@ -37,3 +39,5 @@ jobs:
         run: python3 -m unittest discover -s tests -p test_ft5955_dev_protocol_offline.py -v
       - name: Existing non-root synthetic broker regression
         run: python3 tools/test_ft5955_engine_broker_synthetic.py
+      - name: Verified one-second relay latency regression (no hardware)
+        run: python3 -m unittest discover -s tests -p 'test_ft5955_relay_latency.py' -v
