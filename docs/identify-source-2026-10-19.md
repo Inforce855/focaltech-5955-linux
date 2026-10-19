@@ -29,3 +29,15 @@ Implementation uses \`fpi_device_get_identify_data()\` to obtain only libfprint-
 5. Preserve the long-term non-\`dev\` service migration and proprietary MOH trust review; identify is not itself an authentication-security audit.
 
 **Scope:** no PAM edits, no new branch, no changes to the already hardware-tested timing/relay source, no biometric captures during source or build tests.
+
+## Confirmed read-only build result — 19 October 2026
+
+**User's real Nobara output** from existing checkout `~/Projects/ft5955-relay-latency-test` (detached HEAD fast-forwarded successfully from `66e054c` to `ccfdd59`):
+
+- `python3 -m unittest discover -s tests -p test_ft5955_identify_overlay.py -v`: **4/4 PASS**, 0.002 seconds. Tests cover overlay anchors, no changes to historical snapshot, no repeat apply, symlink rejection.
+- `python3 tools/verify_ft5955_clean_clone.py --build --trace-timing --identify`: historical patch digests verified; exact upstream libfprint `v1.94.100` Git commit `80a4b5ec612892c5c056c48dddaa561452cf37ec`; all three patches applied; 100 ms polling + early-capture + nonbiometric timing trace + identify overlay applied in a disposable /tmp source; Meson 27 build targets; Ninja **109/109 PASS**; output `PASS: CLEAN upstream clone + 3 GitHub patches built independently`, followed by `PASS: disposable source and build removed; live driver, system fprintd, PAM unchanged.`
+- Annotated-tag warning and skipped optional introspection-dependent tests were nonfatal. **A full runtime test suite, staging, installation and genuine two-finger identify are not yet proven.** No hardware or enrolment was accessed during build.
+- The existing `tools/ft5955_kde_trial.sh` / `manage_ft5955_kde_trial.sh` are historical short-lived trial launchers, and the latter explicitly refuses activation when `fprintd-pam` is present. **Do not use them to bypass guards in this now-functional global PAM setup.** After staging, a purpose-designed reversible live installation test is needed to preserve current `/opt` driver and enrolled templates.
+
+**Next safe step**: `python3 "$HOME/Projects/ft5955-relay-latency-test/tools/verify_ft5955_clean_clone.py" --stage --trace-timing --identify`. This will perform another isolated compile and place a user-owned output under `~/.local/state/ft5955-system-trial/stage-identify`, refusing overwrite if it exists; it will not change running `/opt` libfprint, PAM, system fprintd, MOH service or user templates. Then validate the staged SHA-256 and plan guarded backup/rollback for a real test; no direct copy into /opt and no reliance on deprecated trial launchers.
+
