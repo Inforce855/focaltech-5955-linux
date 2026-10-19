@@ -89,3 +89,16 @@ READ ONLY: no changes
 
 **Interpretation:** Current installed lib and checksum owner marker exactly match the original known-good baseline; no earlier trial backup conflict. `fprintd` was active *because sudo's successful fingerprint authorisation started it*. This is not a driver regression. The `--activate` script intentionally **refuses to swap while fprintd is active**. Do not restart it, change PAM or bypass the safety guard. Use an existing sudo authentication ticket with **`sudo -n`** to avoid another fingerprint scan, wait for fprintd's idle auto-deactivation with a bounded, read-only poll, then invoke guarded `--activate` only if inactive. If no cached sudo ticket or still-active fprintd, stop safely and re-evaluate. **No live swap has yet occurred.**
 
+
+## Guarded identify activation success — 19 October 2026
+
+**User terminal reports successful guarded activation** with a cached non-interactive sudo credential after waiting for `fprintd.service` to become inactive. Actual script output:
+
+```
+PASS: original root-owned library and marker securely backed up.
+PASS: identify library selected for the next on-demand fprintd start.
+PAM, both service overrides, protected MOH and enrolled prints unchanged.
+ROLLBACK: sudo -n bash /home/tim/Projects/ft5955-relay-latency-test/tools/ft5955_identify_live_trial.sh --rollback
+```
+
+The installer reported making and checking a root-owned backup before replacing the experimental shared library and owner marker. **This confirms script-reported activation, not real identify behaviour**. Next read-only `sudo -n bash tools/ft5955_identify_live_trial.sh --status` should independently report `LIVE_SHA` and `MARKER_SHA` of `70609faa6783d9175c2925f1cccdcde9a81282fc275b2626185e3bfc2b365bdd` and `ROLLBACK_BACKUP=verified`. This status command does not restart fprintd, change authentication or touch the fingerprint sensor. If noninteractive sudo expired, status must fail rather than prompt fingerprint again. After confirming status, proceed to one controlled identify test, not fresh enrolment. Roll back on any abnormal denial, hang or wrong match; use password authentication to obtain root access if necessary, preserving the known-good SHA `02403d764535bc77a83c62c4f696af3e5d4dc8df8b087e74f70989cfa96b1a28`.
