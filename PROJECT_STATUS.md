@@ -145,6 +145,14 @@ The user wants a maintained, normal FocalTech 5955 Linux driver and **does not w
 - After closing the recorded MOH matcher trust/template security questions, create one documented, maintainable non-development service and installer/upgrade/rollback path from the existing verified code; only then retire the `-dev` service names, paths, development markers and obsolete scripts.
 - Do not mistake a rename for security or completion; no premature rename, parallel runtime or destructive cleanup. Keep the fully native Linux matcher as a separately planned later milestone.
 
+## 19 OCTOBER 2026 — multi-finger PAM selection gap
+
+- After global `authselect with-fingerprint` activation, a live `pkexec /usr/bin/id -u` Polkit prompt asked specifically for the **right index finger**, although both left/right index fingers are enrolled and the left has verified explicitly.
+- Inspected GitHub historical driver source `driver/live-snapshot-2026-10-16/libfprint/drivers/focaltech_5955.c`: `dev_class->scan_type = FP_SCAN_TYPE_PRESS`, `dev_class->enroll = ft5955_native_enroll`, `dev_class->verify = ft5955_native_verify`, but **no `dev_class->identify`** callback is registered in this snapshot. The installed library has not been directly compared against this source at this checkpoint.
+- Upstream fprintd 1.94.5 `pam_fprintd.c` invokes `VerifyStart("any")`, but the D-Bus interface only selects *all enrolled fingerprints* if a device supports multi-print identification; otherwise it chooses a specific available finger. Current right-index prompt is consistent with **verify-only** driver capability; it does not establish that the left enrolment disappeared.
+- **Required for the finished driver:** implement a proper `libfprint` multi-template **identify** operation in the existing driver without repeat enrolment or a new driver/service architecture, using one real capture per authentication and checking templates for only the claimed user; report success/failure through the usual libfprint callbacks, preserving bounds, cancellation, user binding and fail-closed handling. First reconcile the installed driver with source before editing; use existing tests and safe integration workflow.
+- Do NOT modify PAM, manually relabel fingerprints, delete/redo enrolments, or patch fprintd to force a finger. The current right-index Polkit prompt is evidence of global PAM wiring, not yet confirmation that `pkexec` succeeded.
+
 ## REMAINING — only the actual project work
 
 1. **Confirmed on the live host:** corrected relay installed with backup, development MOH socket restored to active, end-to-end verification regained, and the final seven left-index checks after user re-enrolment all returned MATCH. No more verification baseline work for this milestone. Check only the socket's reboot activation policy before consolidating the maintainable install/rollback instructions.
