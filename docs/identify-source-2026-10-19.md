@@ -59,3 +59,18 @@ The **currently installed working** `/opt/ft5955-system-trial/lib/libfprint-2.so
 
 **Next action**: inspect full installed service overrides, original marker file and any existing root-owned backup without making changes. Build a **dedicated guarded installer/rollback** that verifies these exact two hashes, snapshots the current live binary before any modification, refuses conflicting/busy states and unexpected ownership, uses atomic replacement under the same filesystem, records marker changes only if required, and makes rollback possible using password fallback even when fingerprint scanning is unavailable. Do not reuse old lab install scripts; preserve live UID955 matcher socket, PAM, current fingerprints and auto-activation.
 
+
+## Read-only service inspection and guarded live trial script — 19 October 2026
+
+User provided `systemctl cat fprintd.service` and original owner marker. The active unit has two experimental files:
+
+- `/etc/systemd/system/fprintd.service.d/90-ft5955-system-trial.conf`: `LD_LIBRARY_PATH=/opt/ft5955-system-trial/lib`, `FT5955_EXPERIMENTAL_ENABLE=1`, and an older initial relay path that the later override supersedes.
+- `/etc/systemd/system/fprintd.service.d/95-ft5955-moh-dev-gateway.conf`: the **effective** `FT5955_ENGINE_GATEWAY=/opt/ft5955-dev/ft5955_dev_relay.py` to the protected UID955 MOH server.
+- Original `/opt/ft5955-system-trial/FT5955_TRIAL_OWNER` contains `02403d764535bc77a83c62c4f696af3e5d4dc8df8b087e74f70989cfa96b1a28`, exactly the **original live library** hash. Existing `fprintd.service` was inactive, PID0.
+
+Prepared [`tools/ft5955_identify_live_trial.sh`](../tools/ft5955_identify_live_trial.sh) in the already existing relay-latency branch with `--status` (read-only), `--activate` and `--rollback`. **Not yet executed, tested by user, or activated.** It guards the specific known-good and staged candidate SHA-256 values, original root file/SONAME layout, root-owned 90-/95- overrides and actual systemd environment, candidate manifest and user ownership/mode, and requires inactive fprintd before modifying its binary. On activation it creates a root-only `/opt/ft5955-system-trial/.identify-rollback-20261019` backup of the original library and checksum marker, verifies the backup before atomic same-filesystem file/marker renames, and leaves enrolled prints, MOH service, global PAM, authselect and unit files untouched. Rollback uses the **retained backup** even if the staged candidate disappears or marker update was partially completed. The script does **not** start or stop system services; these states are checked before swapping. The old trial installer is not used.
+
+Added `tests/test_ft5955_identify_live_trial.py` and extended the existing GitHub Actions synthetic workflow to run `bash -n` and offline source-contract tests without root or hardware access. **Do not claim those have passed until observed**. Static tests do not prove the privileged live swap is correct; the user must inspect its read-only preflight before activation.
+
+**Next user terminal step (safe):** Fast-forward the existing detached-HEAD `~/Projects/ft5955-relay-latency-test` checkout **only if clean**, then execute `bash -n tools/ft5955_identify_live_trial.sh` and `python3 -m unittest discover -s tests -p test_ft5955_identify_live_trial.py -v`. If those pass, run `sudo -n bash tools/ft5955_identify_live_trial.sh --status` (after obtaining a normal password sudo ticket if needed); inspect output before enabling `--activate`. No additional enrolment or PAM alteration.
+
