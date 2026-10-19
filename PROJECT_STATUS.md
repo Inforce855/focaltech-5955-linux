@@ -42,6 +42,13 @@ This is a fingerprint **hardware/libfprint driver** project, **not** a project t
 
 At this checkpoint, GitHub reports **9 branches including `main`**. The `feature/kde-lock-auth-preflight-20261018` branch contains recent MOH service and KDE work. Consolidation into `main` should be planned **after** reconciling the known-good local driver and running code; do not add more branches or delete history reflexively. The branch/commit count alone is not a progress metric.
 
+## 19 OCTOBER 2026 — MOH socket boot enablement configured (reboot test pending)
+
+- User ran `sudo systemctl enable ft5955-engine-dev.socket`; systemd reported creation of `/etc/systemd/system/sockets.target.wants/ft5955-engine-dev.socket` pointing to the existing unit.
+- A subsequent `systemctl is-enabled ft5955-engine-dev.socket` returned **`enabled`** (previously `disabled`). The socket was already manually started and its live status had returned `active` earlier in the session.
+- **Not yet tested:** whether the socket starts automatically and ordinary `fprintd-verify -f left-index-finger` matches after a full reboot. Do not claim boot-time success yet.
+- After reboot, read only `systemctl is-enabled ft5955-engine-dev.socket` and `systemctl is-active ft5955-engine-dev.socket`, followed by one normal user-level fingerprint verification if the socket is active. Preserve password fallback; no PAM or driver edits.
+
 ## 19 OCTOBER 2026 — restored backend and re-enrolment result
 
 - During earlier `fprintd-verify` attempts, the USB/handshake/contact/capture stages passed, but verification ended in `verify-unknown-error`. Journals reported `Error writing to file descriptor: Broken pipe`, with no `gateway_ready` marker. Both `ft5955-engine-dev.socket` and the service showed `inactive`; service `Result=success` did **not** indicate a running listener.
@@ -67,7 +74,7 @@ At this checkpoint, GitHub reports **9 branches including `main`**. The `feature
 
 ## NEXT ACTION
 
-**Verified operating state (19 October):** the protected MOH socket was found inactive despite the development trial being marked active; manually starting `ft5955-engine-dev.socket` restored end-to-end verification. After re-enrolment the last **7/7** reported left-index attempts matched (median command time **518 ms**). No more fingerprint scans or speed tuning are needed for this milestone. **Next:** read-only inspection of whether the existing socket unit will start after reboot, then consolidate and document the already-working reversible libfprint/fprintd integration and review pre-existing MOH/template trust limitations *before* treating KDE/PAM authentication as production-ready. Preserve the original relay backup and password unlock.
+**Verified operating state (19 October):** the protected MOH socket was restored to active; user re-enrolled left-index and the last **7/7** reported fingerprint verifications matched (median command time **518 ms**). User enabled socket activation at boot (`systemctl is-enabled` returned `enabled`), but **reboot behaviour has not yet been tested**. **Next:** after reboot, check socket `enabled`/`active` and perform one ordinary verification if active; then consolidate the existing reversible installation and review pre-existing MOH/template trust limitations before any production KDE/PAM approval. No further baseline scans, speed tuning, or PAM changes. Keep password fallback and original relay backup.
 
 At the start of each new chat, read this file and report **COMPLETED / REMAINING / NEXT ACTION**. Never silently convert a hypothesis into a fault or repeat earlier testing. Update this file when a significant result changes the project state.
 
