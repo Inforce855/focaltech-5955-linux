@@ -175,3 +175,17 @@ ROLLBACK: sudo -n bash /home/tim/Projects/ft5955-relay-latency-test/tools/ft5955
 ```
 
 **Exact v2 candidate SHA-256** `ad0ff83b5e515711eba822dc7ab69f24ab6f6c5764b0f5daed96a609c96666a9`, previously built with Meson/Ninja 109/109 and separately staged. This is installer-reported success; independent installed SHA readback and actual live identify timing measurements are **not yet reported**. **Next single step:** `sudo -n bash "$HOME/Projects/ft5955-relay-latency-test/tools/ft5955_identify_v2_trial.sh" --status`. Expect both candidate library and marker SHA equal to v2, plus `ROLLBACK_BACKUP=verified`. Before testing a finger, retain the root-only known-good backup; if hardware detection is unreliable, wait for fprintd inactive and use v2-specific `--rollback`. Do not use v1 installer for a v2 installation or modify saved fingerprints.
+
+## User-verified v2 installation SHA and backup — 19 October 2026
+
+User performed independent `sudo -n bash tools/ft5955_identify_v2_trial.sh --status` after guarded v2 activation. Exact readback:
+
+```
+LIVE_SHA=ad0ff83b5e515711eba822dc7ab69f24ab6f6c5764b0f5daed96a609c96666a9
+MARKER_SHA=ad0ff83b5e515711eba822dc7ab69f24ab6f6c5764b0f5daed96a609c96666a9
+ROLLBACK_BACKUP=verified
+FPRINTD_STATE=inactive
+READ ONLY: no changes
+```
+
+Candidate v2 and its marker therefore match the verified staged SHA. The root-owned original driver backup still passed integrity verification, and the service is idle ready to load v2 on demand. **No real v2 fingerprint match or speed result yet.** Next user test runs `fprintd-verify -f any` as ordinary user, intentionally left index first, followed by `sudo -n journalctl -b -u fprintd.service --since "$since" --no-pager -o cat | grep 'FT5955TIMING phase=identify_'`. The `since` time is recorded just before the single scan. This logs only event labels and monotonic timestamps; it does not record raw frames/templates. A silent journal command may indicate sudo cache expiry; report that limitation and do not infer absent timings.
