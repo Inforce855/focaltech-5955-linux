@@ -6,6 +6,8 @@ Linux `libfprint` driver research for the built-in FocalTech USB fingerprint rea
 
 **Previous milestone (17 October 2026): an end-to-end KDE experiment succeeded — enrolment, fingerprint verification and rollback. This is *not* a production-ready fingerprint-login driver.** The original packaged Nobara `libfprint` and `fprintd` have been restored. Fingerprint PAM/SDDM login was never enabled.
 
+**Deployment update (19 October 2026):** The user's read-only `git hash-object` check proved the protected installed relay at `/opt/ft5955-dev/ft5955_engine_broker.py` was the earlier `68035014f464d6b5de8941adc00e6afd15c5719c` version, which still contained the ~1 s cleanup join. A guarded replacement installed the **exact previously hardware-verified fixed source** (Git blob `6fa2dcf7ece70cabab19b9e2825f2255fa437a3f`) and reported **PASS**, saving the original as `/opt/ft5955-dev/ft5955_engine_broker.py.before-1s-fix`. No service restart, fingerprint enrolment, PAM, KDE or libfprint configuration change was made. **A post-installation verification operation has not yet been reported.** This is a restored known fix, not a new design or approval for security-critical production login. See [PROJECT_STATUS.md](PROJECT_STATUS.md) for the next step.
+
 ## Verified on the actual device
 
 | Milestone | Observed result |
