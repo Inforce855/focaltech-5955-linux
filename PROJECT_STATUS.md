@@ -10,6 +10,8 @@ Get the **FocalTech 2808:5955 USB fingerprint reader** working on Linux through 
 
 This is a fingerprint **hardware/libfprint driver** project, **not** a project to rewrite KDE, PAM, fprintd, operating-system authentication or Linux user accounts. Prefer existing system capabilities.
 
+**Latest outcome (19 October):** User confirms fingerprint setup survived reboot after enabling the MOH socket. Hardware verification and timing fix were previously demonstrated; next work is consolidation, not new matching experiments.
+
 ## VERIFIED / COMPLETED — do not retest without evidence of regression
 
 - Device identity, USB handshake, contact/release, raw image capture and conversion were established with physical hardware.
@@ -41,6 +43,12 @@ This is a fingerprint **hardware/libfprint driver** project, **not** a project t
 ## Existing repository / development branches
 
 At this checkpoint, GitHub reports **9 branches including `main`**. The `feature/kde-lock-auth-preflight-20261018` branch contains recent MOH service and KDE work. Consolidation into `main` should be planned **after** reconciling the known-good local driver and running code; do not add more branches or delete history reflexively. The branch/commit count alone is not a progress metric.
+
+## 19 OCTOBER 2026 — post-reboot confirmation (user-reported)
+
+- After enabling `ft5955-engine-dev.socket` with `sudo systemctl enable`, the user **confirmed that the working fingerprint setup survived a full reboot**. This closes the previously pending restart-persistence milestone on the basis of the user's report; no new command output or quantitative post-reboot test log was supplied in this message.
+- Previously established on the live host: normal `fprintd-verify` reached the protected MOH matching backend, the exact known-good one-second relay teardown fix was installed with its original backed up, and the final seven post-re-enrolment left-index verifications all matched.
+- No further baseline fingerprint scans or timing changes are required for this milestone. Existing protected MOH/template security restrictions still prevent claiming a production-ready authentication solution.
 
 ## 19 OCTOBER 2026 — MOH socket boot enablement configured (reboot test pending)
 
@@ -74,7 +82,7 @@ At this checkpoint, GitHub reports **9 branches including `main`**. The `feature
 
 ## NEXT ACTION
 
-**Verified operating state (19 October):** the protected MOH socket was restored to active; user re-enrolled left-index and the last **7/7** reported fingerprint verifications matched (median command time **518 ms**). User enabled socket activation at boot (`systemctl is-enabled` returned `enabled`), but **reboot behaviour has not yet been tested**. **Next:** after reboot, check socket `enabled`/`active` and perform one ordinary verification if active; then consolidate the existing reversible installation and review pre-existing MOH/template trust limitations before any production KDE/PAM approval. No further baseline scans, speed tuning, or PAM changes. Keep password fallback and original relay backup.
+**Boot persistence and the operating fingerprint verification path have been user-confirmed.** Do not request additional timing, USB, or repeat-enrolment tests without new evidence of regression. Move to a read-only, **source-vs-installed inventory** of the existing libfprint library, `/opt/ft5955-dev` components, fprintd unit drop-ins, and protected service, then document a single reproducible guarded installation/rollback procedure. Review the existing template integrity, identity binding, and vendor MOH sandbox limitations before considering production KDE/PAM authentication; keep password fallback. Preserve dirty local worktrees, backup relay and all unique Git history; no new branches or service architectures.
 
 At the start of each new chat, read this file and report **COMPLETED / REMAINING / NEXT ACTION**. Never silently convert a hypothesis into a fault or repeat earlier testing. Update this file when a significant result changes the project state.
 
