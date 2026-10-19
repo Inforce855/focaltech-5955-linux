@@ -145,6 +145,20 @@ The user wants a maintained, normal FocalTech 5955 Linux driver and **does not w
 - After closing the recorded MOH matcher trust/template security questions, create one documented, maintainable non-development service and installer/upgrade/rollback path from the existing verified code; only then retire the `-dev` service names, paths, development markers and obsolete scripts.
 - Do not mistake a rename for security or completion; no premature rename, parallel runtime or destructive cleanup. Keep the fully native Linux matcher as a separately planned later milestone.
 
+## 19 OCTOBER 2026 — cancelled verification cleanly completes; Ctrl+C switches sudo to password
+
+**Important correction to earlier diagnosis:** User reports that, while `sudo` requests a fingerprint, **Ctrl+C cancels the fingerprint authentication attempt and allows password entry without waiting for its timeout**; this workflow works on the user's actual host. Earlier advice implying Ctrl+C always cancels all of `sudo` was too broad. **Ctrl+Z** suspends the foreground task and should not be used as the password-switch mechanism.
+
+Read-only host observations:
+- `systemctl show fprintd.service` returned `ActiveState=inactive`, `SubState=dead`, `Result=success`, `TimeoutStopUSec=45s`. On-demand daemon inactivity is not an error.
+- At 12:00:04–12:00:07 in the current boot journal, two `matcher_no_match` and one `matcher_match` operations completed with `verify_finish_done`, confirming a functional matcher at that time.
+- At **12:00:27** a new verification reached `gateway_ready`. At **12:00:31**, the journal recorded `Verification was in progress, stopping it`, then `cleanup_begin`, `gateway_wait_complete`, `worker_return`, `verify_finish_start`, **`verify_finish_done`**, all in approximately **20.4 ms** from cleanup begin to verified finish. `fprintd.service: Deactivated successfully` followed at **12:01:01**.
+- Therefore **this most recently logged cancellation completed normally**. It does **not** reproduce an incomplete libfprint cleanup. Earlier `AlreadyInUse` errors remain documented facts, but attributing them conclusively to a cancellation-handler bug was premature; a previous outstanding D-Bus claim or suspended client remains possible, cause unproven.
+- Previous `systemctl restart fprintd.service` command took **45.495 s** and service stop timeout was `45s`, suggesting a stop-timeout interaction but not proving one from the displayed journal excerpt. Inspect only if the slow restart or `AlreadyInUse` returns; do not alter already-verified relay timing or USB polling.
+- `sudo -v` previously accepted a password immediately; `sudo -n systemctl restart fprintd.service` then succeeded. The source/staged authselect rollback backup remains `ft5955-pre-fingerprint-20261019-113538`.
+
+**Next:** retain normal global fingerprint PAM, use Ctrl+C for password fallback at a fingerprint-first sudo prompt as user-verified, and continue the outstanding KDE locker and multi-finger `identify` integration. Avoid unnecessary service restarts and repeated completed tests. Leave the experimental privileged-matcher security review and `-dev` retirement on the release checklist.
+
 ## 19 OCTOBER 2026 — sudo password fallback and fprintd restart succeeded
 
 - User tried `sudo -n systemctl restart fprintd.service`; it correctly refused: `sudo: a password is required`, because there was no cached authorisation.
