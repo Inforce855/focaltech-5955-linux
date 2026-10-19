@@ -178,8 +178,10 @@ def apply_identify_v2_variant(source: Path) -> None:
         "identify_gallery_no_match", "identify_worker_end",
         "identify_finish_start", "identify_finish_done",
     )
-    if any(output.count(f'"{phase}"') != 1 for phase in phases):
-        raise ValueError("Identify v2 timing trace phase count mismatch")
+    for phase in phases:
+        count = 2 if phase == "identify_finish_done" else 1
+        if output.count(f'"{phase}"') != count:
+            raise ValueError(f"Identify v2 timing trace phase count mismatch: {phase}")
 
     # No overwrite outside the ephemeral reconstructed source.
     target.write_text(output, encoding="utf-8")
