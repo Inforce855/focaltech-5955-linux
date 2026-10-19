@@ -1,6 +1,6 @@
 # Git branch register — FocalTech 2808:5955 Linux driver
 
-**Reviewed:** 18 October 2026 against GitHub `main`. This document is the **authoritative branch map**, not an instruction to install experimental code. First read [PROJECT_STATUS.md](../PROJECT_STATUS.md).
+**Reviewed:** 18 October 2026 against GitHub `main`. **Source/documentation follow-up:** 19 October 2026 — the already-verified ~1-second relay fix and regression test were copied without modification to both `main` and `feature/kde-lock-auth-preflight-20261018`; the README now links to the actual KDE milestone. The GitHub source correction has **not** been deployed to the user's host. This document is the **authoritative branch map**, not an instruction to install experimental code. First read [PROJECT_STATUS.md](../PROJECT_STATUS.md).
 
 ## Original goal
 
@@ -33,7 +33,7 @@ GitHub branch comparisons were performed on **18 October 2026**; counts are rela
 
 ## Why `main` currently looks stale
 
-The root README on main still describes **17 October** and says no PAM-enabled KDE unlock had been tested. On **18 October**, the user explicitly reported that **KDE actually unlocked with fingerprints**, that both index fingers were enrolled, that the protected MOH service returned a genuine `verify-match`, and that password unlocking remained possible. The latest 18 October record exists on the KDE feature branch, and the 1-second delay fix and 5/5 observations exist on the latency feature branch. Those facts were **not all incorporated into main**.
+The root README on `main` was **out of date until 19 October**; it originally described only the 17 October milestone. It now includes a dated status note recording real KDE unlock and the existing latency fix. On **18 October**, the user explicitly reported that **KDE actually unlocked with fingerprints**, that both index fingers were enrolled, that the protected MOH service returned a genuine `verify-match`, and that password unlocking remained possible. The latest 18 October record exists on the KDE feature branch, and the 1-second delay fix and 5/5 observations exist on the latency feature branch. The facts and the proven relay fix are now recorded on `main`, but the **separate dedicated-service development implementation has not been merged into `main`**. The installed host's `/opt/ft5955-dev/ft5955_engine_broker.py` version remains to be established.
 
 **Do not resolve this by blindly merging every development branch**: source/runtime correspondence, local uncommitted work, service trust and pinned artefacts must be checked first. It is safe and necessary to document real milestones now.
 
