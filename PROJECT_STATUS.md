@@ -145,6 +145,12 @@ The user wants a maintained, normal FocalTech 5955 Linux driver and **does not w
 - After closing the recorded MOH matcher trust/template security questions, create one documented, maintainable non-development service and installer/upgrade/rollback path from the existing verified code; only then retire the `-dev` service names, paths, development markers and obsolete scripts.
 - Do not mistake a rename for security or completion; no premature rename, parallel runtime or destructive cleanup. Keep the fully native Linux matcher as a separately planned later milestone.
 
+## 19 OCTOBER 2026 — guarded identify install script 3/3 offline PASS
+
+User fast-forwarded existing **clean detached-HEAD** `~/Projects/ft5955-relay-latency-test` from `ccfdd59` to `d97fc89` using `git fetch` + `git merge --ff-only FETCH_HEAD` with no local changes. Ran `bash -n tools/ft5955_identify_live_trial.sh` successfully and `python3 -m unittest discover -s tests -p test_ft5955_identify_live_trial.py -v` **3/3 PASS**: Bash syntax, no service/auth modification source-contract checks, backup-first and pinned-hash source checks. **Only offline source checks; no live installer invocation yet.** The previous known-good and identify candidate SHA-256, PAM, UID955 matcher, templates and active libfprint remain unchanged.
+
+**Next user-visible single step:** `sudo bash "$HOME/Projects/ft5955-relay-latency-test/tools/ft5955_identify_live_trial.sh" --status` is read-only and reports actual live/marker hashes, backup status and fprintd state. Inspect before any `--activate` attempt. No hardware matching or re-enrolment needed for status.
+
 ## 19 OCTOBER 2026 — exact service inventory and guarded identify swap source committed
 
 User's `systemctl cat` confirms fprintd drop-ins `90-ft5955-system-trial.conf` (experimental libfprint loader, enabled) and `95-ft5955-moh-dev-gateway.conf` (effective protected UID955 relay `/opt/ft5955-dev/ft5955_dev_relay.py`). Original `FT5955_TRIAL_OWNER` marker **matches the known-good library SHA** `02403d764535bc77a83c62c4f696af3e5d4dc8df8b087e74f70989cfa96b1a28`. Staged identify checksum `70609faa6783d9175c2925f1cccdcde9a81282fc275b2626185e3bfc2b365bdd` was independently verified. **No overrides, protected engine, PAM or saved prints need modification.**
