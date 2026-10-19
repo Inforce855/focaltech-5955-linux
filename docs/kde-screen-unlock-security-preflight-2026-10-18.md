@@ -2,6 +2,17 @@
 
 **State: read-only planning and diagnostics only. Not authorised for live PAM activation.**
 
+## Installed systemd/socket review — 19 October 2026
+
+User showed full `systemctl cat ft5955-engine-dev.service ft5955-engine-dev.socket` output and `namei -l` of live paths. Findings:
+- Effective `/etc/systemd/system/ft5955-engine-dev.service` runs `/usr/bin/python3 -I -B /opt/ft5955-dev/ft5955_dev_protocol_server.py` with `User=ft5955-engine`, `Group=ft5955-engine`, and depends on `ft5955-engine-dev.socket`. Configuration includes `NoNewPrivileges`, `ProtectHome`, `ProtectSystem=strict`, `PrivateDevices`, `RestrictAddressFamilies=AF_UNIX AF_NETLINK`, `IPAddressDeny=any`, empty capability/ambient sets, and additional hardening options. Systemd's distribution-wide `10-timeout-abort.conf` adds `TimeoutStopFailureMode=abort`; do not mistake this for an FT5955 override.
+- The socket listens at `/run/ft5955-engine-dev/engine.sock`, `SocketUser=ft5955-engine`, `SocketGroup=root`, `SocketMode=0660`, `DirectoryMode=0755`; actual socket `srw-rw---- ft5955-engine root` under `root:root 0755` parent. Access controls are consistent with the intended root fprintd client and separate engine account. The checked-in broker's `SO_PEERCRED` handling explicitly allows only peer UID 0 in the active, non-test mode.
+- The protected `/opt/ft5955-dev` directory is `root:root 0755`, with the server and template gateway Python modules `root:root 0644`. The vendor DLL's directory and file are root-owned and not writable by ordinary users; world readability of the DLL alone does **not** imply they can modify it. The protected launcher in GitHub checks root ownership and SHA-256 pin of the installed DLL.
+- Thus these results reveal **no obvious unprivileged socket/file overwrite path**. This is not a complete proof of safe authentication. Root-only stored template directories coexist with an **unkeyed fingerprint-template digest**; account/credential binding, the installed fprintd gateway/library load path, vendor `UNVERIFIED_ATTACH` and read-only host `/proc` sandbox exposure still require attention before allowing broad PAM authentication.
+- User has explicitly requested that the `-dev` unit/path be retired in the final maintained installation, **after** preserving and migrating the working implementation. Do not rename the active service yet.
+
+**Immediate next check (read only):** examine the effective fprintd service `Environment` and loaded libfprint trial library/relay permissions to close source/runtime discrepancy. No systemd, PAM, module, or scanner changes at this step.
+
 ## Follow-up evidence — 19 October 2026 (supersedes parts of the 18 October baseline)
 
 This dated handoff originally described the earlier **user-session** broker. The host subsequently demonstrated a separate **UID955 MOH service** using `ft5955_dev_protocol_server.py`, `ft5955_engine_broker.py` and `ft5955_dev_template_launcher.py`. The connection's root UID is checked with `SO_PEERCRED`; service/broker/launcher source restricts execution to the dedicated account or root-owned relay, and the launcher checks a pinned DLL digest. User reported that the socket now starts after reboot and that seven sequential left-index verification operations matched after re-enrolment.
