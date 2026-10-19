@@ -50,3 +50,12 @@ The variant's own output explicitly confirms **nothing installed under `/opt`, `
 
 **Next immediate check, read-only:** verify the staged `SHA256` manifest and file with `sha256sum -c`, record checksum and physical ownership/type of the current `/opt/ft5955-system-trial/lib/libfprint-2.so.2.0.0`, check `fprintd.service` drop-ins and live paths, then prepare reversible, guarded live swap without touching `fprintd-pam`, `authselect`, global PAM, MOH, daemon configuration or prints. Existing lab install wrappers refuse when fprintd-pam is active and must not be reused or guard-bypassed. Never blindly overwrite current binary or delete historic staged libraries.
 
+
+## Verified stage integrity and live binary fingerprint — 19 October 2026
+
+User's **read-only** Nobara preflight confirms staged `sha256sum -c SHA256` returned `lib/libfprint-2.so.2.0.0: OK`. Candidate in `/home/tim/.local/state/ft5955-system-trial/stage-identify/lib/libfprint-2.so.2.0.0`: SHA-256 `70609faa6783d9175c2925f1cccdcde9a81282fc275b2626185e3bfc2b365bdd`, owner `tim:tim`, mode `0600`.
+
+The **currently installed working** `/opt/ft5955-system-trial/lib/libfprint-2.so.2.0.0` is SHA-256 `02403d764535bc77a83c62c4f696af3e5d4dc8df8b087e74f70989cfa96b1a28`, owner `root:root`, mode `0644`. `fprintd.service`: `ActiveState=inactive`, `MainPID=0`, and active unit configuration includes `/usr/lib/systemd/system/service.d/10-timeout-abort.conf`, `/etc/systemd/system/fprintd.service.d/90-ft5955-system-trial.conf`, plus a `95-…` drop-in (terminal output truncated; need full value and file contents before any guarded live swap). No biometric testing yet.
+
+**Next action**: inspect full installed service overrides, original marker file and any existing root-owned backup without making changes. Build a **dedicated guarded installer/rollback** that verifies these exact two hashes, snapshots the current live binary before any modification, refuses conflicting/busy states and unexpected ownership, uses atomic replacement under the same filesystem, records marker changes only if required, and makes rollback possible using password fallback even when fingerprint scanning is unavailable. Do not reuse old lab install scripts; preserve live UID955 matcher socket, PAM, current fingerprints and auto-activation.
+
