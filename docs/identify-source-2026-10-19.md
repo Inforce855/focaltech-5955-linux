@@ -189,3 +189,22 @@ READ ONLY: no changes
 ```
 
 Candidate v2 and its marker therefore match the verified staged SHA. The root-owned original driver backup still passed integrity verification, and the service is idle ready to load v2 on demand. **No real v2 fingerprint match or speed result yet.** Next user test runs `fprintd-verify -f any` as ordinary user, intentionally left index first, followed by `sudo -n journalctl -b -u fprintd.service --since "$since" --no-pager -o cat | grep 'FT5955TIMING phase=identify_'`. The `since` time is recorded just before the single scan. This logs only event labels and monotonic timestamps; it does not record raw frames/templates. A silent journal command may indicate sudo cache expiry; report that limitation and do not infer absent timings.
+
+## First real v2 identify trace: complete gallery NO_MATCH and 241ms after capture
+
+User ran `fprintd-verify -f any` as an ordinary user after confirmed v2 install; fprintd listed gallery #0 right-index-finger and #1 left-index-finger. The single real verification terminated `verify-no-match (done)`. The event-only `FT5955TIMING phase=identify_*` journal from this run provides a complete TWO-TEMPLATE pass: first and second gateway start, ready, matcher reply, cleanup and final `identify_gallery_no_match`. No `identify_quality_retry` occurred. Thus **neither enrolled print matched this particular capture**; no evidence which physical finger was used beyond preceding instruction to use left index. One negative result does not measure overall accuracy or establish an identification defect.
+
+| Monotonic phase interval | Measured |
+| --- | ---: |
+| identify_worker_start 11098815127 → identify_image_captured 11101446018 | **2630.891 ms**, includes initial scan waiting/physical finger placement, not pure driver latency |
+| image captured → first gateway start | 0.016 ms |
+| first gateway start 11101446034 → ready 11101540948 | **94.914 ms** |
+| first ready → matcher reply 11101547635 | **6.687 ms** |
+| first cleanup begin 11101547647 → done 11101567764 | **20.117 ms** |
+| second gateway start 11101567793 → ready 11101659595 | **91.802 ms** |
+| second ready → matcher reply 11101666395 | **6.800 ms** |
+| second cleanup begin 11101666408 → done 11101686521 | **20.113 ms** |
+| image captured 11101446018 → callback done 11101686716 | **240.698 ms** |
+| worker start → callback done | **2861.589 ms** |
+
+**Conclusion:** The previously eliminated ~1-second gateway cleanup delay is not recurring: each observed cleanup is ~20 ms. Both serial templates require only ~0.24 seconds total after image capture in this attempt. Most wall time (~2.63 seconds) was spent awaiting the first usable image and can include user placement time or release-to-contact polling. No reliable physical-press timestamp is present. **No MATCH so the first v2 hardware recognition test is a negative sample.** Next: controlled additional `any` attempt with **right index first** (gallery #0), repeat trace capture and distinguish success/no-match versus repeated quality. Then try left index independently after checking result. Preserve the active known-good backup and password fallback. Avoid premature optimisation of parallel gateway starts or old join; use observations first.
