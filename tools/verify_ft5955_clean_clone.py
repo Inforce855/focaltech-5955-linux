@@ -24,6 +24,7 @@ import sys
 import tempfile
 
 import verify_ft5955_rebuild as existing
+from ft5955_identify_overlay import apply_identify_variant
 
 UPSTREAM_URL = "https://gitlab.freedesktop.org/libfprint/libfprint.git"
 UPSTREAM_TAG = "v1.94.100"
@@ -285,7 +286,11 @@ def main() -> None:
                     help="100ms status polling + parallel verify matcher startup/early USB capture (experimental)")
     ap.add_argument("--trace-timing", action="store_true",
                     help="Early-capture verify with non-biometric monotonic stage timings (separate staged build)")
+    ap.add_argument("--identify", action="store_true",
+                    help="SOURCE-ONLY opt-in gallery identify overlay for --trace-timing builds; no install")
     args = ap.parse_args()
+    if args.identify and not args.trace_timing:
+        ap.error("--identify requires --trace-timing; preserve proven early-capture timing source")
     if sum((args.poll_100ms, args.early_capture, args.trace_timing)) > 1:
         ap.error("Select only one timing experiment")
 
@@ -358,6 +363,10 @@ def main() -> None:
         if args.trace_timing:
             apply_timingtrace_variant(source)
             print("TRACE VARIANT: event-only monotonic journal timings, no frame/template data.")
+        if args.identify:
+            apply_identify_variant(source)
+            print("IDENTIFY SOURCE VARIANT: one fresh capture checked against each enrolled gallery template.")
+            print("Existing verify/enroll workers, timing markers, saved templates and MOH socket unchanged.")
         if args.poll_100ms or args.early_capture or args.trace_timing:
             print("Source snapshot, installed system and baseline stages are untouched.")
         build = work / "build"
@@ -374,7 +383,8 @@ def main() -> None:
             # User-owned staging only. Do not put the shared library where a
             # protected system fprintd service would load it. A separate
             # privileged trial tool will copy it into root-owned /opt later.
-            stage_name = ("stage-timingtrace" if args.trace_timing else
+            stage_name = ("stage-identify" if args.identify else
+                          "stage-timingtrace" if args.trace_timing else
                           "stage-earlycapture" if args.early_capture else
                           "stage-poll100" if args.poll_100ms else "stage")
             stage = Path.home() / ".local" / "state" / "ft5955-system-trial" / stage_name
@@ -401,8 +411,12 @@ def main() -> None:
             print("PASS: verified clean build STAGED to user-only location:", stage)
             print("STAGED_LIB_SHA256:", digest)
             if args.poll_100ms or args.early_capture or args.trace_timing:
-                print("TIMING VARIANT STAGED SEPARATELY: never replace earlier stages by hand.")
-                print("Installer loads this stage only via the corresponding explicit --start option.")
+                print("EXPERIMENTAL VARIANT STAGED SEPARATELY: never replace earlier stages by hand.")
+                if args.identify:
+                    print("IDENTIFY STAGE IS NOT CONNECTED TO ANY PRIVILEGED INSTALLER.")
+                    print("DO NOT replace the running /opt libfprint library or enable this for PAM yet.")
+                else:
+                    print("Installer loads this stage only via the corresponding explicit --start option.")
             print("No files in /opt, /etc, /usr, no service/PAM edits and no USB operations.")
         if args.claim_only:
             env = os.environ.copy()
