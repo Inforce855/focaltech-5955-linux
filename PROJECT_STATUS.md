@@ -1,3 +1,7 @@
+## 19 OCT 2026 — identify v2 LEFT INDEX: 1/4 matched, live rollback advised
+
+User explicitly confirms four consecutive v2 `fprintd-verify -f any` tests were performed with left index finger: NO_MATCH, NO_MATCH, NO_MATCH, MATCH. The successful match occurred after the second gallery candidate was checked; first-template ordering by named finger is NOT independently established by timing events. Approximate post-capture durations: 262, 266, 241, 245 ms. No quality-retry event. Earlier first-template MATCH had incorrectly been attributed to the right finger without proving gallery-label order; do not assume it was right. Because experimental identification is wired into live PAM and recognition is inconsistent, advise reverting to independently preserved good v1-verify-only libfprint with existing `tools/ft5955_identify_v2_trial.sh --rollback` only while fprintd inactive. No further live biometric tests until reviewing gallery ordering/cross-matching. Full timings in existing feature branch `docs/identify-source-2026-10-19.md`.
+
 # PROJECT STATUS — FocalTech USB 2808:5955 Linux driver
 
 **Updated:** 19 October 2026  
