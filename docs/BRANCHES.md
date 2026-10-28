@@ -2,7 +2,17 @@
 
 **Reviewed:** 18 October 2026 against GitHub `main`. **Source/documentation follow-up:** 19 October 2026 — the already-verified ~1-second relay fix and regression test were copied without modification to both `main` and `feature/kde-lock-auth-preflight-20261018`; the README now links to the actual KDE milestone. At that 19 October documentation checkpoint, deployment had **not yet** been independently established; the 28 October read-only verification below now supersedes that uncertainty. This document is the **authoritative branch map**, not an instruction to install experimental code. First read [PROJECT_STATUS.md](../PROJECT_STATUS.md).
 
-## Cross-repository branch cleanup — verified 28 October 2026
+## Final branch housekeeping result — verified 28 October 2026
+
+**Completed:** The owner confirmed a guarded second cleanup of three additional integrated remote branches, including **`feature/ft5955-driver-consolidation-20261017`** and **`feature/ft5955-source-history`** from this repository. Both had zero unique commits against `main`; their exact GitHub head SHAs and remote-delete dry runs were verified before deletion. The CFS `feature/v0.8.0-samid` branch was removed in the same batch. Fresh GitHub listings independently confirm **FocalTech: 9 → 7**, **CFS: 13 → 4**, **Frame Surgeon: 15 → 4**; aggregate **37 → 15**, 22 remote branches removed.
+
+**Retained FocalTech remote branches (7):** `main`; `feature/ft5955-early-contact-parallel`; `feature/ft5955-moh-engine-bridge`; `feature/ft5955-private-fprintd-v096`; `feature/ft5955-relay-latency`; `feature/ft5955-timingtrace`; `feature/kde-lock-auth-preflight-20261018`. Preserve unique research commits, the four open PRs, and the exact KDE-development relay source currently installed on Nobara.
+
+**Important local distinction:** the **local** `feature/ft5955-source-history` branch remains checked out in `~/Projects/Fingerprint-FT5955/ft5955-source-history` and retains its **six modified tracked files** containing local path corrections. Its remote branch was removed, **not its worktree or edits**. Do not reset, clean, delete or repoint the local branch as an assumed consequence of remote deletion. The local main and MOH worktrees also retain previously audited uncommitted files. Deleting remote branches did not modify PAM, systemd or the running fingerprint installation.
+
+The preceding **37 → 18** section, earlier 9-branch table and previously proposed deletion candidates below are retained for historical audit context only; **they no longer describe the current remote branches**. No further branch deletions are proposed in this completed housekeeping phase.
+
+## First cleanup batch — 28 October 2026 (historical 37 → 18 checkpoint)
 
 The owner approved and ran a guarded deletion of **19 remote branches** from the other two repositories: CFS **13 → 5**, Frame Surgeon **15 → 4**, while FocalTech remained **9 → 9**. GitHub API listings confirmed the post-cleanup total **37 → 18**. **No FocalTech branches or local worktrees were deleted**.
 
