@@ -2,6 +2,14 @@
 
 **Reviewed:** 18 October 2026 against GitHub `main`. **Source/documentation follow-up:** 19 October 2026 — the already-verified ~1-second relay fix and regression test were copied without modification to both `main` and `feature/kde-lock-auth-preflight-20261018`; the README now links to the actual KDE milestone. At that 19 October documentation checkpoint, deployment had **not yet** been independently established; the 28 October read-only verification below now supersedes that uncertainty. This document is the **authoritative branch map**, not an instruction to install experimental code. First read [PROJECT_STATUS.md](../PROJECT_STATUS.md).
 
+## Cross-repository branch cleanup — verified 28 October 2026
+
+The owner approved and ran a guarded deletion of **19 remote branches** from the other two repositories: CFS **13 → 5**, Frame Surgeon **15 → 4**, while FocalTech remained **9 → 9**. GitHub API listings confirmed the post-cleanup total **37 → 18**. **No FocalTech branches or local worktrees were deleted**.
+
+The two FocalTech zero-unique-commit candidates (`feature/ft5955-driver-consolidation-20261017`, `feature/ft5955-source-history`) remain **undeleted**. The locally checked-out source-history worktree has uncommitted directory-path corrections that must not be discarded. `feature/kde-lock-auth-preflight-20261018` is still necessary because its `tools/ft5955_dev_relay.py` exactly matches the installed development relay. Four open PRs (#1, #5, #6, #7) reference other FocalTech research branches. Any additional remote deletion requires separately resolving local worktree use and explicit approval for the named branch.
+
+See [CFS cross-repository cleanup record](https://github.com/Inforce855/ComfyFilmStudio/blob/feature/motion-control-v1/docs/branch-hygiene.md).
+
 ## Protecting `main` — owner action required (28 October 2026)
 
 **Updated protection status (28 October 2026):** the owner created a classic branch protection rule and GitHub's branch API now reports **`main.protected=true`**. This is confirmed active protection, not merely a recommendation. The owner reports leaving all checkboxes unticked. Under classic protection, force pushes and deletion are blocked by default, but admin bypass remains possible unless **Do not allow bypassing the above settings** is checked. The owner can enable that one control to ensure the restriction applies to their own admin account. No mandatory pull requests or CI gates are currently configured. The original recommendations remain:
