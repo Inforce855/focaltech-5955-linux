@@ -1,6 +1,6 @@
 # FocalTech 5955 — source and deployment reconciliation checkpoint
 
-**Audit date:** 28 October 2026. **Status:** HISTORICAL SOURCE AUDIT VERIFIED; relay provenance and security/release reconciliation still incomplete. **Do not delete FocalTech research branches, reset dirty worktrees, reinstall libfprint or change PAM/systemd.** This is a source/deployment audit, not approval for production biometric authentication.
+**Audit date:** 28 October 2026. **Status:** HISTORICAL SOURCE AUDIT VERIFIED; relay source verified; security/release reconciliation still incomplete. **Do not delete FocalTech research branches, reset dirty worktrees, reinstall libfprint or change PAM/systemd.** This is a source/deployment audit, not approval for production biometric authentication.
 
 ## Verified follow-up — 28 October 2026 (supersedes earlier open source-inventory questions)
 
@@ -12,10 +12,10 @@ Of the **11 untracked files in local main**, 8 matched existing GitHub historica
 
 - Installed libfprint SHA-256: **`02403d764535bc77a83c62c4f696af3e5d4dc8df8b087e74f70989cfa96b1a28`**, exactly the historically documented **known-good original verify-only library**, restored after the unsuccessful identification v2 trial.
 - Installed `/opt/ft5955-dev/ft5955_engine_broker.py`: local SHA-256 `5f6925c5cd7a1cf1aa9acf780b674dbb44379d9d190ac0d42b44783be57ce0e5`; owner ran `git hash-object --no-filters` on the installed file and obtained **Git blob `6fa2dcf7ece70cabab19b9e2825f2255fa437a3f`**, *exactly matching* committed `tools/ft5955_engine_broker.py` with the earlier tested one-second cleanup fix. Git blob SHA-1 and file SHA-256 are different checksum schemes, not conflicting revisions.
-- Installed `/opt/ft5955-dev/ft5955_dev_relay.py` SHA-256: `a86c8a50e531876b30a8d7bad6a4661bcae5e2cbc894d4b254608d205c26f3e4`; its exact committed/source provenance has **not yet been established**.
+- Installed `/opt/ft5955-dev/ft5955_dev_relay.py` SHA-256: `a86c8a50e531876b30a8d7bad6a4661bcae5e2cbc894d4b254608d205c26f3e4`. **Confirmed source provenance:** owner's read-only `git hash-object --no-filters` returned blob `fd6cb387e1a923021100c5a95ceac35a5d4e1fbf`, identical to `tools/ft5955_dev_relay.py` on the existing `feature/kde-lock-auth-preflight-20261018` branch. All nine current remote branch-tip trees were searched; this exact blob is present in that KDE branch and absent from the current `main` tree. Preserve this branch until the dedicated service code and deployment/rollback are deliberately consolidated.
 - These checks prove **files and effective service configuration as inspected**, not a new running-process mapping, a post-check hardware test or production security certification. Do not repeat already successful baseline authentication tests without evidence of regression.
 
-**REMAINING:** reconcile the installed development relay and relevant privileged service/template trust boundary; preserve named authselect rollback and password fallback; keep the reverted multi-template `identify` experiment distinct from the known-good verify-only library; plan maintained non-`dev` release/rollback only after source/security checks. **GitHub branch pruning remains on hold** pending owner approval and handling of the still-dirty local worktrees. Earlier "source members not yet compared", "v0.6.1 missing source" and "installed hash unknown" statements below are dated pre-verification observations superseded by this section.
+**REMAINING:** the installed relay's source provenance is confirmed; reconcile the privileged service/template trust boundary; preserve named authselect rollback and password fallback; keep the reverted multi-template `identify` experiment distinct from the known-good verify-only library; plan maintained non-`dev` release/rollback only after source/security checks. **GitHub branch pruning remains on hold** pending owner approval and handling of the still-dirty local worktrees. Earlier "source members not yet compared", "v0.6.1 missing source" and "installed hash unknown" statements below are dated pre-verification observations superseded by this section.
 
 ## Why this checkpoint exists
 
