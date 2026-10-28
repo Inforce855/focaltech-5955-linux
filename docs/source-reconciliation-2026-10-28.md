@@ -56,6 +56,33 @@ ft5955-v094-source
 
 These are **historical package names**, not a list of verified production releases. The transcript includes both passing offline smoke tests and failed or incomplete C build/integration attempts. Some packages were on GitHub or later copied into feature branches, and others were downloaded locally; **the package contents have not been byte-compared against GitHub in this audit**. Do not add opaque archives, personal conversation exports, raw fingerprint images, templates or proprietary DLLs to GitHub.
 
+## Recovered archive inventory — owner read-only listing, 28 October 2026
+
+A filesystem `find` at `~/Downloads` and `~/Projects/Fingerprint-FT5955` (max depth 3, matching FT5955-related archives) found **15 archive files under Downloads** and a second copy/path of **native-validation-v0.9.1** inside the MOH-test checkout. This establishes *presence and pathname only*; SHA-256 hashes, member manifests, extraction safety, archive duplicates and equivalence to repository commits are **not yet verified**.
+
+```text
+~/Downloads/7_Fingerprint-module.zip
+~/Downloads/ft5955-driver-actions-v0.7.tar.gz
+~/Downloads/ft5955-driver-integration-v0.8.tar.gz
+~/Downloads/ft5955-driver-sources.tar.gz
+~/Downloads/ft5955-moh-ipc-v0.1.tar.gz
+~/Downloads/ft5955-moh-ipc-v0.2.tar.gz
+~/Downloads/ft5955-moh-ipc-v0.3.tar.gz
+~/Downloads/ft5955-moh-libfprint-v0.6.1.tar.gz
+~/Downloads/ft5955-moh-libfprint-v0.6.tar.gz
+~/Downloads/ft5955-moh-print-v0.5.tar.gz
+~/Downloads/ft5955-moh-template-v0.4.tar.gz
+~/Downloads/ft5955-native-validation-v0.9.1.tar.gz
+~/Downloads/ft5955-native-validation-v0.9.tar.gz
+~/Downloads/ft5955-v094-source (1).tar.gz
+~/Downloads/ft5955-v094-source.tar.gz
+~/Projects/Fingerprint-FT5955/focaltech-5955-moh-test/packages/ft5955-native-validation-v0.9.1.tar.gz
+```
+
+The `7_Fingerprint-module.zip` vendor package is *not* presumed redistributable and may contain proprietary binaries. No archive is to be automatically extracted, executed, committed or uploaded; no fingerprint data or templates should enter the public source repository.
+
+**Next evidence step:** compute local SHA-256 and archive member-name manifests, without extraction, for the FT5955 tarballs and compare duplicate names/hashes. Then reconcile source members with GitHub branches and the downloaded-file session chronology, before reviewing the dirty worktrees or working driver deployment.
+
 ## Tested milestones versus deployment — distinguish carefully
 
 - Historical timing trace: contact → image approximately **31 ms**, image → matcher reply **7.5 ms**, and a measured **~1,040 ms** cleanup wait. Subsequent removal of the `up.join(timeout=1)` relay join has source and synthetic regression evidence; a later live verified fix is documented elsewhere in this repository. The 20 October timing export stops at an *earlier* stage, so its `not yet hardware tested` wording must not override subsequent dated evidence.
