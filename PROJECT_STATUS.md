@@ -4,9 +4,19 @@ User explicitly confirms four consecutive v2 `fprintd-verify -f any` tests were 
 
 # PROJECT STATUS — FocalTech USB 2808:5955 Linux driver
 
-**Updated:** 19 October 2026  
+**Updated:** 28 October 2026  
 **Repository entry point:** `main`. Latest dedicated-service work remains on existing `feature/kde-lock-auth-preflight-20261018`; no new branch created.  
 **Purpose:** The first document to consult before proposing or implementing ANY change. This is a checkpoint, not a request to reopen resolved problems.
+
+## 28 OCTOBER 2026 — source recovery and installed-version verification
+
+**COMPLETED:** owner-supplied read-only archive-to-GitHub blob comparison confirmed **135/135 source files from 16 historical source archives**, plus an identical standalone scaffold script; the only two excluded v0.6.1 members were generated Python `__pycache__` bytecode. Of 11 untracked source/docs/test files in local `main`, eight were byte-identical to historical GitHub copies and three had only corrected `~/Projects/Fingerprint-FT5955/` path defaults. All three modified MOH files and all six modified source-history files likewise had only local path corrections; the modified `.gitignore` adds `.aider*`. Preserve all dirty worktrees and these valid local path corrections. Source equivalence does not justify deletion of branches or worktrees.
+
+**INSTALLED AND VERIFIED:** `/opt/ft5955-system-trial/lib/libfprint-2.so.2.0.0` has SHA-256 **`02403d764535bc77a83c62c4f696af3e5d4dc8df8b087e74f70989cfa96b1a28`**, exactly the earlier known-good **verify-only** library restored after identify v2. Owner's `git hash-object --no-filters` of the **installed** `/opt/ft5955-dev/ft5955_engine_broker.py` returned **`6fa2dcf7ece70cabab19b9e2825f2255fa437a3f`**, exactly the committed broker containing the successful one-second relay-teardown fix; the corresponding installed file's SHA-256 is `5f6925c5cd7a1cf1aa9acf780b674dbb44379d9d190ac0d42b44783be57ce0e5`. These are distinct hashing algorithms, not a mismatch.
+
+**CONFIGURED:** the standard `fprintd.service` uses the isolated libfprint and `/opt/ft5955-dev/ft5955_dev_relay.py` through its existing drop-ins. The `ft5955-engine-dev.socket` is enabled/active; its socket-activated service was static/inactive at this read-only inspection, which need not be a problem. Relay SHA-256 `a86c8a50e531876b30a8d7bad6a4661bcae5e2cbc894d4b254608d205c26f3e4` was recorded, but its source correspondence **has not been verified**. The private MOH disassembly text was inventoried by filename/hash only and has not been examined.
+
+**REMAINING:** close the source provenance of installed development relay and the MOH identity/template/sandbox security gates; preserve the proven verify-only baseline and password fallback; finish reliable either-index `identify` support only through a separately verified, reversible implementation; consolidate the maintained non-`dev` deployment and rollback once safe. No rebuilds, service restarts, PAM changes, new tests, branch deletions or local resets occurred in this audit. See [28 October reconciliation](docs/source-reconciliation-2026-10-28.md). Historical 19 October "not yet checked" statements below are snapshots, now superseded where explicitly resolved above.
 
 ## Original objective (do not expand)
 
