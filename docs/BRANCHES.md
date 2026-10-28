@@ -4,7 +4,7 @@
 
 ## Protecting `main` — owner action required (28 October 2026)
 
-GitHub's branch API currently reports **`main.protected=false`**, with no repository rulesets. This is a **repository-configuration gap**, not evidence of a compromised source tree. Only the repository owner/admin can apply it through **Settings → Branches → Add classic branch protection rule** (pattern `main`). Recommended minimum for this single-developer research project:
+**Updated protection status (28 October 2026):** the owner created a classic branch protection rule and GitHub's branch API now reports **`main.protected=true`**. This is confirmed active protection, not merely a recommendation. The owner reports leaving all checkboxes unticked. Under classic protection, force pushes and deletion are blocked by default, but admin bypass remains possible unless **Do not allow bypassing the above settings** is checked. The owner can enable that one control to ensure the restriction applies to their own admin account. No mandatory pull requests or CI gates are currently configured. The original recommendations remain:
 
 - Leave **Allow force pushes** and **Allow deletions** off. Enable **Do not allow bypassing the above settings** if the owner wants protection to apply to their administrator account as well.
 - Do **not** enable mandatory approving reviews or make the branch read-only merely to clear the warning. Both could obstruct legitimate maintenance.
@@ -13,6 +13,17 @@ GitHub's branch API currently reports **`main.protected=false`**, with no reposi
 - GitHub's current documentation: [Managing branch protection](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/managing-a-branch-protection-rule).
 
 This note documents recommended configuration only. It **does not** turn on protection or modify the authentication driver, PAM, packages or host state.
+
+## Reverified branch ancestry — 28 October 2026
+
+GitHub comparison against today's `main` shows exactly two branches with **zero unique commits**:
+
+- `feature/ft5955-driver-consolidation-20261017` — 0 ahead / 63 behind `main`.
+- `feature/ft5955-source-history` — 0 ahead / 173 behind `main`.
+
+Both are *candidates for owner-approved deletion after checking local worktrees and installer references*; their commits are already reachable from `main`. They are not current open pull-request heads. No branches were deleted.
+
+The other six named feature branches retain unique commits relative to main: `early-contact-parallel` (14), `moh-engine-bridge` (419), `private-fprintd-v096` (15), `relay-latency` (70), `timingtrace` (22), and `kde-lock-auth-preflight-20261018` (104). Four open PRs (#1, #5, #6, #7) are based on the MOH/timing/relay development chain. This is valuable hardware and PAM research history; no blanket deletion or forced merge should be attempted.
 
 ## Original goal
 
