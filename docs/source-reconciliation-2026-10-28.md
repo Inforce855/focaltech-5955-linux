@@ -83,6 +83,33 @@ The `7_Fingerprint-module.zip` vendor package is *not* presumed redistributable 
 
 **Next evidence step:** compute local SHA-256 and archive member-name manifests, without extraction, for the FT5955 tarballs and compare duplicate names/hashes. Then reconcile source members with GitHub branches and the downloaded-file session chronology, before reviewing the dirty worktrees or working driver deployment.
 
+## SHA-256 and package-to-GitHub inventory cross-check (28 October 2026)
+
+The owner examined archives *without extraction or execution* using Python `hashlib.sha256` and `tarfile`. The result is **15 files in Downloads plus one copy inside the MOH checkout**, but only **14 distinct file hashes**: two pairs are byte-for-byte identical.
+
+- `~/Downloads/ft5955-v094-source.tar.gz` and `~/Downloads/ft5955-v094-source (1).tar.gz` both SHA-256 `3762811926d28afd035241c649c27222d8ab7745f1591c4b8a84878243049a8d`.
+- `~/Downloads/ft5955-native-validation-v0.9.1.tar.gz` and `~/Projects/Fingerprint-FT5955/focaltech-5955-moh-test/packages/ft5955-native-validation-v0.9.1.tar.gz` both SHA-256 `857d445ee7dc01e11a1aa7cec3bb9cdeb4685e859e0f2784631110877fb1979f`.
+
+The download contains **13 distinct FT5955 source-package tarballs** plus a vendor `7_Fingerprint-module.zip` (not inspected here). Exact tarball hashes, file counts and existing version-directory counts:
+
+| Local tarball | SHA-256 | Regular files in tar | Files in remote `research/source-history/` | Remote folder |
+| --- | --- | ---: | ---: | --- |
+| `ft5955-driver-sources.tar.gz` | `cb56078de9d0dcbe67a4cfbc529fdaa98810d0f8410c8344464f8e6b34ea7d2f` | 2 | 2 | `driver-sources-snapshot` |
+| `ft5955-moh-ipc-v0.1.tar.gz` | `0a9d00af12acd8899b84e1ce94af80e619f413a802cc01003c8ed8a038334a01` | 2 | 2 | `v0.1-moh-ipc` |
+| `ft5955-moh-ipc-v0.2.tar.gz` | `4b8e91a4627a08631868520e915213d59836969472b755a8598cb5034b877db5` | 4 | 4 | `v0.2-moh-ipc` |
+| `ft5955-moh-ipc-v0.3.tar.gz` | `50a0c23feda590abfce4e3457414b0121e36dec47f07b5147362fee8eab20c03` | 12 | 12 | `v0.3-moh-ipc` |
+| `ft5955-moh-template-v0.4.tar.gz` | `6d284f8a762779b8bab11aa1b8f6548c51797005edd7c4d9bd57cc3063a8c892` | 9 | 9 | `v0.4-moh-template` |
+| `ft5955-moh-print-v0.5.tar.gz` | `2a42fe076138ae923a7bf1ba29df7e3588ed72c9cffbeb76aaddf6224e39eb1f` | 10 | 10 | `v0.5-moh-print` |
+| `ft5955-moh-libfprint-v0.6.tar.gz` | `1c88fcf6f34ef13c795f00bf4525a09aae2556e832e449564cbcb8c4e4886ca1` | 10 | 10 | `v0.6-moh-libfprint` |
+| `ft5955-moh-libfprint-v0.6.1.tar.gz` | `53dd2b3d81da20c766993422c8829e2e673942c69f1722b434526357951c3726` | **12** | **10** | `v0.6.1-moh-libfprint` |
+| `ft5955-driver-actions-v0.7.tar.gz` | `039100b697dd6e059211cd522254a6edb45f176aa5425d9b47031edada31edad` | 17 | 17 | `v0.7-driver-actions` |
+| `ft5955-driver-integration-v0.8.tar.gz` | `d3030d7ba0d26a3f167ffbfbdf4067eaf199905f7ee75de31a4e0674d6f55231` | 30 | 30 | `v0.8-driver-integration` |
+| `ft5955-native-validation-v0.9.tar.gz` | `b734dc99f60b1cbae18956d5138a392fe674fada5eab944fedc48374aa209e63` | 5 | 5 | `v0.9-native-validation` |
+| `ft5955-native-validation-v0.9.1.tar.gz` | `857d445ee7dc01e11a1aa7cec3bb9cdeb4685e859e0f2784631110877fb1979f` | 5 | 5 | `v0.9.1-native-validation` |
+| `ft5955-v094-source.tar.gz` | `3762811926d28afd035241c649c27222d8ab7745f1591c4b8a84878243049a8d` | 6 | 6 | `v0.9.4-safety-tests` |
+
+**Corrected finding:** Main GitHub already preserves these version directories as source files under `research/source-history/`, despite the original downloadable-package period. All 13 have corresponding directories and **12 have matching member counts**. **v0.6.1 has two additional archive members** relative to its GitHub directory; source relevance remains unknown. Both match and mismatch figures are counts, **not byte-identical content verification**. A file-by-file Git blob SHA-1 comparison is the next required check; package naming alone is not authoritative. This evidence supersedes any suggestion that the full early package chain is absent from GitHub.
+
 ## Tested milestones versus deployment — distinguish carefully
 
 - Historical timing trace: contact → image approximately **31 ms**, image → matcher reply **7.5 ms**, and a measured **~1,040 ms** cleanup wait. Subsequent removal of the `up.join(timeout=1)` relay join has source and synthetic regression evidence; a later live verified fix is documented elsewhere in this repository. The 20 October timing export stops at an *earlier* stage, so its `not yet hardware tested` wording must not override subsequent dated evidence.
