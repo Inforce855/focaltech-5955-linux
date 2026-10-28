@@ -2,6 +2,18 @@
 
 **Reviewed:** 18 October 2026 against GitHub `main`. **Source/documentation follow-up:** 19 October 2026 — the already-verified ~1-second relay fix and regression test were copied without modification to both `main` and `feature/kde-lock-auth-preflight-20261018`; the README now links to the actual KDE milestone. The GitHub source correction has **not** been deployed to the user's host. This document is the **authoritative branch map**, not an instruction to install experimental code. First read [PROJECT_STATUS.md](../PROJECT_STATUS.md).
 
+## Protecting `main` — owner action required (28 October 2026)
+
+GitHub's branch API currently reports **`main.protected=false`**, with no repository rulesets. This is a **repository-configuration gap**, not evidence of a compromised source tree. Only the repository owner/admin can apply it through **Settings → Branches → Add classic branch protection rule** (pattern `main`). Recommended minimum for this single-developer research project:
+
+- Leave **Allow force pushes** and **Allow deletions** off. Enable **Do not allow bypassing the above settings** if the owner wants protection to apply to their administrator account as well.
+- Do **not** enable mandatory approving reviews or make the branch read-only merely to clear the warning. Both could obstruct legitimate maintenance.
+- Current `.github/workflows/ft5955-synthetic-broker.yml` has a `synthetic-broker` CI job with previously successful runs on `main`, but its events are **push** on `main` and a named feature branch, plus manual dispatch; there is **no `pull_request` trigger**. Do not make it a required PR status check until a working PR trigger and merge checks are tested.
+- After protecting the branch, retain feature branches with unique MOH/KDE/PAM hardware evidence until their exact commits, deployed source and rollback are verified. Historical branch comparison notes identify `feature/ft5955-driver-consolidation-20261017` and `feature/ft5955-source-history` as already ancestral to `main` (18 October audit); re-check local worktree references before approving their deletion. Never mass-delete research branches.
+- GitHub's current documentation: [Managing branch protection](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/managing-a-branch-protection-rule).
+
+This note documents recommended configuration only. It **does not** turn on protection or modify the authentication driver, PAM, packages or host state.
+
 ## Original goal
 
 Make the **FocalTech USB fingerprint reader work through the existing Linux `libfprint` → `fprintd` → KDE/PAM framework**. Use the working MOH matcher as an interim dependency; a fully native Linux matcher is a future phase. **Do not rewrite Linux authentication or create duplicate login/retry frameworks.**
