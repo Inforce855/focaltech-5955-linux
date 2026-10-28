@@ -16,6 +16,9 @@ This note documents recommended configuration only. It **does not** turn on prot
 
 **Reconciliation update (28 October):** contents of 16 source archives (135 source files) and standalone scaffold script were confirmed byte-identical to GitHub; v0.6.1's two extra entries are generated Python bytecode, not missing source. Of 11 untracked local-main files, eight match historical GitHub blobs, while three contain path-only fixes. Three locally modified MOH files and six source-history files also have path-only corrections, and `.gitignore` adds `.aider*`. **All dirty local worktrees must be preserved** even though source ancestry is now explained. The installed verify-only libfprint library and one-second-fixed broker have also been matched to the documented baseline; the installed development relay and production authentication/security limits remain open. See [source-reconciliation checkpoint](source-reconciliation-2026-10-28.md). **No candidate branch deletion is approved.**
 
+**Installed relay source confirmation (28 October 2026):** the owner's read-only Git blob hash of `/opt/ft5955-dev/ft5955_dev_relay.py` is `fd6cb387e1a923021100c5a95ceac35a5d4e1fbf`. A comparison of the complete current trees of all nine remote branches confirmed this exact source at `tools/ft5955_dev_relay.py` in **`feature/kde-lock-auth-preflight-20261018`**, *not* `main`. This branch is an active source-of-truth dependency for the installed development gateway; preserve it until its tested code has been deliberately integrated. The broker matches current `main` and the library matches the known-good verify-only SHA-256. No branch deletions or live host changes were made.
+
+
 ## Reverified branch ancestry — 28 October 2026
 
 GitHub comparison against today's `main` shows exactly two branches with **zero unique commits**:
