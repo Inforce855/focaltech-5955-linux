@@ -14,6 +14,8 @@
 
 This note documents recommended configuration only. It **does not** turn on protection or modify the authentication driver, PAM, packages or host state.
 
+**Reconciliation hold:** a 28 October local worktree audit found six modified tracked files in the checked-out `feature/ft5955-source-history` worktree, three modified MOH-branch files, and 11 untracked source/docs/test files under local `main`. Their contents and downloaded package ancestry have **not** yet been reconciled with GitHub. See [source-reconciliation checkpoint](source-reconciliation-2026-10-28.md). Do not prune candidate branches until local use and source integrity are resolved.
+
 ## Reverified branch ancestry — 28 October 2026
 
 GitHub comparison against today's `main` shows exactly two branches with **zero unique commits**:
