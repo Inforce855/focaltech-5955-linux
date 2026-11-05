@@ -2,9 +2,17 @@
 
 User explicitly confirms four consecutive v2 `fprintd-verify -f any` tests were performed with left index finger: NO_MATCH, NO_MATCH, NO_MATCH, MATCH. The successful match occurred after the second gallery candidate was checked; first-template ordering by named finger is NOT independently established by timing events. Approximate post-capture durations: 262, 266, 241, 245 ms. No quality-retry event. Earlier first-template MATCH had incorrectly been attributed to the right finger without proving gallery-label order; do not assume it was right. Because experimental identification is wired into live PAM and recognition is inconsistent, advise reverting to independently preserved good v1-verify-only libfprint with existing `tools/ft5955_identify_v2_trial.sh --rollback` only while fprintd inactive. No further live biometric tests until reviewing gallery ordering/cross-matching. Full timings in existing feature branch `docs/identify-source-2026-10-19.md`.
 
+## 5 NOVEMBER 2026 — read-only MOH matching-engine investigation
+
+**COMPLETED:** LM Studio Bionic + REA 6.8.0 + Ghidra 12.1.4 examined the SHA-256-pinned Windows MOH engine DLL without writing code or snapshots. Candidate procedures: verify core `FUN_18003cab0`, verification adapter `FUN_18000f740`, descriptor extraction `FUN_1800c7510`, RANSAC `FUN_180076f20`. The direct call edges were inspected and the binary was closed using no-argument `close_binary`. Evidence suggests eight-bin SIFT-style orientation histograms, RANSAC distance-consistency threshold `< 2.0`, minimum three elements, and caller-provided verify score threshold. Function names are inferred from logging strings; complete indirect call paths are **not** established.
+
+**REMAINING:** Native matching is **not** implemented. Before descriptor parity can be claimed, resolve the three candidate normalisation/quantisation routines selected by `DAT_180225c8f`; template conversion and verification-core internals also remain incomplete. Existing verified Linux driver, proprietary matching bridge, auth configuration and rollback remain the operational baseline.
+
+**NEXT ACTION:** Consult [the detailed 5 November MOH research note](docs/moh-matching-engine-rea-2026-11-05.md) when native matching work resumes. Preserve prior verified results; **no** rebuild, new enrolment, PAM changes or service changes were performed.
+
 # PROJECT STATUS — FocalTech USB 2808:5955 Linux driver
 
-**Updated:** 28 October 2026  
+**Updated:** 5 November 2026 (latest research); 28 October baseline remains authoritative for installed files  
 **Repository entry point:** `main`. Latest dedicated-service work remains on existing `feature/kde-lock-auth-preflight-20261018`; no new branch created.  
 **Purpose:** The first document to consult before proposing or implementing ANY change. This is a checkpoint, not a request to reopen resolved problems.
 
